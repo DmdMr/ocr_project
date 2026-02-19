@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python
+easyocr
+pymongo
+pydantic
+python-dotenv
+motor
+pillow
+numpy
+python-doctr[torch]
+
