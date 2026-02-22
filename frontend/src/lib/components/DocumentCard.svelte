@@ -146,14 +146,13 @@
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 15px;
-    background: white;
+    background: var(--card);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     break-inside: avoid;
     margin-bottom: 20px;
 }
-
 
 
 img {
@@ -192,7 +191,7 @@ button {
 
 .delete {
     background: #d9534f;
-    color: white;
+    color: var(--text);
 }
 
 textarea {
