@@ -81,6 +81,31 @@
     />
 
 
+    <h3>{doc.filename}</h3>
+
+    <small>{new Date(doc.created_at).toLocaleString()}</small>
+
+    <div class="edit-buttons">
+        {#if editing}
+            <!-- svelte-ignore element_invalid_self_closing_tag -->
+            <textarea
+                bind:value={editedText}
+            />
+
+            <button on:click={save}>Save</button>
+        {:else}
+            <p class="text-preview">
+                {doc.recognized_text}
+            </p>
+            <button on:click={() => editing = true}>Edit</button>
+        {/if}
+
+
+        <button class="delete" on:click={remove}>
+            Delete
+        </button>
+    </div>
+
         {#if showPreview}
             <CardPreview
                 {doc}
@@ -92,6 +117,35 @@
                 on:editToggle={() => editing = !editing}
             />
         {/if}
+        
+        <!-- TAGS DISPLAY -->
+    {#if doc.tags && doc.tags.length > 0}
+        <div class="tags">
+            {#each doc.tags as tag}
+                <span class="tag">{tag}</span>
+            {/each}
+        </div>
+    {/if}
+
+    <!-- ADD TAG -->
+    {#if addingTag}
+        <div class="add-tag">
+            <input
+                bind:value={newTag}
+                placeholder="Enter tag"
+                on:keydown={(e) => e.key === "Enter" && addTag()}
+            />
+            <button on:click={addTag}>Save</button>
+        </div>
+    {:else}
+        <button class="add-tag-btn" on:click={() => addingTag = true}>
+            + Add tag
+        </button>
+    {/if}
+
+
+
+
 </div>
 
 
@@ -102,7 +156,7 @@
 
 
 .card {
-    border: 1px solid #dddddd84;
+    border: 1px solid #ddd;
     border-radius: 8px;
     padding: 15px;
     background: var(--card);

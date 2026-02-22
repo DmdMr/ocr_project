@@ -44,6 +44,15 @@
     function toggleEdit() {
         dispatch("editToggle")
     }
+
+    function handleKey(e: KeyboardEvent) {
+        if (e.key === "Escape") close()
+    }
+
+    onMount(() => {
+        window.addEventListener("keydown", handleKey)
+        return () => window.removeEventListener("keydown", handleKey)
+    })
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->

@@ -103,31 +103,6 @@
 </select>
 
 
-<div class="top-bar">
-    <input
-        type="text"
-        bind:value={searchQuery}
-        placeholder="Search..."
-    />
-
-    {#if addingGlobalTag}
-        <input
-            bind:value={newGlobalTag}
-            placeholder="New tag"
-            on:keydown={(e) => e.key === "Enter" && addTagToDoc(activeDocId)}
-        />
-        <button on:click={() => addTagToDoc(activeDocId)}>Save</button>
-    {:else}
-        <button on:click={() => addingGlobalTag = true}>
-            + Tag
-        </button>
-    {/if}
-</div>
-
-
-
-
-
 {#if activeTag}
     <div class="active-tag">
         Filtering by: {activeTag}
@@ -142,8 +117,7 @@
         <DocumentCard
             {doc}
             on:deleted={(e) => removeFromList(e.detail.id)}
-            on:tagClick={(e) => activeTag = e.detail.tag}
-        />
+            />
     {/each}
 </div>
 

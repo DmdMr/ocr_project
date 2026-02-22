@@ -35,7 +35,6 @@
     <button on:click={() => setTheme('dark')}>🌙</button>
 </div>
 
-<Settings/>
 
 <Upload on:uploaded={handleUpload} />
 
