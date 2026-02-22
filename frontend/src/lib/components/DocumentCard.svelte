@@ -3,7 +3,10 @@
     import type { Document } from "../types"
     import { deleteDocument } from "../api"
     import { updateDocument } from "../api"
-    import ImagePreview from "./ImagePreview.svelte"
+    import CardPreview from "./CardPreview.svelte"
+
+    
+
 
     let showPreview = false
 
@@ -12,7 +15,7 @@
     let editing = false
     let editedText = doc.recognized_text
 
-    async function save() {
+    async function save(text: any) {
         await updateDocument(doc._id, {
             recognized_text: editedText
         })
@@ -104,11 +107,17 @@
     </div>
 
         {#if showPreview}
-        <ImagePreview
-            imageUrl={`http://localhost:8000/uploads/${doc.filename}`}
-            on:close={() => showPreview = false}
-        />
-    {/if}
+            <CardPreview
+                {doc}
+                bind:editedText
+                {editing}
+                on:close={() => showPreview = false}
+                on:save={(e) => save(e.detail.text)}
+                on:delete={remove}
+                on:editToggle={() => editing = !editing}
+            />
+        {/if}
+        
         <!-- TAGS DISPLAY -->
     {#if doc.tags && doc.tags.length > 0}
         <div class="tags">
@@ -142,6 +151,10 @@
 
 
 <style>
+
+
+
+
 .card {
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -154,6 +167,11 @@
     margin-bottom: 20px;
 }
 
+.cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
 
 img {
     width: 100%;

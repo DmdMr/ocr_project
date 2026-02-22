@@ -152,7 +152,7 @@
 <style>
     
 .grid {
-  column-count: 4;
+  column-count: 6;
   column-gap: 1em;
 }
 
