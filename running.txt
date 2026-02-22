@@ -10,3 +10,7 @@ http://localhost:8000/docs
 http://localhost:5173
 
 
+git add .
+git commit -m "something"
+git pull origin main --rebase
+git push origin main

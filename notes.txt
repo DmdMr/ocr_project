@@ -6,6 +6,37 @@ What to add:
 
 
 
+
+
 What to fix:
 - when uploading new file, the editing field has the text of the previous document
 - 
+
+
+
+
+What to work on:
+
+Image uploading
+- upload multiple file extensions, images, pdfs. 
+- automatically split images, rotate, turn into better quality
+- image uploading progress, like: uploading, recognition, done
+- better handling of uploaded images, not breaking when there's an existing file
+
+Docs viewing
+- better text viewing, not just plain text, but more
+- sorting, tags, etc.
+- left and right buttons through collections.
+
+
+
+
+Image recognition
+- going from OCR to better things, like advanced documents recognition, and more, so we can have the better structure
+
+
+
+
+
+
+
