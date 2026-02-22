@@ -13,10 +13,11 @@
     let editedText = doc.recognized_text
 
     async function save() {
-        await updateDocument(doc._id, editedText)
+        await updateDocument(doc._id, {
+            recognized_text: editedText
+        })
 
-        doc.recognized_text = editedText  // ← THIS LINE FIXES IT
-
+        doc.recognized_text = editedText
         editing = false
     }
 

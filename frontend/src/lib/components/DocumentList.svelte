@@ -152,21 +152,8 @@
 <style>
     
 .grid {
-    column-count: 4;
-    column-gap: 20px;
-    width: 100%;
-}
-
-@media (max-width: 1400px) {
-    .grid { column-count: 3; }
-}
-
-@media (max-width: 1000px) {
-    .grid { column-count: 2; }
-}
-
-@media (max-width: 600px) {
-    .grid { column-count: 1; }
+  column-count: 4;
+  column-gap: 1em;
 }
 
 
