@@ -99,7 +99,7 @@
                 {:else}
                     <button on:click={toggleEdit}>Edit</button>
                 {/if}
-                <button on:click={remove}>Delete</button>
+                <button class="delete" on:click={remove}>Delete</button>
             </div>
 
         </div>
@@ -182,5 +182,9 @@
     cursor: pointer;
 }
 
+.delete {
+
+
+}
     
 </style>
