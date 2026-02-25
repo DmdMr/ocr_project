@@ -40,3 +40,8 @@ Image recognition
 
 
 
+Hardest things to implement:
+- Advanced text recognition, like rows, lines and so on
+- Text locaiton based where it was on the document
+- Canvas for the previous point there, 
+- Training a model for the recognition, so it would not make any mistakes, and searching won't be a problem
