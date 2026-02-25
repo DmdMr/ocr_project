@@ -44,12 +44,13 @@ async def upload_image(file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         f.write(file_bytes)
 
-    recognized_text = recognize_text(file_path)
+    ocr_result = recognize_text(file_path)
 
     document_data = {
         "filename": filename,
         "path": file_path,
-        "recognized_text": recognized_text,
+        "recognized_text": ocr_result["text"],  # store only text
+        "boxes": ocr_result["boxes"],           # store boxes separately
         "file_hash": file_hash,
         "created_at": datetime.utcnow(),
         "tags": []
