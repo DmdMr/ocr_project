@@ -5,3 +5,9 @@ __pycache__/
 .env
 frontend.log
 .venv/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.dylib
+*.log
