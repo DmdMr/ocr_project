@@ -1,0 +1,96 @@
+/Users/demid/Desktop/ocr_project/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+W0305 14:05:48.202747 74582 venv/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+Some weights of VisionEncoderDecoderModel were not initialized from the model checkpoint at microsoft/trocr-base-handwritten and are newly initialized: ['encoder.pooler.dense.bias', 'encoder.pooler.dense.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+INFO:     Started server process [74582]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56569 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56569 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56877 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56877 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56879 - "GET /uploads/20260305_135117_9cbe239178d29c5a8161750a3d9b4534.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56881 - "GET /uploads/20260305_135207_03ef8f351f69863e31282a510aa143f2.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56921 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56921 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56921 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56921 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56921 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56921 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56971 - "GET /uploads/20260305_140737_da56cf94d58d3f7e76f14df43283fb6c.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56975 - "GET /uploads/20260305_140731_d9605cbfef2c325c51a49e3b9580e7e1.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56973 - "GET /uploads/20260305_140734_da4e3f8becf27fb7b754016344605e54.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56977 - "GET /uploads/20260305_140727_d31e47da5d0b0f6c0f666c80c03505d7.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57004 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57004 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57009 - "GET /uploads/20260305_140734_da4e3f8becf27fb7b754016344605e54.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57006 - "GET /uploads/20260305_140737_da56cf94d58d3f7e76f14df43283fb6c.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57012 - "GET /uploads/20260305_140727_d31e47da5d0b0f6c0f666c80c03505d7.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57010 - "GET /uploads/20260305_140731_d9605cbfef2c325c51a49e3b9580e7e1.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57310 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57310 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57315 - "GET /uploads/20260305_140737_da56cf94d58d3f7e76f14df43283fb6c.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57319 - "GET /uploads/20260305_140731_d9605cbfef2c325c51a49e3b9580e7e1.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57316 - "GET /uploads/20260305_140734_da4e3f8becf27fb7b754016344605e54.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57322 - "GET /uploads/20260305_140727_d31e47da5d0b0f6c0f666c80c03505d7.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57323 - "GET /uploads/20260305_135207_03ef8f351f69863e31282a510aa143f2.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57315 - "GET /uploads/20260305_133644_2ceebf98c965b153af5bc755b8f3e20f.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57326 - "GET /uploads/20260305_140937_sam-forrest-1sQMDxS-cfw-unsplash.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /uploads/20260305_140934_Productive%20day.jpeg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57553 - "GET /uploads/20260305_140931_johannes-andersson-UCd78vfC8vU-unsplash.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /uploads/20260305_140928_jack-anstey-XVoyX7l9ocY-unsplash.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57553 - "GET /uploads/20260305_140925_iOS-stock-7-for-iPhone-X.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /uploads/20260305_140922_f7573b4bc2f1200841776e230bb8ba23.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /uploads/20260305_140919_f912e22cf67eab67a9297f90aaa062e9.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /uploads/20260305_140916_f616fd7e5ba13adcd19e4c91bd6459f1.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /uploads/20260305_140914_f9e40de66d1f32febb33d3995c7d3a50.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57326 - "GET /uploads/20260305_140911_ec76d4234d3813a16ae24f1902f24061.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57553 - "GET /uploads/20260305_140908_ea66e3246a9f5abe81d2eeede5c9eb0e.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /uploads/20260305_140905_e95de8c1612f70fea0bc2b53e8a4f447.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57326 - "GET /uploads/20260305_140902_e64c5eb749a289cb8edfa41fa8bf20c4.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57559 - "GET /uploads/20260305_140937_sam-forrest-1sQMDxS-cfw-unsplash.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57561 - "GET /uploads/20260305_140931_johannes-andersson-UCd78vfC8vU-unsplash.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57559 - "GET /uploads/20260305_140928_jack-anstey-XVoyX7l9ocY-unsplash.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57559 - "GET /uploads/20260305_140925_iOS-stock-7-for-iPhone-X.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57606 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57606 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57609 - "GET /uploads/20260305_140937_sam-forrest-1sQMDxS-cfw-unsplash.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57611 - "GET /uploads/20260305_140934_Productive%20day.jpeg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57614 - "GET /uploads/20260305_140928_jack-anstey-XVoyX7l9ocY-unsplash.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57613 - "GET /uploads/20260305_140931_johannes-andersson-UCd78vfC8vU-unsplash.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57616 - "GET /uploads/20260305_140925_iOS-stock-7-for-iPhone-X.png HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57618 - "GET /uploads/20260305_140922_f7573b4bc2f1200841776e230bb8ba23.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57611 - "GET /uploads/20260305_140911_ec76d4234d3813a16ae24f1902f24061.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57609 - "GET /uploads/20260305_140727_d31e47da5d0b0f6c0f666c80c03505d7.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57613 - "GET /uploads/20260305_140905_e95de8c1612f70fea0bc2b53e8a4f447.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57614 - "GET /uploads/20260305_140908_ea66e3246a9f5abe81d2eeede5c9eb0e.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57618 - "GET /uploads/20260305_140916_f616fd7e5ba13adcd19e4c91bd6459f1.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57611 - "GET /uploads/20260305_140914_f9e40de66d1f32febb33d3995c7d3a50.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57616 - "GET /uploads/20260305_140919_f912e22cf67eab67a9297f90aaa062e9.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57613 - "GET /uploads/20260305_140731_d9605cbfef2c325c51a49e3b9580e7e1.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57614 - "GET /uploads/20260305_140734_da4e3f8becf27fb7b754016344605e54.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57609 - "GET /uploads/20260305_140737_da56cf94d58d3f7e76f14df43283fb6c.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57611 - "GET /uploads/20260305_135117_9cbe239178d29c5a8161750a3d9b4534.jpg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57618 - "GET /uploads/20260305_140902_e64c5eb749a289cb8edfa41fa8bf20c4.jpg HTTP/1.1" 304 Not Modified
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [74582]
