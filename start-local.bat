@@ -18,7 +18,28 @@ pip install -r backend\requirements.txt
 start "OCR Backend" cmd /k "cd /d %cd% && call .venv\Scripts\activate.bat && uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"
 
 REM ---- 3) Frontend ----
-start "OCR Frontend" cmd /k "cd /d %cd%\frontend && npm install && npm run dev -- --host"
+set "NPM_CMD="
+for /f "delims=" %%I in ('where npm.cmd 2^>nul') do (
+  set "NPM_CMD=%%I"
+  goto :npm_found
+)
+
+if exist "C:\Program Files\nodejs\npm.cmd" set "NPM_CMD=C:\Program Files\nodejs\npm.cmd"
+if exist "%LOCALAPPDATA%\Programs\nodejs\npm.cmd" set "NPM_CMD=%LOCALAPPDATA%\Programs\nodejs\npm.cmd"
+
+:npm_found
+if "%NPM_CMD%"=="" (
+  echo [ERROR] npm is not available in PATH.
+  echo Install Node.js LTS and then restart terminal/VS Code.
+  echo Expected npm at one of:
+  echo   - C:\Program Files\nodejs\npm.cmd
+  echo   - %%LOCALAPPDATA%%\Programs\nodejs\npm.cmd
+  pause
+  exit /b 1
+)
+
+echo Using npm: %NPM_CMD%
+start "OCR Frontend" cmd /k "cd /d %cd%\frontend && \"%NPM_CMD%\" install && \"%NPM_CMD%\" run dev -- --host"
 
 REM ---- 4) Open browser ----
 timeout /t 4 >nul
