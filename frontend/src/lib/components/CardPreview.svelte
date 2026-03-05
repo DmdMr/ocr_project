@@ -71,16 +71,10 @@
 
             <!-- HEADER -->
             <div class="header">
-                <h2>{doc.filename}</h2>
+                <h3>{doc.filename}</h3>
                 <small>{new Date(doc.created_at).toLocaleString()}</small>
 
-                {#if doc.tags}
-                    <div class="tags">
-                        {#each doc.tags as tag}
-                            <span class="tag">{tag}</span>
-                        {/each}
-                    </div>
-                {/if}
+                
             </div>
 
             <!-- TEXT -->
@@ -94,6 +88,14 @@
 
             <!-- FOOTER -->
             <div class="footer">
+                {#if doc.tags}
+                    <div class="tags">
+                        {#each doc.tags as tag}
+                            <span class="tag">{tag}</span>
+                        {/each}
+                    </div>
+                {/if}
+                
                 {#if editing}
                     <button on:click={save}>Save</button>
                 {:else}
@@ -182,9 +184,5 @@
     cursor: pointer;
 }
 
-.delete {
-
-
-}
     
 </style>

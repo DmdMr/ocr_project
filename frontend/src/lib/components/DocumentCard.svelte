@@ -5,9 +5,6 @@
     import { updateDocument } from "../api"
     import CardPreview from "./CardPreview.svelte"
 
-    
-
-
     let showPreview = false
 
     export let doc: Document
@@ -24,13 +21,6 @@
         editing = false
     }
 
-    let activeTag: string | null = null;
-    let searchQuery = "";
-
-    //import { createEventDispatcher } from "svelte"
-
-    
-
     type DocumentCardEvents = {
         deleted: { id: string },
         tagClick: { tag: string }
@@ -38,32 +28,11 @@
 
     const dispatch = createEventDispatcher<DocumentCardEvents>()
 
-    function handleTagClick(tag: string) {
-        dispatch("tagClick", { tag })
-    }
 
 
     async function remove() {
         await deleteDocument(doc._id)
         dispatch("deleted", { id: doc._id })
-    }
-
-    let addingTag = false
-    let newTag = ""
-    
-    async function addTag() {
-        if (!newTag.trim()) return
-
-        const updatedTags = [...(doc.tags ?? []), newTag.trim()]
-
-        await updateDocument(doc._id, {
-            tags: updatedTags
-        })
-
-        doc.tags = updatedTags
-
-        newTag = ""
-        addingTag = false
     }
 
 
@@ -113,11 +82,6 @@
     margin-bottom: 20px;
 }
 
-.cards-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
 
 img {
     width: 100%;
@@ -125,114 +89,6 @@ img {
     margin-bottom: 5px;
 }
 
-h3 {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.text-preview {
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-
-    line-height: 1.4;
-    min-height: calc(1.4em * 4);
-
-    margin: 0;
-}
-
-
-button {
-    margin-top: auto;
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    margin-bottom: 10px;
-}
-
-.delete {
-    background: #d9534f;
-    color: var(--text);
-}
-
-textarea {
-    width: 100%;
-    resize: vertical;      /* allow manual vertical resize */
-    overflow-y: auto;      /* allow scroll inside */
-    overflow-x: hidden;
-
-    line-height: 1.4;
-
-    min-height: calc(1.4em * 4);   /* minimum 4 rows */
-    max-height: 300px;            /* stops infinite growth */
-
-    border-radius: 6px;
-    padding: 8px;
-    font: inherit;
-}
-
-
-.edit-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-  margin-bottom: 0px;
-}
-
-.edit-buttons button,
-.edit-buttons textarea {
-  width: 100%;
-  margin: 0;
-  box-sizing: border-box;
-}
-
-.tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 6px 0 4px 0;
-}
-
-.tag {
-    background: #eef2ff;
-    color: #3730a3;
-    padding: 4px 8px;
-    border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    border: none;           /* buttons have default borders */
-    outline: none;          /* optional: remove default outline */
-    transition: 0.15s;
-}
-
-.tag:hover,
-.tag:focus {
-    background: #c7d2fe;
-    outline: none;
-}
-
-.add-tag {
-    display: flex;
-    gap: 6px;
-    margin-top: 6px;
-}
-
-.add-tag input {
-    flex: 1;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-}
-
-.add-tag-btn {
-    margin-top: 6px;
-    font-size: 12px;
-    background: #f3f4f6;
-}
 
 
 </style>

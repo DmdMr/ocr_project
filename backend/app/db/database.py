@@ -6,3 +6,9 @@ client = AsyncIOMotorClient(MONGO_URL)
 db = client["ocr_database"]
 
 documents_collection = db["documents"]
+tags_collection = db["tags"]
+
+
+
+
+

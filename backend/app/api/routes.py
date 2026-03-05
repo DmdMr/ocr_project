@@ -148,40 +148,30 @@ async def search_documents(q: str):
 
 
 from pydantic import BaseModel
+from backend.app.db.database import tags_collection
 
 class TagRequest(BaseModel):
     tag: str
 
-
-@router.post("/documents/{doc_id}/tags")
-async def add_tag(doc_id: str, request: TagRequest):
+# Route to create a new tag
+@router.post("/tags")
+async def create_tag(request: TagRequest):
     tag = request.tag.strip().lower()
 
-    if not tag:
-        raise HTTPException(status_code=400, detail="Tag cannot be empty")
+    # Check if the tag already exists
+    existing_tag = await tags_collection.find_one({"tag": tag})
+    if existing_tag:
+        raise HTTPException(status_code=400, detail="Tag already exists")
 
-    result = await documents_collection.update_one(
-        {"_id": ObjectId(doc_id)},
-        {"$addToSet": {"tags": tag}}  # prevents duplicates
-    )
+    # Insert the new tag into the database
+    new_tag = {"tag": tag}
+    await tags_collection.insert_one(new_tag)
+    return {"message": "Tag added", "tag": new_tag}
 
-    if result.modified_count == 1:
-        return {"message": "Tag added"}
-
-    raise HTTPException(status_code=404, detail="Document not found")
-
-
-
-@router.delete("/documents/{doc_id}/tags")
-async def remove_tag(doc_id: str, request: TagRequest):
-    tag = request.tag.strip().lower()
-
-    result = await documents_collection.update_one(
-        {"_id": ObjectId(doc_id)},
-        {"$pull": {"tags": tag}}
-    )
-
-    if result.modified_count == 1:
-        return {"message": "Tag removed"}
-
-    raise HTTPException(status_code=404, detail="Document not found")
+# Route to fetch all tags
+@router.get("/tags")
+async def get_tags():
+    tags = []
+    async for tag in tags_collection.find():
+        tags.append(tag['tag'])
+    return {"tags": tags}

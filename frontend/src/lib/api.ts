@@ -44,3 +44,20 @@ export async function searchDocuments(q: string) {
     const res = await fetch(`${API_URL}/search?q=${q}`)
     return await res.json()
 }
+
+
+export async function createTag(tag: string) {
+    const response = await fetch(`${API_URL}/tags`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tag })
+    })
+
+    if (!response.ok) {
+        throw new Error("Failed to create tag")
+    }
+
+    return response.json()
+}
