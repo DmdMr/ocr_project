@@ -17,3 +17,6 @@ app.include_router(router)
 from fastapi.staticfiles import StaticFiles
 
 app.mount("/uploads", StaticFiles(directory="backend/uploads"), name="uploads")
+
+
+

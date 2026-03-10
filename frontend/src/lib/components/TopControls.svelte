@@ -1,7 +1,4 @@
 <script lang="ts">
-    import Upload from "./lib/components/Upload.svelte"
-    import DocumentList from "./lib/components/DocumentList.svelte"
-    import Settings from "./lib/components/Settings.svelte";
     import { onMount } from "svelte"
 
     let refreshKey = 0
@@ -26,22 +23,23 @@
 </script>
 
 
-<h2>OCR System</h2>
 
 
-<!--
 
 
 <div class="theme-switcher">
     <button on:click={() => setTheme('light')}>☀️</button>
     <button on:click={() => setTheme('dark')}>🌙</button>
 </div>
--->
-
-
-<Upload on:uploaded={handleUpload} />
-
-<DocumentList {refreshKey} />
 
 
 
+<style>
+
+
+
+
+
+
+
+</style>

@@ -1,0 +1,223 @@
+<script lang="ts">
+  import { createEventDispatcher } from "svelte"
+  import { createTag, getTags, deleteTag, normalizeTag, tagExists } from "../api"
+
+  export let initialTags: string[] = []
+
+  const dispatch = createEventDispatcher<{
+    select: { tag: string | null }
+    tagsChanged: { tags: string[] }
+  }>()
+
+  let tags: string[] = []
+  let createInput = ""
+  let searchInput = ""
+  let selectedTag: string | null = null
+  let createError = ""
+  let deleteMode = false
+
+  $: tags = [...initialTags]
+
+  $: filteredTags = tags.filter(tag =>
+    tag.toLowerCase().includes(searchInput.trim().toLowerCase())
+  )
+
+  async function submitTag() {
+    const normalized = normalizeTag(createInput)
+    createError = ""
+
+    if (!normalized) return
+
+    if (tagExists(tags, normalized)) {
+      createError = "Tag already exists"
+      return
+    }
+
+    try {
+      await createTag(normalized)
+      tags = [...tags, normalized]
+      createInput = ""
+      createError = ""
+      dispatch("tagsChanged", { tags })
+    } catch (error) {
+      console.error("Failed to create tag", error)
+      
+      const latestTags = await getTags().catch(() => tags)
+      const existsAfterFailure = tagExists(latestTags, normalized)
+
+      if (existsAfterFailure) {
+        tags = latestTags
+        createInput = ""
+        createError = ""
+        dispatch("tagsChanged", { tags })
+        return
+      }
+
+      createError = error instanceof Error ? error.message : "Failed to create tag"
+    }
+  }
+
+  function handleCreateKeydown(event: KeyboardEvent) {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      submitTag()
+    }
+  }
+
+  function selectTag(tag: string) {
+    selectedTag = selectedTag === tag ? null : tag
+    dispatch("select", { tag: selectedTag })
+  }
+
+  async function removeTag(tag: string) {
+    try {
+      await deleteTag(tag)
+      tags = tags.filter(existing => existing !== tag)
+
+      if (selectedTag === tag) {
+        selectedTag = null
+        dispatch("select", { tag: null })
+      }
+
+      dispatch("tagsChanged", { tags })
+    } catch (error) {
+      console.error("Failed to delete tag", error)
+      createError = error instanceof Error ? error.message : "Failed to delete tag"
+    }
+  }
+
+
+</script>
+
+<div class="tag-manager panel">
+  <div class="create-row">
+    <input
+      type="text"
+      placeholder="Create tag"
+      bind:value={createInput}
+      on:keydown={handleCreateKeydown}
+    />
+    <button class="primary" on:click={submitTag}>Create Tag</button>
+  </div>
+
+  {#if createError}
+    <p class="error">{createError}</p>
+  {/if}
+
+  <div class="toolbar">
+    <input
+      class="search"
+      type="text"
+      placeholder="Search tags"
+      bind:value={searchInput}
+    />
+    <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
+      {deleteMode ? "Done" : "Select to delete"}
+    </button>
+  </div>
+
+
+
+
+
+  <div class="tags-list">
+    {#if filteredTags.length === 0}
+      <p class="empty">No tags found</p>
+    {:else}
+      {#each filteredTags as tag}
+        <div class:deleting={deleteMode} class="tag-chip-row">
+          <button
+            class:selected={selectedTag === tag}
+            class="tag-chip"
+            on:click={() => !deleteMode && selectTag(tag)}
+          >
+            {tag}
+          </button>
+
+          {#if deleteMode}
+            <button class="delete-tag" aria-label={`Delete ${tag}`} on:click={() => removeTag(tag)}>X</button>
+          {/if}
+        </div>
+      {/each}
+    {/if}
+  </div>
+</div>
+
+<style>
+  .tag-manager {
+    padding: 14px;
+    margin-bottom: 16px;
+    text-align: left;
+  }
+
+  .create-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .create-row input,
+  .search {
+    flex: 1;
+  }
+
+  .error {
+    margin: 0 0 8px;
+    color: #dc2626;
+    font-size: 0.9rem;
+  }
+
+  .tags-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .tag-chip {
+    border-radius: 999px;
+    padding: 8px 14px;
+  }
+
+  .tag-chip.selected {
+    background: #111827;
+    color: #ffffff;
+  }
+
+  .empty {
+    margin: 4px 0;
+    opacity: 0.7;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .mode-toggle {
+    white-space: nowrap;
+  }
+
+  .tag-chip-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tag-chip-row.deleting .tag-chip {
+    cursor: default;
+  }
+
+  .delete-tag {
+    border-radius: 999px;
+    padding: 6px 10px;
+    min-width: auto;
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+  }
+
+
+
+</style>

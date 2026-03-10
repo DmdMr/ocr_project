@@ -168,6 +168,28 @@ async def create_tag(request: TagRequest):
     await tags_collection.insert_one(new_tag)
     return {"message": "Tag added", "tag": new_tag}
 
+@router.delete("/tags/{tag}")
+async def delete_tag(tag: str):
+    normalized = tag.strip().lower()
+
+    if not normalized:
+        raise HTTPException(status_code=400, detail="Tag is required")
+
+    result = await tags_collection.delete_one({"tag": normalized})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Tag not found")
+
+    await documents_collection.update_many(
+        {"tags": normalized},
+        {"$pull": {"tags": normalized}}
+    )
+
+    return {"message": "Tag deleted", "tag": normalized}
+
+
+
+
 # Route to fetch all tags
 @router.get("/tags")
 async def get_tags():

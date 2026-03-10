@@ -44,6 +44,17 @@
     function toggleEdit() {
         dispatch("editToggle")
     }
+    function addTag() {
+        dispatch("addTag")
+    }
+
+    function removeTag() {
+        dispatch("removeTag")
+    }
+
+    function selectTag(tag: string) {
+        dispatch("tagClick", { tag })
+    }
 
     function handleKey(e: KeyboardEvent) {
         if (e.key === "Escape") close()
@@ -60,16 +71,13 @@
 <div class="overlay" on:click={close}>
     <div class="modal" on:click|stopPropagation>
 
-        <!-- LEFT IMAGE -->
         <div class="left">
             <!-- svelte-ignore a11y_missing_attribute -->
             <img src={`http://localhost:8000/uploads/${doc.filename}`} />
         </div>
 
-        <!-- RIGHT CONTENT -->
         <div class="right">
 
-            <!-- HEADER -->
             <div class="header">
                 <h3>{doc.filename}</h3>
                 <small>{new Date(doc.created_at).toLocaleString()}</small>
@@ -77,7 +85,6 @@
                 
             </div>
 
-            <!-- TEXT -->
             <div class="text">
                 {#if editing}
                     <textarea bind:value={editedText}></textarea>
@@ -86,29 +93,38 @@
                 {/if}
             </div>
 
-            <!-- FOOTER -->
             <div class="footer">
-                {#if doc.tags}
-                    <div class="tags">
+                <div class="tags">
+                    {#if doc.tags?.length}
                         {#each doc.tags as tag}
-                            <span class="tag">{tag}</span>
+                            <button class="tag" on:click={() => selectTag(tag)}>{tag}</button>
                         {/each}
-                    </div>
-                {/if}
-                
-                {#if editing}
-                    <button on:click={save}>Save</button>
-                {:else}
-                    <button on:click={toggleEdit}>Edit</button>
-                {/if}
-                <button class="delete" on:click={remove}>Delete</button>
+                    {:else}
+                        <span class="empty-tags">No tags</span>
+                    {/if}
+                </div>
+
+                <div class="actions">
+                    <button on:click={addTag}>Add Tag</button>
+                    <button on:click={removeTag}>Remove Tag</button>
+                    {#if editing}
+                        <button on:click={save}>Save</button>
+                    {:else}
+                        <button on:click={toggleEdit}>Edit</button>
+                    {/if}
+                    <button class="delete" on:click={remove}>Delete</button>
+                </div>
+            </div>
+
+
+
             </div>
 
         </div>
 
         <button class="close" on:click={close}>✕</button>
     </div>
-</div>
+
 
 <style>
 
@@ -136,10 +152,10 @@
 }
 
 .left {
-    overflow: auto;       /* allow scroll */
+    overflow: auto;       
     display: flex;
     justify-content: center;
-    align-items: flex-start;  /* important */
+    align-items: flex-start;  
     padding: 20px;
     background: #000;
 }
@@ -170,8 +186,33 @@
 
 .footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    border-radius: 999px;
+    padding: 6px 10px;
+}
+
+.empty-tags {
+    opacity: 0.7;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .close {

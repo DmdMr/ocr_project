@@ -11,3 +11,4 @@ frontend.log
 *.safetensors
 *.dylib
 *.log
+backend/uploads

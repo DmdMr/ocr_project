@@ -1,4 +1,13 @@
-const API_URL = "http://localhost:8000/api"
+// api.ts
+//const BACKEND_HOST = window.location.hostname; // automatically matches localhost or LAN IP
+//const API_URL = `http://${BACKEND_HOST}:8000/api`;
+//console.log(BACKEND_HOST);
+
+//const API_URL = "http://192.168.31.162:8000/api"; // your Mac’s LAN IP
+
+const API_URL = "/api"; // Use your LAN IP
+
+console.log(API_URL);
 
 export async function uploadImage(file: File) {
     const formData = new FormData()
@@ -9,22 +18,29 @@ export async function uploadImage(file: File) {
         body: formData
     })
 
+    if (!res.ok) {
+        throw new Error("Failed to upload image")
+    }
+
     return await res.json()
 }
 
 export async function getDocuments() {
     const res = await fetch(`${API_URL}/documents`)
+    if (!res.ok) throw new Error("Failed to fetch documents")
     return await res.json()
 }
 
 export async function deleteDocument(id: string) {
-    await fetch(`${API_URL}/documents/${id}`, {
+    const res = await fetch(`${API_URL}/documents/${id}`, {
         method: "DELETE"
     })
+
+    if (!res.ok) throw new Error("Failed to delete document")
 }
 
 export async function updateDocument(id: string, data: any) {
-    const response = await fetch(`http://localhost:8000/api/documents/${id}`, {
+    const response = await fetch(`${API_URL}/documents/${id}`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json"
@@ -40,9 +56,33 @@ export async function updateDocument(id: string, data: any) {
 }
 
 
+export async function setDocumentTags(id: string, tags: string[]) {
+    return updateDocument(id, { tags })
+}
+
 export async function searchDocuments(q: string) {
-    const res = await fetch(`${API_URL}/search?q=${q}`)
+    const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}`)
+    if (!res.ok) throw new Error("Search request failed")
     return await res.json()
+}
+
+export function normalizeTag(tag: string) {
+    return tag.trim().toLowerCase()
+}
+
+export function tagExists(tags: string[], tag: string) {
+    const normalized = normalizeTag(tag)
+    return tags.some(existing => normalizeTag(existing) === normalized)
+}
+
+export async function getTags(): Promise<string[]> {
+    const response = await fetch(`${API_URL}/tags`)
+    if (!response.ok) {
+        throw new Error("Failed to fetch tags")
+    }
+
+    const data = await response.json()
+    return data.tags ?? []
 }
 
 
@@ -55,9 +95,25 @@ export async function createTag(tag: string) {
         body: JSON.stringify({ tag })
     })
 
+    const payload = await response.json().catch(() => ({}))
+
     if (!response.ok) {
-        throw new Error("Failed to create tag")
+        throw new Error(payload.detail || "Failed to create tag")
     }
 
-    return response.json()
+    return payload
+}
+
+export async function deleteTag(tag: string) {
+    const response = await fetch(`${API_URL}/tags/${encodeURIComponent(normalizeTag(tag))}`, {
+        method: "DELETE"
+    })
+
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(payload.detail || "Failed to delete tag")
+    }
+
+    return payload
 }
