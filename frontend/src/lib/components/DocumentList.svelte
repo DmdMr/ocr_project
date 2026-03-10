@@ -67,16 +67,19 @@
 
 </script>
 
-<input
-    class="search-input"
-    placeholder="Search documents"
-    bind:value={search}
-/>
+<div class="controls-row">
+    <input
+        class="search-input"
+        placeholder="Search documents"
+        bind:value={search}
+    />
 
-<select bind:value={sortOrder} class="sort-select">
-    <option value="desc">Newest first</option>
-    <option value="asc">Oldest first</option>
-</select>
+    <select bind:value={sortOrder} class="sort-select">
+        <option value="desc">Newest first</option>
+        <option value="asc">Oldest first</option>
+    </select>
+</div>
+
 
 
 
@@ -103,51 +106,48 @@
 
 
 <style>
-    
+.controls-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+
 .grid {
-  column-count: 6;
+  column-count: 5;
   column-gap: 1em;
 }
 
 
-
 .search-input {
-    margin-bottom: 20px;
-    width: 250px;
+    width: min(560px, 100%);
+    min-height: 42px;
+    padding: 0.58rem 0.92rem;
+    border-radius: 14px;
+    border-color: color-mix(in srgb, var(--border-strong), var(--primary) 20%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white, transparent 35%),
+      0 8px 24px color-mix(in srgb, var(--primary), transparent 88%);
 }
 
 .search-input::placeholder {
-    color: rgba(255,255,255,0.7);
+    color: color-mix(in srgb, var(--text-muted), transparent 12%);
 }
+
 
 .sort-select {
-    padding: 8px 14px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    background: white;
+    
+    min-width: 180px;
+    min-height: 42px;
 }
 
-.tags{
-    margin-bottom: 20px;
-}
 
 .search-input {
-    padding: 10px 16px;
-    border-radius: 8px;
-    border: none;
-    background: #2d6cdf;
-    color: white;
-    margin-bottom: 20px;
     width: 250px;
 }
 
-.tag-button {
-    display: inline-block;
-    background-color: blue;
-    padding: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    color: white;
-    transition: background-color 0.3s ease;
-}
+
 </style>

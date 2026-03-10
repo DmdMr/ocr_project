@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte"
   import { createTag, getTags, deleteTag, normalizeTag, tagExists } from "../api"
+  import { tagHue } from "../tagColors"
 
   export let initialTags: string[] = []
 
@@ -128,7 +129,8 @@
         <div class:deleting={deleteMode} class="tag-chip-row">
           <button
             class:selected={selectedTag === tag}
-            class="tag-chip"
+            class="tag-chip tag-colored"
+            style={`--tag-hue: ${tagHue(tag)}`}
             on:click={() => !deleteMode && selectTag(tag)}
           >
             {tag}
@@ -163,7 +165,7 @@
 
   .error {
     margin: 0 0 8px;
-    color: #dc2626;
+    color: var(--danger);
     font-size: 0.9rem;
   }
 
@@ -180,8 +182,9 @@
   }
 
   .tag-chip.selected {
-    background: #111827;
-    color: #ffffff;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 68%);
+    border-color: color-mix(in srgb, var(--primary), white 12%);
+    transform: translateY(-1px);
   }
 
   .empty {
@@ -213,9 +216,9 @@
     border-radius: 999px;
     padding: 6px 10px;
     min-width: auto;
-    background: #ef4444;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--danger), white 12%), var(--danger));
     color: #fff;
-    border-color: #ef4444;
+    border-color: transparent;
   }
 
 

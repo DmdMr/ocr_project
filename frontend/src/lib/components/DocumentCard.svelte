@@ -3,6 +3,7 @@
     import type { Document } from "../types"
     import CardPreview from "./CardPreview.svelte"
     import { deleteDocument, getTags, normalizeTag, setDocumentTags, tagExists, updateDocument} from "../api"
+    import { tagHue } from "../tagColors"
 
     let showPreview = false
 
@@ -83,6 +84,10 @@
         dispatch("tagClick", { tag: event.detail.tag })
     }
 
+    function selectTagFromCard(tag: string) {
+        dispatch("tagClick", { tag })
+    }
+
 </script>
 
 
@@ -94,6 +99,19 @@
         alt=""
         on:click={() => showPreview = true}
     />
+
+     <div class="card-tags">
+        {#if doc.tags?.length}
+            {#each doc.tags as tag}
+                <button class="card-tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`} on:click={() => selectTagFromCard(tag)}>{tag}</button>
+            {/each}
+        {:else}
+            <!--
+        <span class="card-tags-empty">No tags</span>
+            -->
+            
+        {/if}
+    </div>
 
 
         {#if showPreview}
@@ -120,10 +138,10 @@
 
 
 .card {
-    border: 1px solid #dddddd84;
-    border-radius: 8px;
-    padding: 15px;
-    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    background: var(--surface-strong);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -134,8 +152,27 @@
 
 img {
     width: 100%;
-    border-radius: 6px;
-    margin-bottom: 5px;
+    border-radius: var(--radius-md);
+    margin-bottom: 4px;
+}
+
+.card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.card-tag {
+    min-height: 30px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+}
+
+.card-tags-empty {
+    font-size: 0.82rem;
+    color: var(--text-muted);
 }
 
 

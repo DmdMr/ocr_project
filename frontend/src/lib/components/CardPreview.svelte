@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte"
     import type { Document } from "../types"
+    import { tagHue } from "../tagColors"
 
     export let doc: Document
     export let editedText: string
@@ -60,6 +61,17 @@
         if (e.key === "Escape") close()
     }
 
+    function portal(node: HTMLElement) {
+        const target = document.body
+        target.appendChild(node)
+
+        return {
+            destroy() {
+                if (node.parentNode) node.parentNode.removeChild(node)
+            }
+        }
+    }
+
     onMount(() => {
         window.addEventListener("keydown", handleKey)
         return () => window.removeEventListener("keydown", handleKey)
@@ -68,7 +80,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
-<div class="overlay" on:click={close}>
+<div class="overlay" use:portal on:click={close}>
     <div class="modal" on:click|stopPropagation>
 
         <div class="left">
@@ -97,7 +109,7 @@
                 <div class="tags">
                     {#if doc.tags?.length}
                         {#each doc.tags as tag}
-                            <button class="tag" on:click={() => selectTag(tag)}>{tag}</button>
+                            <button class="tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`} on:click={() => selectTag(tag)}>{tag}</button>
                         {/each}
                     {:else}
                         <span class="empty-tags">No tags</span>
@@ -133,7 +145,7 @@
 .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.85);
+    background: rgba(10, 14, 20);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -141,7 +153,7 @@
 }
 
 .modal {
-    background: var(--card);
+    background: color-mix(in srgb, var(--surface-elevated), transparent 8%);
     width: 90vw;
     height: 85vh;
     display: grid;
@@ -157,7 +169,7 @@
     justify-content: center;
     align-items: flex-start;  
     padding: 20px;
-    background: #000;
+    background: color-mix(in srgb, var(--surface-elevated), black 40%);
 }
 
 .left img {
@@ -182,6 +194,7 @@
     width: 100%;
     height: 100%;
     resize: none;
+    background: var(--surface);
 }
 
 .footer {
@@ -204,7 +217,7 @@
 }
 
 .empty-tags {
-    opacity: 0.7;
+    opacity: 0.72;
 }
 
 .actions {
@@ -220,10 +233,15 @@
     top: 15px;
     right: 20px;
     font-size: 24px;
-    background: none;
-    border: none;
+    background: transparent;
+    border: 1px solid transparent;
     cursor: pointer;
+    color: var(--text);
+    box-shadow: none;
 }
 
+.close:hover {
+    background: var(--surface);
+}
     
 </style>

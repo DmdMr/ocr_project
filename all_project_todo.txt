@@ -1,0 +1,27 @@
+Design:
+- copy and paste all of the style from the document here, all of the files, check how it works out
+- tell him to change tags colors from only black to the variable, but still readable in light and dark theme
+- tags should be visible in the card, not only in the card preview
+
+
+
+
+
+
+
+
+File uploading + Handling:
+- upload multiple formats, but only one image in the image, so I don't need to be cutting the image
+- we can crop and rotate image later on after it uploaded, in the CardPreview
+
+
+
+
+Multiple select:
+- we can select multiple documents just by hovering the card, and select will be in the left up corner
+- multiple actions for this: delete, add tag...
+
+
+
+
+

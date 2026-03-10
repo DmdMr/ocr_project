@@ -1,0 +1,91 @@
+use this to change tag selection to tags (not really needed)
+
+
+now let's work on adding and deleting tag or tags to the card, they need to be displayed in the card preview file, to the left of the edit and delete buttons,
+
+there should be two buttons, add and remove. they don't add new tags, they don't delete tags, just add and remove tags from the card. 
+
+also you earlier added the function to press on the tag, and now add that the cards with the selected tags are being shown
+Copy
+Summary
+
+Added per-card tag actions in preview with two buttons exactly as requested: Add Tag and Remove Tag, placed in the action group before Edit/Delete. 
+
+Card preview now displays card tags as clickable chips and emits tagClick, so selecting a tag from preview can drive filtering. 
+
+Implemented card-level tag attach/detach logic in DocumentCard.svelte:
+
+addTagToCard() adds an existing global tag to only that card,
+
+removeTagFromCard() removes a tag only from that card,
+
+both call a dedicated API helper to update document tags. 
+
+Added setDocumentTags(id, tags) API helper to make card tag updates explicit and reusable. 
+
+Upgraded tag filtering to support multiple selected tags (not just one), and wired card tag-click events into the same filter state. 
+
+Updated TagManager selection payload to tags: string[] and multi-select behavior so selected tags consistently filter cards. 
+
+Captured screenshot
+
+Testing
+
+✅ npm --prefix frontend run build
+
+✅ npm --prefix frontend run dev -- --host 0.0.0.0 --port 4173
+
+✅ git add frontend/src/lib/api.ts frontend/src/lib/components/TagManager.svelte frontend/src/lib/components/DocumentList.svelte frontend/src/lib/components/DocumentCard.svelte frontend/src/lib/components/CardPreview.svelte && git commit -m "feat(cards): add per-card tag add/remove actions and multi-tag filtering"
+
+✅ nl -ba frontend/src/lib/components/CardPreview.svelte | sed -n '1,260p'
+
+✅ nl -ba frontend/src/lib/components/DocumentCard.svelte | sed -n '1,260p'
+
+✅ nl -ba frontend/src/lib/components/DocumentList.svelte | sed -n '1,220p'
+
+✅ nl -ba frontend/src/lib/components/TagManager.svelte | sed -n '1,220p'
+
+✅ nl -ba frontend/src/lib/api.ts | sed -n '1,220p'
+
+
+Files (5)
+
+api.ts
+frontend/src/lib/api.ts
++3
+-0
+
+CardPreview.svelte
+frontend/src/lib/components/CardPreview.svelte
++60
+-53
+
+DocumentCard.svelte
+frontend/src/lib/components/DocumentCard.svelte
++66
+-32
+
+DocumentList.svelte
+frontend/src/lib/components/DocumentList.svelte
++19
+-5
+
+TagManager.svelte
+frontend/src/lib/components/TagManager.svelte
++12
+-11
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
