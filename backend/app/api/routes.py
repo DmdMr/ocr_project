@@ -10,7 +10,6 @@ from backend.app.db.database import documents_collection
 
 from typing import List, Optional
 
-from bson import ObjectId
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from PIL import Image, ImageOps
@@ -101,7 +100,6 @@ class ImageEditRequest(BaseModel):
 
 
 
-from pydantic import BaseModel
 from typing import Optional, List
 from bson import ObjectId
 
@@ -243,7 +241,6 @@ async def search_documents(q: str):
 
 
 
-from pydantic import BaseModel
 from backend.app.db.database import tags_collection
 
 class TagRequest(BaseModel):
