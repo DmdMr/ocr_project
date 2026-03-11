@@ -2,40 +2,95 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# ---------------------------
+# Functions
+# ---------------------------
+kill_if_running() {
+    local pidfile="$1"
+    if [ -f "$pidfile" ]; then
+        local pid
+        pid=$(cat "$pidfile")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            echo "Stopping process $pid..."
+            kill -9 "$pid" || true
+        fi
+        rm -f "$pidfile"
+    fi
+}
+
+clean_logs() {
+    local logfile="$1"
+    if [ -f "$logfile" ]; then
+        rm -f "$logfile"
+    fi
+}
+
+# ---------------------------
+# Stop previous processes
+# ---------------------------
+kill_if_running ".backend.pid"
+kill_if_running ".frontend.pid"
+
+# ---------------------------
+# Clean old logs
+# ---------------------------
+clean_logs "backend.log"
+clean_logs "frontend.log"
+
+# ---------------------------
+# Start MongoDB
+# ---------------------------
 echo "==> Starting MongoDB..."
 brew services start mongodb-community >/dev/null 2>&1 || true
 
-# pick existing env: venv first, then .venv, else create venv
+# ---------------------------
+# Setup Python virtual environment
+# ---------------------------
 if [ -d "venv" ]; then
   ENV_DIR="venv"
 elif [ -d ".venv" ]; then
   ENV_DIR=".venv"
 else
   ENV_DIR="venv"
+  echo "Creating virtual environment..."
   python3 -m venv "$ENV_DIR"
 fi
 
 echo "==> Using virtualenv: $ENV_DIR"
 source "$ENV_DIR/bin/activate"
 
-echo "==> Installing backend deps..."
-python -m pip install --upgrade pip
-pip install -r backend/requirements.txt
-
-# optional safety if your local ocr_service uses transformers
+# ---------------------------
+# Install backend dependencies
+# ---------------------------
+echo "==> Installing backend dependencies..."
+python -m pip install --upgrade pip >/dev/null
+pip install -r backend/requirements.txt >/dev/null
 pip install transformers >/dev/null 2>&1 || true
 
-echo "==> Starting backend..."
+# ---------------------------
+# Start backend
+# ---------------------------
+echo "==> Starting backend on 0.0.0.0:8000..."
 nohup python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
 echo $! > .backend.pid
 
-echo "==> Starting frontend..."
+# ---------------------------
+# Start frontend
+# ---------------------------
+echo "==> Starting frontend on 0.0.0.0:5173..."
 cd frontend
-npm install
-nohup npm run dev -- --host > ../frontend.log 2>&1 &
+npm install >/dev/null
+nohup npm run dev -- --host 0.0.0.0 --port 5173 > ../frontend.log 2>&1 &
 echo $! > ../.frontend.pid
 cd ..
 
+# ---------------------------
+# Wait a few seconds and open browser
+# ---------------------------
 sleep 3
+echo "==> Opening frontend in browser..."
 open http://localhost:5173
-echo "✅ Started. Logs: backend.log, frontend.log"
+
+echo "✅ Project started successfully!"
+echo "Logs: backend.log, frontend.log"
+echo "PIDs: .backend.pid, .frontend.pid"

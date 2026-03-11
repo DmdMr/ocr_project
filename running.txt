@@ -14,3 +14,10 @@ git add .
 git commit -m "something"
 git pull origin main --rebase
 git push origin main
+
+
+
+npm run dev -- --host 0.0.0.0
+
+uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+
