@@ -3,5 +3,6 @@ export interface Document {
     filename: string
     recognized_text: string
     created_at: string
-    tags?: string[]   
+    tags?: string[]
+    image_version?: string
 }
