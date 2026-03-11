@@ -1,6 +1,8 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte"
     import type { Document } from "../types"
+    import { UPLOADS_URL, type ImageEditPayload } from "../api"
+    import { tagHue } from "../tagColors"
 
     export let doc: Document
     export let editedText: string
@@ -8,33 +10,33 @@
 
     const dispatch = createEventDispatcher()
 
-    let leftWidth = 50 // percent
-    let isDragging = false
+    type EditTool = "crop" | "rotate"
 
-    function startDrag() {
-        isDragging = true
-        window.addEventListener("mousemove", onDrag)
-        window.addEventListener("mouseup", stopDrag)
-    }
+    let imageEditOpen = false
+    let activeTool: EditTool = "crop"
+    let previewRotation = 0
 
-    function onDrag(e: MouseEvent) {
-        if (!isDragging) return
-        const newWidth = (e.clientX / window.innerWidth) * 100
-        leftWidth = Math.min(80, Math.max(20, newWidth))
-    }
+    let imageEl: HTMLImageElement | null = null
+    let imageStageEl: HTMLDivElement | null = null
 
-    function stopDrag() {
-        isDragging = false
-        window.removeEventListener("mousemove", onDrag)
-        window.removeEventListener("mouseup", stopDrag)
-    }
+    let isDrawingCrop = false
+    let cropStartX = 0
+    let cropStartY = 0
+    let cropRect: { x: number; y: number; width: number; height: number } | null = null
+
+    let isRotating = false
+    let rotateStartX = 0
+    let rotateBase = 0
+
+    const SNAP_STEP = 90
+    const SNAP_THRESHOLD = 10
 
     function close() {
         dispatch("close")
     }
 
     function save() {
-        dispatch("save", { text: editedText })
+        dispatch("save")
     }
 
     function remove() {
@@ -45,9 +47,213 @@
         dispatch("editToggle")
     }
 
-    function handleKey(e: KeyboardEvent) {
-        if (e.key === "Escape") close()
+    function addTag() {
+        dispatch("addTag")
     }
+
+    function removeTag() {
+        dispatch("removeTag")
+    }
+
+    function selectTag(tag: string) {
+        dispatch("tagClick", { tag })
+    }
+
+    function startImageEdit() {
+        imageEditOpen = true
+        activeTool = "crop"
+        previewRotation = 0
+        cropRect = null
+    }
+
+    function cancelImageEdit() {
+        imageEditOpen = false
+        previewRotation = 0
+        cropRect = null
+        isDrawingCrop = false
+        isRotating = false
+    }
+
+    function setTool(tool: EditTool) {
+        activeTool = tool
+    }
+
+    function normalizeRotation(angle: number) {
+        const wrapped = ((angle % 360) + 360) % 360
+        return wrapped > 180 ? wrapped - 360 : wrapped
+    }
+
+    function snapRotation(angle: number, threshold = SNAP_THRESHOLD) {
+        const nearest = Math.round(angle / SNAP_STEP) * SNAP_STEP
+        return Math.abs(nearest - angle) <= threshold ? nearest : angle
+    }
+
+    function displayRotation() {
+        return Math.round(normalizeRotation(previewRotation))
+    }
+
+    function saveRotationValue() {
+        const snapped = Math.round(previewRotation / SNAP_STEP) * SNAP_STEP
+        return normalizeRotation(snapped)
+    }
+
+    function nudgeRotation(direction: -1 | 1) {
+        previewRotation = normalizeRotation(saveRotationValue() + direction * SNAP_STEP)
+    }
+
+    function getStageCoords(event: MouseEvent) {
+        if (!imageEl || !imageStageEl) return null
+
+        const imageRect = imageEl.getBoundingClientRect()
+        const stageRect = imageStageEl.getBoundingClientRect()
+
+        const clampedX = Math.min(Math.max(event.clientX, imageRect.left), imageRect.right)
+        const clampedY = Math.min(Math.max(event.clientY, imageRect.top), imageRect.bottom)
+
+        const relativeX = clampedX - imageRect.left
+        const relativeY = clampedY - imageRect.top
+
+        return {
+            x: relativeX,
+            y: relativeY,
+            width: imageRect.width,
+            height: imageRect.height,
+            offsetLeft: imageRect.left - stageRect.left,
+            offsetTop: imageRect.top - stageRect.top
+        }
+    }
+
+    function onEditorMouseDown(event: MouseEvent) {
+        if (!imageEditOpen) return
+
+        event.preventDefault()
+
+        if (activeTool === "crop") {
+            const point = getStageCoords(event)
+            if (!point) return
+
+            isDrawingCrop = true
+            cropStartX = point.x
+            cropStartY = point.y
+            cropRect = {
+                x: point.offsetLeft + point.x,
+                y: point.offsetTop + point.y,
+                width: 0,
+                height: 0
+            }
+            return
+        }
+
+        isRotating = true
+        rotateStartX = event.clientX
+        rotateBase = previewRotation
+    }
+
+    function onGlobalMouseMove(event: MouseEvent) {
+        if (!imageEditOpen) return
+
+        if (activeTool === "crop" && isDrawingCrop) {
+            const point = getStageCoords(event)
+            if (!point) return
+
+            const left = Math.min(cropStartX, point.x)
+            const top = Math.min(cropStartY, point.y)
+            const width = Math.abs(point.x - cropStartX)
+            const height = Math.abs(point.y - cropStartY)
+
+            cropRect = {
+                x: point.offsetLeft + left,
+                y: point.offsetTop + top,
+                width,
+                height
+            }
+            return
+        }
+
+        if (activeTool === "rotate" && isRotating) {
+            const deltaX = event.clientX - rotateStartX
+            previewRotation = snapRotation(rotateBase + deltaX * 0.55)
+        }
+    }
+
+    function stopEditorInteraction() {
+        if (activeTool === "rotate" && isRotating) {
+            previewRotation = snapRotation(previewRotation)
+        }
+        isDrawingCrop = false
+        isRotating = false
+    }
+
+    function saveImageEdit() {
+        let payload: ImageEditPayload | null = null
+
+        if (activeTool === "rotate") {
+            const normalized = saveRotationValue()
+            if (normalized === 0) {
+                return
+            }
+
+            payload = { rotate_degrees: normalized }
+        }
+
+        if (activeTool === "crop") {
+            if (!cropRect || !imageEl || !imageStageEl) {
+                return
+            }
+
+            const imageRect = imageEl.getBoundingClientRect()
+            const stageRect = imageStageEl.getBoundingClientRect()
+
+            const x = cropRect.x - (imageRect.left - stageRect.left)
+            const y = cropRect.y - (imageRect.top - stageRect.top)
+
+            const xPercent = (x / imageRect.width) * 100
+            const yPercent = (y / imageRect.height) * 100
+            const widthPercent = (cropRect.width / imageRect.width) * 100
+            const heightPercent = (cropRect.height / imageRect.height) * 100
+
+            if (widthPercent < 1 || heightPercent < 1) {
+                return
+            }
+
+            payload = {
+                crop: {
+                    x_percent: Math.max(0, Math.min(100, xPercent)),
+                    y_percent: Math.max(0, Math.min(100, yPercent)),
+                    width_percent: Math.max(0.1, Math.min(100, widthPercent)),
+                    height_percent: Math.max(0.1, Math.min(100, heightPercent))
+                }
+            }
+        }
+
+        if (!payload) return
+
+        dispatch("imageEdit", payload)
+        cancelImageEdit()
+    }
+
+    function handleKey(e: KeyboardEvent) {
+        if (e.key === "Escape") {
+            if (imageEditOpen) {
+                cancelImageEdit()
+                return
+            }
+            close()
+        }
+    }
+
+    function portal(node: HTMLElement) {
+        const target = document.body
+        target.appendChild(node)
+
+        return {
+            destroy() {
+                if (node.parentNode) node.parentNode.removeChild(node)
+            }
+        }
+    }
+
+    const imageSrc = () => `${UPLOADS_URL}/${doc.filename}?v=${encodeURIComponent(doc.image_version ?? doc.created_at ?? "")}`
 
     onMount(() => {
         window.addEventListener("keydown", handleKey)
@@ -55,29 +261,72 @@
     })
 </script>
 
+<svelte:window on:mousemove={onGlobalMouseMove} on:mouseup={stopEditorInteraction} />
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
-<div class="overlay" on:click={close}>
+<div class="overlay" use:portal on:click={close}>
     <div class="modal" on:click|stopPropagation>
-
-        <!-- LEFT IMAGE -->
         <div class="left">
-            <!-- svelte-ignore a11y_missing_attribute -->
-            <img src={`http://localhost:8000/uploads/${doc.filename}`} />
+            <div
+                class:editing={imageEditOpen}
+                bind:this={imageStageEl}
+                class="image-stage"
+                on:mousedown={onEditorMouseDown}
+            >
+                <!-- svelte-ignore a11y_missing_attribute -->
+                <img
+                    bind:this={imageEl}
+                    src={imageSrc()}
+                    alt=""
+                    draggable="false"
+                    on:dragstart|preventDefault
+                    style={`transform: rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
+                />
+
+                {#if imageEditOpen && activeTool === "crop" && cropRect}
+                    <div
+                        class="crop-box"
+                        style={`left:${cropRect.x}px; top:${cropRect.y}px; width:${cropRect.width}px; height:${cropRect.height}px;`}
+                    ></div>
+                {/if}
+            </div>
         </div>
 
-        <!-- RIGHT CONTENT -->
         <div class="right">
-
-            <!-- HEADER -->
             <div class="header">
                 <h3>{doc.filename}</h3>
                 <small>{new Date(doc.created_at).toLocaleString()}</small>
-
-                
             </div>
 
-            <!-- TEXT -->
+            <div class="image-tools panel">
+                <h4>Image editor</h4>
+                {#if !imageEditOpen}
+                    <button class="primary" on:click={startImageEdit}>Edit image</button>
+                {:else}
+                    <div class="tool-switch">
+                        <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Crop</button>
+                        <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Rotate</button>
+                        {#if activeTool === "rotate"}
+                            <button on:click={() => nudgeRotation(-1)} aria-label="Rotate left 90 degrees">↺ 90°</button>
+                            <button on:click={() => nudgeRotation(1)} aria-label="Rotate right 90 degrees">↻ 90°</button>
+                            <span class="angle-badge">{displayRotation()}°</span>
+                        {/if}
+                    </div>
+                    <p class="tool-hint">
+                        {#if activeTool === "crop"}
+                            Drag on image to draw crop area.
+                        {:else}
+                            Hold mouse and drag left/right to rotate (snaps to 90°, 180°, 270°).
+                        {/if}
+                    </p>
+                    <div class="tool-actions">
+                        <button class="primary" on:click={saveImageEdit}>Save changes</button>
+                        <button on:click={cancelImageEdit}>Cancel</button>
+                    </div>
+                {/if}
+            </div>
+
             <div class="text">
                 {#if editing}
                     <textarea bind:value={editedText}></textarea>
@@ -86,24 +335,28 @@
                 {/if}
             </div>
 
-            <!-- FOOTER -->
             <div class="footer">
-                {#if doc.tags}
-                    <div class="tags">
+                <div class="tags">
+                    {#if doc.tags?.length}
                         {#each doc.tags as tag}
-                            <span class="tag">{tag}</span>
+                            <button class="tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`} on:click={() => selectTag(tag)}>{tag}</button>
                         {/each}
-                    </div>
-                {/if}
-                
-                {#if editing}
-                    <button on:click={save}>Save</button>
-                {:else}
-                    <button on:click={toggleEdit}>Edit</button>
-                {/if}
-                <button class="delete" on:click={remove}>Delete</button>
-            </div>
+                    {:else}
+                        <span class="empty-tags">No tags</span>
+                    {/if}
+                </div>
 
+                <div class="actions">
+                    <button on:click={addTag}>Add Tag</button>
+                    <button on:click={removeTag}>Remove Tag</button>
+                    {#if editing}
+                        <button on:click={save}>Save</button>
+                    {:else}
+                        <button on:click={toggleEdit}>Edit</button>
+                    {/if}
+                    <button class="delete" on:click={remove}>Delete</button>
+                </div>
+            </div>
         </div>
 
         <button class="close" on:click={close}>✕</button>
@@ -111,13 +364,10 @@
 </div>
 
 <style>
-
-
-
 .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.85);
+    background: rgba(10, 14, 20, 0.9);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -125,37 +375,103 @@
 }
 
 .modal {
-    background: var(--card);
-    width: 90vw;
-    height: 85vh;
+    background: color-mix(in srgb, var(--surface-elevated), transparent 8%);
+    width: 92vw;
+    height: 88vh;
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    border-radius: 12px;
+    grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.15fr);
+    border-radius: var(--radius-lg);
     overflow: hidden;
     position: relative;
 }
 
 .left {
-    overflow: auto;       /* allow scroll */
+    overflow: auto;
     display: flex;
     justify-content: center;
-    align-items: flex-start;  /* important */
+    align-items: flex-start;
     padding: 20px;
-    background: #000;
+    background: color-mix(in srgb, var(--surface-elevated), black 45%);
 }
 
-.left img {
+.image-stage {
+    position: relative;
+    max-width: 100%;
+    user-select: none;
+}
+
+.image-stage.editing {
+    cursor: crosshair;
+}
+
+.image-stage img {
     width: auto;
     height: auto;
     max-width: 100%;
-    max-height: none;
     object-fit: contain;
+    transition: transform 0.1s linear;
+    transform-origin: center center;
+}
+
+.crop-box {
+    position: absolute;
+    border: 2px solid color-mix(in srgb, var(--primary), white 15%);
+    background: color-mix(in srgb, var(--primary), transparent 80%);
+    pointer-events: none;
 }
 
 .right {
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    padding: 20px;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 10px;
+    padding: 18px;
+    overflow: hidden;
+}
+
+.image-tools {
+    padding: 12px;
+}
+
+.image-tools h4 {
+    margin: 0 0 8px;
+}
+
+.tool-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tool-switch button {
+    min-height: 36px;
+    padding: 0.4rem 0.85rem;
+}
+
+.tool-switch button.active {
+    border-color: color-mix(in srgb, var(--primary), white 15%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 70%);
+}
+
+.angle-badge {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    font-size: 0.84rem;
+    color: var(--text-muted);
+}
+
+.tool-hint {
+    margin: 8px 0 4px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.tool-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
 }
 
 .text {
@@ -166,12 +482,38 @@
     width: 100%;
     height: 100%;
     resize: none;
+    background: var(--surface);
 }
 
 .footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    border-radius: 999px;
+    padding: 6px 10px;
+}
+
+.empty-tags {
+    opacity: 0.72;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .close {
@@ -179,10 +521,14 @@
     top: 15px;
     right: 20px;
     font-size: 24px;
-    background: none;
-    border: none;
+    background: transparent;
+    border: 1px solid transparent;
     cursor: pointer;
+    color: var(--text);
+    box-shadow: none;
 }
 
-    
+.close:hover {
+    background: var(--surface);
+}
 </style>
