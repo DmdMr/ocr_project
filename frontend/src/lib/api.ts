@@ -5,7 +5,9 @@
 
 //const API_URL = "http://192.168.31.162:8000/api"; // your Mac’s LAN IP
 
-const API_URL = "/api"; // Use your LAN IP
+export const API_URL = "/api"; // Use your LAN IP
+
+export const UPLOADS_URL = "http://localhost:8000/uploads";
 
 console.log(API_URL);
 
@@ -116,4 +118,34 @@ export async function deleteTag(tag: string) {
     }
 
     return payload
+}
+
+
+
+export interface ImageEditPayload {
+    rotate_degrees?: number
+    crop?: {
+        x_percent: number
+        y_percent: number
+        width_percent: number
+        height_percent: number
+    }
+}
+
+export async function editDocumentImage(id: string, payload: ImageEditPayload) {
+    const response = await fetch(`${API_URL}/documents/${id}/image`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to edit image")
+    }
+
+    return data
 }
