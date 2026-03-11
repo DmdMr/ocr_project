@@ -32,6 +32,9 @@
     let rotateStartX = 0
     let rotateBase = 0
 
+    const SNAP_STEP = 90
+    const SNAP_THRESHOLD = 10
+
 
     function startImageEdit() {
         imageEditOpen = true
@@ -50,11 +53,29 @@
 
     function setTool(tool: EditTool) {
         activeTool = tool
-        if (tool === "rotate") {
-            cropRect = null
-        } else {
-            previewRotation = 0
-        }
+    }
+
+    function normalizeRotation(angle: number) {
+        const wrapped = ((angle % 360) + 360) % 360
+        return wrapped > 180 ? wrapped - 360 : wrapped
+    }
+
+    function snapRotation(angle: number, threshold = SNAP_THRESHOLD) {
+        const nearest = Math.round(angle / SNAP_STEP) * SNAP_STEP
+        return Math.abs(nearest - angle) <= threshold ? nearest : angle
+    }
+
+    function displayRotation() {
+        return Math.round(normalizeRotation(previewRotation))
+    }
+
+    function saveRotationValue() {
+        const snapped = Math.round(previewRotation / SNAP_STEP) * SNAP_STEP
+        return normalizeRotation(snapped)
+    }
+
+    function nudgeRotation(direction: -1 | 1) {
+        previewRotation = normalizeRotation(saveRotationValue() + direction * SNAP_STEP)
     }
 
     function getStageCoords(event: MouseEvent) {
@@ -82,6 +103,8 @@
     function onEditorMouseDown(event: MouseEvent) {
         if (!imageEditOpen) return
 
+        event.preventDefault()
+
         if (activeTool === "crop") {
             const point = getStageCoords(event)
             if (!point) return
@@ -103,7 +126,7 @@
         rotateBase = previewRotation
     }
 
-    function onEditorMouseMove(event: MouseEvent) {
+    function onGlobalMouseMove(event: MouseEvent) {
         if (!imageEditOpen) return
 
         if (activeTool === "crop" && isDrawingCrop) {
@@ -126,11 +149,14 @@
 
         if (activeTool === "rotate" && isRotating) {
             const deltaX = event.clientX - rotateStartX
-            previewRotation = rotateBase + deltaX * 0.4
+            previewRotation = snapRotation(rotateBase + deltaX * 0.55)
         }
     }
 
     function stopEditorInteraction() {
+        if (activeTool === "rotate" && isRotating) {
+            previewRotation = snapRotation(previewRotation)
+        }
         isDrawingCrop = false
         isRotating = false
     }
@@ -139,9 +165,8 @@
         let payload: ImageEditPayload | null = null
 
         if (activeTool === "rotate") {
-            const normalized = Math.round(previewRotation)
+            const normalized = saveRotationValue()
             if (normalized === 0) {
-                cancelImageEdit()
                 return
             }
 
@@ -178,9 +203,9 @@
             }
         }
 
-        if (payload) {
-            dispatch("imageEdit", payload)
-        }
+        if (!payload) return
+
+        dispatch("imageEdit", payload)
 
         cancelImageEdit()
     }
@@ -260,6 +285,8 @@
     const imageSrc = () => `${UPLOADS_URL}/${doc.filename}?v=${encodeURIComponent(doc.image_version ?? doc.created_at ?? "")}`
 </script>
 
+<svelte:window on:mousemove={onGlobalMouseMove} on:mouseup={stopEditorInteraction} />
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div class="overlay" use:portal on:click={close}>
@@ -272,12 +299,17 @@
                 bind:this={imageStageEl}
                 class="image-stage"
                 on:mousedown={onEditorMouseDown}
-                on:mousemove={onEditorMouseMove}
-                on:mouseup={stopEditorInteraction}
-                on:mouseleave={stopEditorInteraction}
+                
             >
                 <!-- svelte-ignore a11y_missing_attribute -->
-                <img bind:this={imageEl} src={imageSrc()} style={`transform: rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`} />
+                <img
+                    bind:this={imageEl}
+                    src={imageSrc()}
+                    alt=""
+                    draggable="false"
+                    on:dragstart|preventDefault
+                    style={`transform: rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
+                />
 
                 {#if imageEditOpen && activeTool === "crop" && cropRect}
                     <div
@@ -303,12 +335,17 @@
                     <div class="tool-switch">
                         <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Crop</button>
                         <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Rotate</button>
+                        {#if activeTool === "rotate"}
+                            <button on:click={() => nudgeRotation(-1)} aria-label="Rotate left 90 degrees">↺ 90°</button>
+                            <button on:click={() => nudgeRotation(1)} aria-label="Rotate right 90 degrees">↻ 90°</button>
+                            <span class="angle-badge">{displayRotation()}°</span>
+                        {/if}
                     </div>
                     <p class="tool-hint">
                         {#if activeTool === "crop"}
-                            Drag on the image to select crop area.
+                            Drag on image to draw crop area.
                         {:else}
-                            Click and drag left/right on the image to rotate.
+                            Hold mouse and drag left/right to rotate (snaps to 90°, 180°, 270°).
                         {/if}
                     </p>
                     <div class="tool-actions">
@@ -361,11 +398,10 @@
 <style>
 
 
-
 .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(10, 14, 20);
+    background: rgba(10, 14, 20, 0.9);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -374,22 +410,22 @@
 
 .modal {
     background: color-mix(in srgb, var(--surface-elevated), transparent 8%);
-    width: 90vw;
-    height: 85vh;
+    width: 92vw;
+    height: 88vh;
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    border-radius: 12px;
+    grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.15fr);
+    border-radius: var(--radius-lg);
     overflow: hidden;
     position: relative;
 }
 
 .left {
-    overflow: auto;       
+    overflow: auto;
     display: flex;
     justify-content: center;
-    align-items: flex-start;  
+    align-items: flex-start;
     padding: 20px;
-    background: color-mix(in srgb, var(--surface-elevated), black 40%);
+    background: color-mix(in srgb, var(--surface-elevated), black 45%);
 }
 
 .image-stage {
@@ -413,15 +449,63 @@
 
 .crop-box {
     position: absolute;
-    border: 2px solid color-mix(in srgb, var(--primary), white 10%);
-    background: color-mix(in srgb, var(--primary), transparent 82%);
+    border: 2px solid color-mix(in srgb, var(--primary), white 15%);
+    background: color-mix(in srgb, var(--primary), transparent 80%);
     pointer-events: none;
 }
 
 .right {
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    padding: 20px;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 10px;
+    padding: 18px;
+    overflow: hidden;
+}
+
+.image-tools {
+    padding: 12px;
+}
+
+.image-tools h4 {
+    margin: 0 0 8px;
+}
+
+.tool-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tool-switch button {
+    min-height: 36px;
+    padding: 0.4rem 0.85rem;
+}
+
+.tool-switch button.active {
+    border-color: color-mix(in srgb, var(--primary), white 15%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 70%);
+}
+
+.angle-badge {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    font-size: 0.84rem;
+    color: var(--text-muted);
+}
+
+.tool-hint {
+    margin: 8px 0 4px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.tool-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
 }
 
 .text {

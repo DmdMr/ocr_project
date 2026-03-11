@@ -8,14 +8,29 @@ from bson import ObjectId
 from backend.app.services.ocr_service import recognize_text
 from backend.app.db.database import documents_collection
 
+from typing import List, Optional
+
+from bson import ObjectId
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel, Field
+from PIL import Image, ImageOps
+
+from backend.app.db.database import documents_collection, tags_collection
+
 router = APIRouter(prefix="/api")
 
 UPLOAD_DIR = "backend/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-
 def calculate_file_hash(file_bytes: bytes):
     return hashlib.md5(file_bytes).hexdigest()
+
+
+def object_id_or_404(doc_id: str):
+    try:
+        return ObjectId(doc_id)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
 
 
 # 🔹 Загрузка файла
@@ -41,8 +56,8 @@ async def upload_image(file: UploadFile = File(...)):
     filename = f"{timestamp}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, filename)
 
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
+    with open(file_path, "wb") as destination:
+        destination.write(file_bytes)
 
     ocr_result = recognize_text(file_path)
 
@@ -53,6 +68,7 @@ async def upload_image(file: UploadFile = File(...)):
         "boxes": ocr_result["boxes"],           # store boxes separately
         "file_hash": file_hash,
         "created_at": datetime.utcnow(),
+        "image_version": datetime.utcnow().isoformat(),
         "tags": []
     }
 
@@ -60,10 +76,7 @@ async def upload_image(file: UploadFile = File(...)):
     result = await documents_collection.insert_one(document_data)
     document_data["_id"] = str(result.inserted_id)
 
-    return {
-        "message": "File uploaded successfully",
-        "document": document_data
-    }
+    return {"message": "File uploaded successfully", "document": document_data}
 
 
 # 🔹 Получить все документы
@@ -74,6 +87,18 @@ async def get_documents():
         doc["_id"] = str(doc["_id"])
         documents.append(doc)
     return documents
+
+class CropRequest(BaseModel):
+    x_percent: float = Field(0, ge=0, le=100)
+    y_percent: float = Field(0, ge=0, le=100)
+    width_percent: float = Field(100, ge=0.1, le=100)
+    height_percent: float = Field(100, ge=0.1, le=100)
+
+
+class ImageEditRequest(BaseModel):
+    rotate_degrees: int = 0
+    crop: Optional[CropRequest] = None
+
 
 
 from pydantic import BaseModel
@@ -86,17 +111,88 @@ class DocumentUpdate(BaseModel):
 
 @router.put("/documents/{doc_id}")
 async def update_document(doc_id: str, data: DocumentUpdate):
-    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    object_id = object_id_or_404(doc_id)
+    update_data = {key: value for key, value in data.model_dump().items() if value is not None}
 
-    await documents_collection.update_one(
-        {"_id": ObjectId(doc_id)},
-        {"$set": update_data}
-    )
+    await documents_collection.update_one({"_id": object_id}, {"$set": update_data})
 
-    updated_doc = await documents_collection.find_one({"_id": ObjectId(doc_id)})
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
     updated_doc["_id"] = str(updated_doc["_id"])
 
     return updated_doc
+
+
+
+@router.put("/documents/{doc_id}/image")
+async def edit_document_image(doc_id: str, data: ImageEditRequest):
+    object_id = object_id_or_404(doc_id)
+
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    filename = document.get("filename")
+    if not filename:
+        raise HTTPException(status_code=400, detail="Document has no image")
+
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    requested_rotation = data.rotate_degrees
+    rotate_degrees = int(round(requested_rotation / 90.0) * 90) % 360
+
+    with Image.open(file_path) as image:
+        image = ImageOps.exif_transpose(image)
+
+        if rotate_degrees:
+            image = image.rotate(-rotate_degrees, expand=True)
+
+        if data.crop:
+            width, height = image.size
+
+            left = int(width * (data.crop.x_percent / 100.0))
+            top = int(height * (data.crop.y_percent / 100.0))
+            crop_width = int(width * (data.crop.width_percent / 100.0))
+            crop_height = int(height * (data.crop.height_percent / 100.0))
+
+            right = min(width, left + max(1, crop_width))
+            bottom = min(height, top + max(1, crop_height))
+
+            if left >= right or top >= bottom:
+                raise HTTPException(status_code=400, detail="Invalid crop area")
+
+            image = image.crop((left, top, right, bottom))
+
+        ext = os.path.splitext(filename)[1].lower()
+        if ext in {".jpg", ".jpeg"}:
+            image = image.convert("RGB")
+            image.save(file_path, format="JPEG", quality=95)
+        elif ext == ".png":
+            image.save(file_path, format="PNG")
+        else:
+            image.save(file_path)
+
+    with open(file_path, "rb") as updated_file:
+        new_hash = calculate_file_hash(updated_file.read())
+
+    image_version = datetime.utcnow().isoformat()
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"file_hash": new_hash, "image_version": image_version}}
+    )
+
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    updated_doc["_id"] = str(updated_doc["_id"])
+    updated_doc["applied_rotate_degrees"] = rotate_degrees
+    return updated_doc
+
 
 
 
@@ -104,9 +200,9 @@ UPLOAD_FOLDER = "backend/uploads"
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(doc_id: str):
+    object_id = object_id_or_404(doc_id)
 
-    # 1️⃣ Find document first
-    document = await documents_collection.find_one({"_id": ObjectId(doc_id)})
+    document = await documents_collection.find_one({"_id": object_id})
 
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -114,7 +210,7 @@ async def delete_document(doc_id: str):
     # 2️⃣ Delete physical file
     filename = document.get("filename")
     if filename:
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file_path = os.path.join(UPLOAD_DIR, filename)
 
         if os.path.exists(file_path):
             os.remove(file_path)
