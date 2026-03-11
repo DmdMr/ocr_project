@@ -3,6 +3,7 @@
     import DocumentList from "./lib/components/DocumentList.svelte"
     import Settings from "./lib/components/Settings.svelte";
     import { onMount } from "svelte"
+    import LifeguardHelp from "./lib/components/LifeguardHelp.svelte"
 
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
@@ -71,3 +72,5 @@
 
 
 
+
+<LifeguardHelp />
