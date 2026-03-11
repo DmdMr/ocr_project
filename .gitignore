@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+frontend.log
+.venv/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.dylib
+*.log
+backend/uploads
