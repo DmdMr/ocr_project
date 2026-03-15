@@ -249,3 +249,62 @@ INFO:     127.0.0.1:51600 - "GET /uploads/20260311_175638_f054530ef83b44b1776a4e
 INFO:     127.0.0.1:51602 - "GET /api/tags HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51606 - "PUT /api/documents/69b1668b338a6167cac08f71 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51608 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-11T12%3A55%3A56.817590 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52038 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52040 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52042 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52059 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52063 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52069 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52071 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52247 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52252 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52254 - "GET /uploads/20260315_144135_IMG_0974.PNG HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52256 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52512 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52514 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52517 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52520 - "POST /api/documents/69b1665c338a6167cac08f6d/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52525 - "POST /api/documents/69b1665c338a6167cac08f6d/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52541 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52543 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52545 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52550 - "PUT /api/documents/69b1665c338a6167cac08f6d/image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52552 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A56%3A27.172774 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52559 - "POST /api/documents/69b1665c338a6167cac08f6d/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52563 - "POST /api/documents/69b1665c338a6167cac08f6d/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52593 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52596 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52598 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52600 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A56%3A27.172774 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52604 - "PUT /api/documents/69b1665c338a6167cac08f6d/image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52606 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A57%3A40.051986 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52622 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52624 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52626 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52606 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A57%3A40.051986 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52634 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52624 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52636 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52606 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A57%3A40.051986 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52641 - "PUT /api/documents/69b1665c338a6167cac08f6d/image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52643 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A57%3A59.346388 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52658 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52660 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52662 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52643 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A57%3A59.346388 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52667 - "POST /api/documents/69b1665c338a6167cac08f6d/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52679 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52681 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52683 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52685 - "GET /uploads/20260311_175519_f2f91d8487f6f462b20e351d17ad2b4a.jpg?v=2026-03-15T13%3A57%3A59.346388 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52701 - "POST /api/documents/69b151125a84e9590f97c60e/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52709 - "POST /api/documents/69b151125a84e9590f97c60e/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52713 - "POST /api/documents/69b151125a84e9590f97c60e/gallery HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52717 - "PUT /api/documents/69b151125a84e9590f97c60e/image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52719 - "GET /uploads/20260311_162500_3f5ef86a4ad6a0b15c90f28fcbb14562.jpg?v=2026-03-15T13%3A58%3A48.671027 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52731 - "GET /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52733 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52735 - "GET /api/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52719 - "GET /uploads/20260311_162500_3f5ef86a4ad6a0b15c90f28fcbb14562.jpg?v=2026-03-15T13%3A58%3A48.671027 HTTP/1.1" 304 Not Modified

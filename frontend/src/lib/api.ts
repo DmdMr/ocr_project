@@ -27,6 +27,26 @@ export async function uploadImage(file: File) {
     return await res.json()
 }
 
+export async function uploadImagesToDocument(documentId: string, files: File[]) {
+    const formData = new FormData()
+    for (const file of files) {
+        formData.append("files", file)
+    }
+
+    const res = await fetch(`${API_URL}/documents/${documentId}/gallery`, {
+        method: "POST",
+        body: formData
+    })
+
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+        throw new Error(data.detail || "Failed to upload images to card")
+    }
+
+    return data
+}
+
 export async function getDocuments() {
     const res = await fetch(`${API_URL}/documents`)
     if (!res.ok) throw new Error("Failed to fetch documents")
@@ -124,6 +144,7 @@ export async function deleteTag(tag: string) {
 
 export interface ImageEditPayload {
     rotate_degrees?: number
+    image_filename?: string
     crop?: {
         x_percent: number
         y_percent: number

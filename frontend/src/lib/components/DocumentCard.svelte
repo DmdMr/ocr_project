@@ -2,8 +2,17 @@
     import { createEventDispatcher } from "svelte"
     import type { Document } from "../types"
     import CardPreview from "./CardPreview.svelte"
-    import { deleteDocument, getTags, normalizeTag, setDocumentTags, tagExists, updateDocument} from "../api"
     import { tagHue } from "../tagColors"
+    import {
+        deleteDocument,
+        editDocumentImage,
+        getTags,
+        normalizeTag,
+        setDocumentTags,
+        tagExists,
+        updateDocument,
+        uploadImagesToDocument
+    } from "../api"
 
     let showPreview = false
 
@@ -14,18 +23,19 @@
 
 
     type DocumentCardEvents = {
-        deleted: { id: string },
+        deleted: { id: string }
         tagClick: { tag: string }
     }
 
     const dispatch = createEventDispatcher<DocumentCardEvents>()
 
     async function save() {
-        await updateDocument(doc._id, {
+        const updated = await updateDocument(doc._id, {
             recognized_text: editedText
         })
 
-        doc.recognized_text = editedText
+        doc = updated
+        editedText = updated.recognized_text
         editing = false
     }
 
@@ -50,6 +60,21 @@
 
         const updated = await setDocumentTags(doc._id, [...currentTags, normalized])
         doc.tags = updated.tags ?? [...currentTags, normalized]
+    }
+
+    async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
+        const files = event.detail.files
+        if (!files.length) return
+
+        const result = await uploadImagesToDocument(doc._id, files)
+        doc = result.document
+        editedText = doc.recognized_text
+    }
+
+    async function handleImageEdit(event: CustomEvent<{ payload: { rotate_degrees?: number; image_filename?: string; crop?: { x_percent: number; y_percent: number; width_percent: number; height_percent: number } } }>) {
+        const updated = await editDocumentImage(doc._id, event.detail.payload)
+        doc = updated
+        editedText = updated.recognized_text
     }
 
     async function removeTagFromCard() {
@@ -100,7 +125,7 @@
         on:click={() => showPreview = true}
     />
 
-     <div class="card-tags">
+    <div class="card-tags">
         {#if doc.tags?.length}
             {#each doc.tags as tag}
                 <button class="card-tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`} on:click={() => selectTagFromCard(tag)}>{tag}</button>
@@ -114,7 +139,7 @@
     </div>
 
 
-        {#if showPreview}
+    {#if showPreview}
         <CardPreview
             {doc}
             bind:editedText
@@ -126,6 +151,8 @@
             on:addTag={addTagToCard}
             on:removeTag={removeTagFromCard}
             on:tagClick={handleTagClick}
+            on:imageEdit={handleImageEdit}
+            on:addImages={uploadToCard}
         />
     {/if}
 </div>

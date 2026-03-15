@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte"
-    import type { Document } from "../types"
+    import type { Document, GalleryImage } from "../types"
     import { tagHue } from "../tagColors"
     import { UPLOADS_URL, type ImageEditPayload } from "../api"
 
@@ -24,6 +24,8 @@
     const MAX_ZOOM = 3
     const ZOOM_STEP = 0.25
 
+    let activeImageFilename = ""
+
     let imageEl: HTMLImageElement | null = null
     let imageStageEl: HTMLDivElement | null = null
 
@@ -39,6 +41,14 @@
     const SNAP_STEP = 90
     const SNAP_THRESHOLD = 10
 
+
+    $: galleryImages = (doc.gallery_images?.length ? doc.gallery_images : [{ filename: doc.filename, image_version: doc.image_version }]) as GalleryImage[]
+
+    $: if (!activeImageFilename || !galleryImages.some(item => item.filename === activeImageFilename)) {
+        activeImageFilename = galleryImages[0]?.filename ?? doc.filename
+    }
+
+    $: selectedImage = galleryImages.find(item => item.filename === activeImageFilename) ?? galleryImages[0]
 
     function startImageEdit() {
         imageEditOpen = true
@@ -196,7 +206,7 @@
                 return
             }
 
-            payload = { rotate_degrees: normalized }
+            payload = { rotate_degrees: normalized, image_filename: activeImageFilename }
         }
 
         if (activeTool === "crop") {
@@ -220,6 +230,7 @@
             }
 
             payload = {
+                image_filename: activeImageFilename,
                 crop: {
                     x_percent: Math.max(0, Math.min(100, xPercent)),
                     y_percent: Math.max(0, Math.min(100, yPercent)),
@@ -231,7 +242,7 @@
 
         if (!payload) return
 
-        dispatch("imageEdit", payload)
+        dispatch("imageEdit", { payload })
 
         cancelImageEdit()
     }
@@ -282,6 +293,15 @@
         dispatch("tagClick", { tag })
     }
 
+    function uploadGalleryFiles(event: Event) {
+        const input = event.target as HTMLInputElement
+        const files = Array.from(input.files ?? [])
+        if (!files.length) return
+
+        dispatch("addImages", { files })
+        input.value = ""
+    }
+
     function handleKey(e: KeyboardEvent) {
         if (e.key === "Escape") {
             if (imageEditOpen) {
@@ -308,7 +328,9 @@
         return () => window.removeEventListener("keydown", handleKey)
     })
 
-    const imageSrc = () => `${UPLOADS_URL}/${doc.filename}?v=${encodeURIComponent(doc.image_version ?? doc.created_at ?? "")}`
+
+    const imageSrc = () => `${UPLOADS_URL}/${activeImageFilename}?v=${encodeURIComponent(selectedImage?.image_version ?? doc.image_version ?? doc.created_at ?? "")}`
+    
 </script>
 
 <svelte:window on:mousemove={onGlobalMouseMove} on:mouseup={stopEditorInteraction} />
@@ -364,31 +386,57 @@
                 <button on:click={resetZoom}>Reset zoom</button>
             </div>
 
+            <div class="gallery-toolbar">
+                <label class="gallery-upload-btn">
+                    Add images to this card
+                    <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg"
+                        multiple
+                        hidden
+                        on:change={uploadGalleryFiles}
+                    />
+                </label>
+            </div>
+
+            <div class="gallery-strip">
+                {#each galleryImages as image, index}
+                    <button
+                        class="gallery-item"
+                        class:active={image.filename === activeImageFilename}
+                        on:click={() => activeImageFilename = image.filename}
+                    >
+                        <img src={`${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`} alt="" />
+                        <span>{index === 0 ? "Original" : `Image ${index + 1}`}</span>
+                    </button>
+                {/each}
+            </div>
+
 
             {#if !imageEditOpen}
-                    <button class="primary" on:click={startImageEdit}>Edit image</button>
-                {:else}
-                    <div class="tool-switch">
-                        <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Crop</button>
-                        <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Rotate</button>
-                        {#if activeTool === "rotate"}
-                            <button on:click={() => nudgeRotation(-1)} aria-label="Rotate left 90 degrees">↺ 90°</button>
-                            <button on:click={() => nudgeRotation(1)} aria-label="Rotate right 90 degrees">↻ 90°</button>
-                            <span class="angle-badge">{displayRotation()}°</span>
-                        {/if}
-                    </div>
-                    <p class="tool-hint">
-                        {#if activeTool === "crop"}
-                            Drag on image to draw crop area.
-                        {:else}
-                            Hold mouse and drag left/right to rotate (snaps to 90°, 180°, 270°).
-                        {/if}
-                    </p>
-                    <div class="tool-actions">
-                        <button class="primary" on:click={saveImageEdit}>Save changes</button>
-                        <button on:click={cancelImageEdit}>Cancel</button>
-                    </div>
-                {/if}
+                <button class="primary" on:click={startImageEdit}>Edit image</button>
+            {:else}
+                <div class="tool-switch">
+                    <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Crop</button>
+                    <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Rotate</button>
+                    {#if activeTool === "rotate"}
+                        <button on:click={() => nudgeRotation(-1)} aria-label="Rotate left 90 degrees">↺ 90°</button>
+                        <button on:click={() => nudgeRotation(1)} aria-label="Rotate right 90 degrees">↻ 90°</button>
+                        <span class="angle-badge">{displayRotation()}°</span>
+                    {/if}
+                </div>
+                <p class="tool-hint">
+                    {#if activeTool === "crop"}
+                        Drag on image to draw crop area.
+                    {:else}
+                        Hold mouse and drag left/right to rotate (snaps to 90°, 180°, 270°).
+                    {/if}
+                </p>
+                <div class="tool-actions">
+                    <button class="primary" on:click={saveImageEdit}>Save changes</button>
+                    <button on:click={cancelImageEdit}>Cancel</button>
+                </div>
+            {/if}
 
             <div class="text">
                 {#if editing}
@@ -431,6 +479,7 @@
     </div>
 
 
+
 <style>
 
 
@@ -449,7 +498,7 @@
     width: 92vw;
     height: 88vh;
     display: grid;
-    grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.15fr);
+    grid-template-columns: minmax(360px, 1fr) minmax(460px, 1.2fr);
     border-radius: var(--radius-lg);
     overflow: hidden;
     position: relative;
@@ -499,7 +548,7 @@
 
 .right {
     display: grid;
-    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-rows: auto auto auto auto auto 1fr auto;
     gap: 10px;
     padding: 18px;
     overflow: hidden;
@@ -520,6 +569,62 @@
     border: 1px solid var(--border-strong);
     font-size: 0.84rem;
     color: var(--text-muted);
+}
+
+.gallery-toolbar {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.gallery-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.gallery-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 8px;
+    max-height: 132px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.gallery-item {
+    min-height: 92px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface), transparent 8%);
+    display: grid;
+    gap: 6px;
+    align-content: start;
+    box-shadow: none;
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 54px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.gallery-item span {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    text-align: left;
+}
+
+.gallery-item.active {
+    border-color: color-mix(in srgb, var(--primary), white 15%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 72%);
 }
 
 .tool-switch {
