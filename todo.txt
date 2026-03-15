@@ -81,3 +81,8 @@ Hardest things to implement:
 - Text locaiton based where it was on the document
 - Canvas for the previous point there, 
 - Training a model for the recognition, so it would not make any mistakes, and searching won't be a problem
+
+
+
+
+
