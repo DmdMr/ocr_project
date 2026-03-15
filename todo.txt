@@ -86,3 +86,11 @@ Hardest things to implement:
 
 
 
+Card view:
+- image needs to be the full height for the better view
+- we can zoom in and out of the image (maybe after clicking on it)
+
+- image crop and rotate buttons need to be placed at the better place
+- rerun recognition script once again
+- adding more images to the existing one, just the same upload function 
+- then add gallery for both image and text

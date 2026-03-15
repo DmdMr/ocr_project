@@ -19,6 +19,10 @@
     let imageEditOpen = false
     let activeTool: EditTool = "crop"
     let previewRotation = 0
+    let zoomLevel = 1
+    const MIN_ZOOM = 0.5
+    const MAX_ZOOM = 3
+    const ZOOM_STEP = 0.25
 
     let imageEl: HTMLImageElement | null = null
     let imageStageEl: HTMLDivElement | null = null
@@ -41,12 +45,14 @@
         activeTool = "crop"
         previewRotation = 0
         cropRect = null
+        zoomLevel = 1
     }
 
     function cancelImageEdit() {
         imageEditOpen = false
         previewRotation = 0
         cropRect = null
+        zoomLevel = 1
         isDrawingCrop = false
         isRotating = false
     }
@@ -69,6 +75,10 @@
         return Math.round(normalizeRotation(previewRotation))
     }
 
+    function displayZoomPercent() {
+        return Math.round(zoomLevel * 100)
+    }
+
     function saveRotationValue() {
         const snapped = Math.round(previewRotation / SNAP_STEP) * SNAP_STEP
         return normalizeRotation(snapped)
@@ -76,6 +86,22 @@
 
     function nudgeRotation(direction: -1 | 1) {
         previewRotation = normalizeRotation(saveRotationValue() + direction * SNAP_STEP)
+    }
+
+    function clampZoom(value: number) {
+        return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
+    }
+
+    function zoomIn() {
+        zoomLevel = clampZoom(zoomLevel + ZOOM_STEP)
+    }
+
+    function zoomOut() {
+        zoomLevel = clampZoom(zoomLevel - ZOOM_STEP)
+    }
+
+    function resetZoom() {
+        zoomLevel = 1
     }
 
     function getStageCoords(event: MouseEvent) {
@@ -308,8 +334,8 @@
                     alt=""
                     draggable="false"
                     on:dragstart|preventDefault
-                    style={`transform: rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
-                />
+                    style={`transform: scale(${zoomLevel}) rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
+                />    
 
                 {#if imageEditOpen && activeTool === "crop" && cropRect}
                     <div
@@ -328,6 +354,16 @@
 
                 
             </div>
+
+            <div class="preview-tools">
+                <button on:click={zoomOut} aria-label="Zoom out">−</button>
+                <!--
+                <span class="zoom-badge">{displayZoomPercent()}%</span>
+            -->
+                <button on:click={zoomIn} aria-label="Zoom in">+</button>
+                <button on:click={resetZoom}>Reset zoom</button>
+            </div>
+
 
             {#if !imageEditOpen}
                     <button class="primary" on:click={startImageEdit}>Edit image</button>
@@ -423,15 +459,21 @@
     overflow: auto;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     padding: 20px;
     background: color-mix(in srgb, var(--surface-elevated), black 45%);
 }
 
 .image-stage {
     position: relative;
-    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     user-select: none;
+    overflow: auto;
 }
 
 .image-stage.editing {
@@ -442,6 +484,7 @@
     width: auto;
     height: auto;
     max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
     transition: transform 0.1s linear;
     transform-origin: center center;
@@ -456,18 +499,27 @@
 
 .right {
     display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr auto;
     gap: 10px;
     padding: 18px;
     overflow: hidden;
 }
 
-.image-tools {
-    padding: 12px;
+.preview-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.image-tools h4 {
-    margin: 0 0 8px;
+.zoom-badge {
+    min-width: 62px;
+    text-align: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    font-size: 0.84rem;
+    color: var(--text-muted);
 }
 
 .tool-switch {
