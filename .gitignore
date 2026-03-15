@@ -12,3 +12,4 @@ frontend.log
 *.dylib
 *.log
 backend/uploads
+test_env
