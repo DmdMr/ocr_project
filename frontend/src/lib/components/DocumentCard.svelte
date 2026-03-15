@@ -2,7 +2,16 @@
     import { createEventDispatcher } from "svelte"
     import type { Document } from "../types"
     import CardPreview from "./CardPreview.svelte"
-    import { deleteDocument, getTags, normalizeTag, setDocumentTags, tagExists, updateDocument} from "../api"
+    import {
+        deleteDocument,
+        editDocumentImage,
+        getTags,
+        normalizeTag,
+        setDocumentTags,
+        tagExists,
+        updateDocument,
+        uploadImagesToDocument
+    } from "../api"
     import { tagHue } from "../tagColors"
 
     let showPreview = false
@@ -12,20 +21,20 @@
     let editing = false
     let editedText = doc.recognized_text
 
-
     type DocumentCardEvents = {
-        deleted: { id: string },
+        deleted: { id: string }
         tagClick: { tag: string }
     }
 
     const dispatch = createEventDispatcher<DocumentCardEvents>()
 
     async function save() {
-        await updateDocument(doc._id, {
+        const updated = await updateDocument(doc._id, {
             recognized_text: editedText
         })
 
-        doc.recognized_text = editedText
+        doc = updated
+        editedText = updated.recognized_text
         editing = false
     }
 
@@ -73,7 +82,20 @@
         doc.tags = updated.tags ?? nextTags
     }
 
+    async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
+        const files = event.detail.files
+        if (!files.length) return
 
+        const result = await uploadImagesToDocument(doc._id, files)
+        doc = result.document
+        editedText = doc.recognized_text
+    }
+
+    async function handleImageEdit(event: CustomEvent<{ payload: { rotate_degrees?: number; image_filename?: string; crop?: { x_percent: number; y_percent: number; width_percent: number; height_percent: number } } }>) {
+        const updated = await editDocumentImage(doc._id, event.detail.payload)
+        doc = updated
+        editedText = updated.recognized_text
+    }
 
     async function remove() {
         await deleteDocument(doc._id)
@@ -87,9 +109,7 @@
     function selectTagFromCard(tag: string) {
         dispatch("tagClick", { tag })
     }
-
 </script>
-
 
 <div class="card">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -100,21 +120,15 @@
         on:click={() => showPreview = true}
     />
 
-     <div class="card-tags">
+    <div class="card-tags">
         {#if doc.tags?.length}
             {#each doc.tags as tag}
                 <button class="card-tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`} on:click={() => selectTagFromCard(tag)}>{tag}</button>
             {/each}
-        {:else}
-            <!--
-        <span class="card-tags-empty">No tags</span>
-            -->
-            
         {/if}
     </div>
 
-
-        {#if showPreview}
+    {#if showPreview}
         <CardPreview
             {doc}
             bind:editedText
@@ -126,17 +140,13 @@
             on:addTag={addTagToCard}
             on:removeTag={removeTagFromCard}
             on:tagClick={handleTagClick}
+            on:imageEdit={handleImageEdit}
+            on:addImages={uploadToCard}
         />
     {/if}
 </div>
 
-
-
 <style>
-
-
-
-
 .card {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -148,7 +158,6 @@
     break-inside: avoid;
     margin-bottom: 20px;
 }
-
 
 img {
     width: 100%;
@@ -169,12 +178,4 @@ img {
     border-radius: 999px;
     font-size: 0.82rem;
 }
-
-.card-tags-empty {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-}
-
-
-
 </style>

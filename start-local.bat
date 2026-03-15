@@ -1,48 +1,50 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 
-cd /d "%~dp0"
+REM One-click entrypoint for Windows users.
+REM - First run: installs dependencies.
+REM - Next runs: starts services quickly.
 
-REM ---- 1) Start MongoDB service (if installed as Windows service) ----
-net start MongoDB >nul 2>&1
-
-REM ---- 2) Backend ----
-if not exist ".venv" (
-  py -3 -m venv .venv
-)
-
-call ".venv\Scripts\activate.bat"
-python -m pip install --upgrade pip
-pip install -r backend\requirements.txt
-
-start "OCR Backend" cmd /k "cd /d %cd% && call .venv\Scripts\activate.bat && uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"
-
-REM ---- 3) Frontend ----
-set "NPM_CMD="
-for /f "delims=" %%I in ('where npm.cmd 2^>nul') do (
-  set "NPM_CMD=%%I"
-  goto :npm_found
-)
-
-if exist "C:\Program Files\nodejs\npm.cmd" set "NPM_CMD=C:\Program Files\nodejs\npm.cmd"
-if exist "%LOCALAPPDATA%\Programs\nodejs\npm.cmd" set "NPM_CMD=%LOCALAPPDATA%\Programs\nodejs\npm.cmd"
-
-:npm_found
-if "%NPM_CMD%"=="" (
-  echo [ERROR] npm is not available in PATH.
-  echo Install Node.js LTS and then restart terminal/VS Code.
-  echo Expected npm at one of:
-  echo   - C:\Program Files\nodejs\npm.cmd
-  echo   - %%LOCALAPPDATA%%\Programs\nodejs\npm.cmd
+set "SCRIPT_DIR=%~dp0"
+pushd "%SCRIPT_DIR%" >nul 2>&1 || (
+  echo [ERROR] Cannot access script folder: %SCRIPT_DIR%
   pause
   exit /b 1
 )
+set "SCRIPT_DIR=%CD%"
 
-echo Using npm: %NPM_CMD%
-start "OCR Frontend" cmd /k "cd /d %cd%\frontend && \"%NPM_CMD%\" install && \"%NPM_CMD%\" run dev -- --host"
+set "PROJECT_ROOT=%SCRIPT_DIR%"
+if not exist "%PROJECT_ROOT%\backend\requirements.txt" (
+  if exist "%SCRIPT_DIR%\..\backend\requirements.txt" (
+    set "PROJECT_ROOT=%SCRIPT_DIR%\.."
+  )
+)
+for %%I in ("%PROJECT_ROOT%") do set "PROJECT_ROOT=%%~fI"
 
-REM ---- 4) Open browser ----
-timeout /t 4 >nul
-start http://localhost:5173
+if not exist "%PROJECT_ROOT%\backend\requirements.txt" (
+  echo [ERROR] Could not find project root from script path.
+  echo Expected: backend\requirements.txt
+  echo Script dir: %SCRIPT_DIR%
+  pause
+  popd
+  exit /b 1
+)
 
-endlocal
+cd /d "%PROJECT_ROOT%"
+
+if not exist ".setup.done" (
+  echo [INFO] First run detected. Running installer...
+  call "%PROJECT_ROOT%\install-local.bat"
+  if errorlevel 1 (
+    echo [ERROR] Installation step failed.
+    pause
+    popd
+    exit /b 1
+  )
+)
+
+call "%PROJECT_ROOT%\run-local.bat"
+set "EXIT_CODE=%ERRORLEVEL%"
+
+popd
+exit /b %EXIT_CODE%

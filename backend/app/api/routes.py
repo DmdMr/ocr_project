@@ -1,25 +1,21 @@
-import os
 import hashlib
+import os
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from bson import ObjectId
-
-
-from backend.app.services.ocr_service import recognize_text
-from backend.app.db.database import documents_collection
-
 from typing import List, Optional
 
+from bson import ObjectId
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from pydantic import BaseModel, Field
 from PIL import Image, ImageOps
+from pydantic import BaseModel, Field
 
 from backend.app.db.database import documents_collection, tags_collection
+from backend.app.services.ocr_service import recognize_text
 
 router = APIRouter(prefix="/api")
 
 UPLOAD_DIR = "backend/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
 def calculate_file_hash(file_bytes: bytes):
     return hashlib.md5(file_bytes).hexdigest()
@@ -32,60 +28,160 @@ def object_id_or_404(doc_id: str):
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
 
-# 🔹 Загрузка файла
+def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: str, boxes: list):
+    return {
+        "filename": filename,
+        "path": path,
+        "file_hash": file_hash,
+        "recognized_text": ocr_text,
+        "boxes": boxes,
+        "created_at": datetime.utcnow(),
+        "image_version": datetime.utcnow().isoformat(),
+    }
+
+
+def normalize_document(doc: dict):
+    doc["_id"] = str(doc["_id"])
+    gallery = doc.get("gallery_images")
+    if not gallery:
+        doc["gallery_images"] = [
+            {
+                "filename": doc.get("filename"),
+                "path": doc.get("path"),
+                "file_hash": doc.get("file_hash"),
+                "recognized_text": doc.get("recognized_text", ""),
+                "boxes": doc.get("boxes", []),
+                "created_at": doc.get("created_at", datetime.utcnow()),
+                "image_version": doc.get("image_version"),
+            }
+        ]
+    return doc
+
+
+def save_upload_file(file: UploadFile, file_bytes: bytes):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"{timestamp}_{file.filename}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    with open(file_path, "wb") as destination:
+        destination.write(file_bytes)
+    return filename, file_path
+
+
 @router.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
-
     if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
         raise HTTPException(status_code=400, detail="Only PNG and JPG allowed")
 
     file_bytes = await file.read()
     file_hash = calculate_file_hash(file_bytes)
 
-    # Проверка дубликата
     existing = await documents_collection.find_one({"file_hash": file_hash})
     if existing:
-        existing["_id"] = str(existing["_id"])
-        return {
-            "message": "File already exists",
-            "document": existing
-        }
+        return {"message": "File already exists", "document": normalize_document(existing)}
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}_{file.filename}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-
-    with open(file_path, "wb") as destination:
-        destination.write(file_bytes)
-
+    filename, file_path = save_upload_file(file, file_bytes)
     ocr_result = recognize_text(file_path)
+
+    gallery_item = build_gallery_item(
+        filename=filename,
+        path=file_path,
+        file_hash=file_hash,
+        ocr_text=ocr_result["text"],
+        boxes=ocr_result["boxes"],
+    )
 
     document_data = {
         "filename": filename,
         "path": file_path,
-        "recognized_text": ocr_result["text"],  # store only text
-        "boxes": ocr_result["boxes"],           # store boxes separately
+        "recognized_text": ocr_result["text"],
+        "boxes": ocr_result["boxes"],
         "file_hash": file_hash,
         "created_at": datetime.utcnow(),
         "image_version": datetime.utcnow().isoformat(),
-        "tags": []
+        "tags": [],
+        "gallery_images": [gallery_item],
     }
-
 
     result = await documents_collection.insert_one(document_data)
     document_data["_id"] = str(result.inserted_id)
-
     return {"message": "File uploaded successfully", "document": document_data}
 
 
-# 🔹 Получить все документы
+@router.post("/documents/{doc_id}/gallery")
+async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(...)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if not files:
+        raise HTTPException(status_code=400, detail="At least one file is required")
+
+    gallery_items = document.get("gallery_images") or []
+    existing_hashes = {item.get("file_hash") for item in gallery_items if item.get("file_hash")}
+
+    added_items = []
+    appended_texts: List[str] = []
+
+    for file in files:
+        if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
+            continue
+
+        file_bytes = await file.read()
+        if not file_bytes:
+            continue
+
+        file_hash = calculate_file_hash(file_bytes)
+        if file_hash in existing_hashes:
+            continue
+
+        filename, file_path = save_upload_file(file, file_bytes)
+        ocr_result = recognize_text(file_path)
+
+        item = build_gallery_item(
+            filename=filename,
+            path=file_path,
+            file_hash=file_hash,
+            ocr_text=ocr_result["text"],
+            boxes=ocr_result["boxes"],
+        )
+        added_items.append(item)
+        existing_hashes.add(file_hash)
+
+        recognized_text = (ocr_result.get("text") or "").strip()
+        if recognized_text:
+            appended_texts.append(recognized_text)
+
+    if not added_items:
+        raise HTTPException(status_code=400, detail="No valid new images were uploaded")
+
+    existing_text = (document.get("recognized_text") or "").strip()
+    combined_text_parts = [part for part in [existing_text, *appended_texts] if part]
+    combined_text = "\n\n".join(combined_text_parts)
+
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {
+            "$push": {"gallery_images": {"$each": added_items}},
+            "$set": {"recognized_text": combined_text},
+        },
+    )
+
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    updated_doc = normalize_document(updated_doc)
+    return {"message": "Gallery updated", "added_count": len(added_items), "document": updated_doc}
+
+
 @router.get("/documents")
 async def get_documents():
     documents = []
     async for doc in documents_collection.find().sort("created_at", -1):
-        doc["_id"] = str(doc["_id"])
-        documents.append(doc)
+        documents.append(normalize_document(doc))
     return documents
+
 
 class CropRequest(BaseModel):
     x_percent: float = Field(0, ge=0, le=100)
@@ -97,15 +193,13 @@ class CropRequest(BaseModel):
 class ImageEditRequest(BaseModel):
     rotate_degrees: int = 0
     crop: Optional[CropRequest] = None
+    image_filename: Optional[str] = None
 
-
-
-from typing import Optional, List
-from bson import ObjectId
 
 class DocumentUpdate(BaseModel):
     recognized_text: Optional[str] = None
     tags: Optional[List[str]] = None
+
 
 @router.put("/documents/{doc_id}")
 async def update_document(doc_id: str, data: DocumentUpdate):
@@ -118,10 +212,7 @@ async def update_document(doc_id: str, data: DocumentUpdate):
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    updated_doc["_id"] = str(updated_doc["_id"])
-
-    return updated_doc
-
+    return normalize_document(updated_doc)
 
 
 @router.put("/documents/{doc_id}/image")
@@ -132,11 +223,11 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    filename = document.get("filename")
-    if not filename:
+    target_filename = (data.image_filename or document.get("filename") or "").strip()
+    if not target_filename:
         raise HTTPException(status_code=400, detail="Document has no image")
 
-    file_path = os.path.join(UPLOAD_DIR, filename)
+    file_path = os.path.join(UPLOAD_DIR, target_filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Image file not found")
 
@@ -165,7 +256,7 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
 
             image = image.crop((left, top, right, bottom))
 
-        ext = os.path.splitext(filename)[1].lower()
+        ext = os.path.splitext(target_filename)[1].lower()
         if ext in {".jpg", ".jpeg"}:
             image = image.convert("RGB")
             image.save(file_path, format="JPEG", quality=95)
@@ -178,50 +269,57 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
         new_hash = calculate_file_hash(updated_file.read())
 
     image_version = datetime.utcnow().isoformat()
+
+    set_payload = {}
+    if target_filename == document.get("filename"):
+        set_payload["file_hash"] = new_hash
+        set_payload["image_version"] = image_version
+
     await documents_collection.update_one(
-        {"_id": object_id},
-        {"$set": {"file_hash": new_hash, "image_version": image_version}}
+        {"_id": object_id, "gallery_images.filename": target_filename},
+        {
+            "$set": {
+                **set_payload,
+                "gallery_images.$.file_hash": new_hash,
+                "gallery_images.$.image_version": image_version,
+            }
+        },
     )
 
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    updated_doc["_id"] = str(updated_doc["_id"])
+    updated_doc = normalize_document(updated_doc)
     updated_doc["applied_rotate_degrees"] = rotate_degrees
+    updated_doc["edited_image_filename"] = target_filename
     return updated_doc
 
-
-
-
-UPLOAD_FOLDER = "backend/uploads"
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(doc_id: str):
     object_id = object_id_or_404(doc_id)
 
     document = await documents_collection.find_one({"_id": object_id})
-
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # 2️⃣ Delete physical file
-    filename = document.get("filename")
-    if filename:
-        file_path = os.path.join(UPLOAD_DIR, filename)
+    gallery_images = document.get("gallery_images") or []
+    gallery_filenames = [item.get("filename") for item in gallery_images if item.get("filename")]
 
+    filenames_to_delete = set(gallery_filenames)
+    if document.get("filename"):
+        filenames_to_delete.add(document.get("filename"))
+
+    for filename in filenames_to_delete:
+        file_path = os.path.join(UPLOAD_DIR, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
 
-    # 3️⃣ Delete database record
-    await documents_collection.delete_one({"_id": ObjectId(doc_id)})
-
+    await documents_collection.delete_one({"_id": object_id})
     return {"message": "Deleted successfully"}
 
 
-
-
-# 🔹 Поиск
 @router.get("/search")
 async def search_documents(q: str):
     results = []
@@ -230,36 +328,30 @@ async def search_documents(q: str):
             "$or": [
                 {"recognized_text": {"$regex": q, "$options": "i"}},
                 {"filename": {"$regex": q, "$options": "i"}},
-                {"tags": {"$regex": q, "$options": "i"}}
+                {"tags": {"$regex": q, "$options": "i"}},
             ]
         }
     ):
-        doc["_id"] = str(doc["_id"])
-        results.append(doc)
+        results.append(normalize_document(doc))
     return results
 
-
-
-
-from backend.app.db.database import tags_collection
 
 class TagRequest(BaseModel):
     tag: str
 
-# Route to create a new tag
+
 @router.post("/tags")
 async def create_tag(request: TagRequest):
     tag = request.tag.strip().lower()
 
-    # Check if the tag already exists
     existing_tag = await tags_collection.find_one({"tag": tag})
     if existing_tag:
         raise HTTPException(status_code=400, detail="Tag already exists")
 
-    # Insert the new tag into the database
     new_tag = {"tag": tag}
     await tags_collection.insert_one(new_tag)
     return {"message": "Tag added", "tag": new_tag}
+
 
 @router.delete("/tags/{tag}")
 async def delete_tag(tag: str):
@@ -273,20 +365,14 @@ async def delete_tag(tag: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Tag not found")
 
-    await documents_collection.update_many(
-        {"tags": normalized},
-        {"$pull": {"tags": normalized}}
-    )
+    await documents_collection.update_many({"tags": normalized}, {"$pull": {"tags": normalized}})
 
     return {"message": "Tag deleted", "tag": normalized}
 
 
-
-
-# Route to fetch all tags
 @router.get("/tags")
 async def get_tags():
     tags = []
     async for tag in tags_collection.find():
-        tags.append(tag['tag'])
+        tags.append(tag["tag"])
     return {"tags": tags}

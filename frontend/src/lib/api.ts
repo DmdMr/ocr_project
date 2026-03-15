@@ -1,15 +1,8 @@
-// api.ts
-//const BACKEND_HOST = window.location.hostname; // automatically matches localhost or LAN IP
-//const API_URL = `http://${BACKEND_HOST}:8000/api`;
-//console.log(BACKEND_HOST);
+export const API_URL = "/api"
 
-//const API_URL = "http://192.168.31.162:8000/api"; // your Mac’s LAN IP
+export const UPLOADS_URL = "http://localhost:8000/uploads"
 
-export const API_URL = "/api"; // Use your LAN IP
-
-export const UPLOADS_URL = "http://localhost:8000/uploads";
-
-console.log(API_URL);
+console.log(API_URL)
 
 export async function uploadImage(file: File) {
     const formData = new FormData()
@@ -25,6 +18,26 @@ export async function uploadImage(file: File) {
     }
 
     return await res.json()
+}
+
+export async function uploadImagesToDocument(documentId: string, files: File[]) {
+    const formData = new FormData()
+    for (const file of files) {
+        formData.append("files", file)
+    }
+
+    const res = await fetch(`${API_URL}/documents/${documentId}/gallery`, {
+        method: "POST",
+        body: formData
+    })
+
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+        throw new Error(data.detail || "Failed to upload images to card")
+    }
+
+    return data
 }
 
 export async function getDocuments() {
@@ -57,7 +70,6 @@ export async function updateDocument(id: string, data: any) {
     return response.json()
 }
 
-
 export async function setDocumentTags(id: string, tags: string[]) {
     return updateDocument(id, { tags })
 }
@@ -86,7 +98,6 @@ export async function getTags(): Promise<string[]> {
     const data = await response.json()
     return data.tags ?? []
 }
-
 
 export async function createTag(tag: string) {
     const response = await fetch(`${API_URL}/tags`, {
@@ -120,10 +131,9 @@ export async function deleteTag(tag: string) {
     return payload
 }
 
-
-
 export interface ImageEditPayload {
     rotate_degrees?: number
+    image_filename?: string
     crop?: {
         x_percent: number
         y_percent: number
