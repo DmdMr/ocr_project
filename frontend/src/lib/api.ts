@@ -7,7 +7,9 @@
 
 export const API_URL = "/api"; // Use your LAN IP
 
-export const UPLOADS_URL = "http://localhost:8000/uploads";
+//export const UPLOADS_URL = "http://localhost:8000/uploads";
+
+export const UPLOADS_URL = "/uploads"
 
 console.log(API_URL);
 

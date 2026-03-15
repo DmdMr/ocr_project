@@ -72,7 +72,6 @@ def save_upload_file(file: UploadFile, file_bytes: bytes):
 
 
 
-# 🔹 Загрузка файла
 @router.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
 
@@ -82,7 +81,6 @@ async def upload_image(file: UploadFile = File(...)):
     file_bytes = await file.read()
     file_hash = calculate_file_hash(file_bytes)
 
-    # Проверка дубликата
     existing = await documents_collection.find_one({"file_hash": file_hash})
     if existing:
         return {"message": "File already exists", "document": normalize_document(existing)}
@@ -131,17 +129,21 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
 
     added_items = []
     appended_texts: List[str] = []
+    skipped_files: List[str] = []
 
     for file in files:
         if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
+            skipped_files.append(f"{file.filename}: unsupported file type")
             continue
 
         file_bytes = await file.read()
         if not file_bytes:
+            skipped_files.append(f"{file.filename}: empty file")
             continue
 
         file_hash = calculate_file_hash(file_bytes)
         if file_hash in existing_hashes:
+            skipped_files.append(f"{file.filename}: duplicate image")
             continue
 
         filename, file_path = save_upload_file(file, file_bytes)
@@ -162,7 +164,11 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
             appended_texts.append(recognized_text)
 
     if not added_items:
-        raise HTTPException(status_code=400, detail="No valid new images were uploaded")
+        detail = "No valid new images were uploaded"
+        if skipped_files:
+            detail = f"{detail}. " + "; ".join(skipped_files)
+        raise HTTPException(status_code=400, detail=detail)
+
 
     existing_text = (document.get("recognized_text") or "").strip()
     combined_text_parts = [part for part in [existing_text, *appended_texts] if part]
@@ -181,9 +187,14 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
         raise HTTPException(status_code=404, detail="Document not found")
 
     updated_doc = normalize_document(updated_doc)
-    return {"message": "Gallery updated", "added_count": len(added_items), "document": updated_doc}
+    return {
+        "message": "Gallery updated",
+        "added_count": len(added_items),
+        "skipped_files": skipped_files,
+        "document": updated_doc,
+    }
 
-# 🔹 Получить все документы
+
 @router.get("/documents")
 async def get_documents():
     documents = []
@@ -334,14 +345,12 @@ async def delete_document(doc_id: str):
         if os.path.exists(file_path):
             os.remove(file_path)
 
-    # 3️⃣ Delete database record
     await documents_collection.delete_one({"_id": object_id})
     return {"message": "Deleted successfully"}
 
 
 
 
-# 🔹 Поиск
 @router.get("/search")
 async def search_documents(q: str):
     results = []
@@ -368,12 +377,10 @@ class TagRequest(BaseModel):
 async def create_tag(request: TagRequest):
     tag = request.tag.strip().lower()
 
-    # Check if the tag already exists
     existing_tag = await tags_collection.find_one({"tag": tag})
     if existing_tag:
         raise HTTPException(status_code=400, detail="Tag already exists")
 
-    # Insert the new tag into the database
     new_tag = {"tag": tag}
     await tags_collection.insert_one(new_tag)
     return {"message": "Tag added", "tag": new_tag}
@@ -397,7 +404,6 @@ async def delete_tag(tag: str):
 
 
 
-# Route to fetch all tags
 @router.get("/tags")
 async def get_tags():
     tags = []

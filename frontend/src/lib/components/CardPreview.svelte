@@ -7,6 +7,7 @@
     export let doc: Document
     export let editedText: string
     export let editing: boolean
+    export let galleryUploading = false
 
     const dispatch = createEventDispatcher()
 
@@ -384,16 +385,35 @@
             -->
                 <button on:click={zoomIn} aria-label="Zoom in">+</button>
                 <button on:click={resetZoom}>Reset zoom</button>
+
+                <span class="toolbar-divider" aria-hidden="true"></span>
+
+                {#if !imageEditOpen}
+                    <button class="primary" on:click={startImageEdit}>Edit image</button>
+                {:else}
+                    <div class="edit-toolbar-inline">
+                        <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Crop</button>
+                        <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Rotate</button>
+                        {#if activeTool === "rotate"}
+                            <button on:click={() => nudgeRotation(-1)} aria-label="Rotate left 90 degrees">↺ 90°</button>
+                            <button on:click={() => nudgeRotation(1)} aria-label="Rotate right 90 degrees">↻ 90°</button>
+                            <span class="angle-badge">{displayRotation()}°</span>
+                        {/if}
+                        <button class="primary" on:click={saveImageEdit}>Save</button>
+                        <button on:click={cancelImageEdit}>Cancel</button>
+                    </div>
+                {/if}
             </div>
 
             <div class="gallery-toolbar">
-                <label class="gallery-upload-btn">
-                    Add images to this card
+                <label class="gallery-upload-btn" class:disabled={galleryUploading}>
+                    {galleryUploading ? "Adding images..." : "Add images to this card"}
                     <input
                         type="file"
                         accept="image/png,image/jpeg,image/jpg"
                         multiple
                         hidden
+                        disabled={galleryUploading}
                         on:change={uploadGalleryFiles}
                     />
                 </label>
@@ -413,18 +433,7 @@
             </div>
 
 
-            {#if !imageEditOpen}
-                <button class="primary" on:click={startImageEdit}>Edit image</button>
-            {:else}
-                <div class="tool-switch">
-                    <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Crop</button>
-                    <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Rotate</button>
-                    {#if activeTool === "rotate"}
-                        <button on:click={() => nudgeRotation(-1)} aria-label="Rotate left 90 degrees">↺ 90°</button>
-                        <button on:click={() => nudgeRotation(1)} aria-label="Rotate right 90 degrees">↻ 90°</button>
-                        <span class="angle-badge">{displayRotation()}°</span>
-                    {/if}
-                </div>
+            {#if imageEditOpen}
                 <p class="tool-hint">
                     {#if activeTool === "crop"}
                         Drag on image to draw crop area.
@@ -432,10 +441,6 @@
                         Hold mouse and drag left/right to rotate (snaps to 90°, 180°, 270°).
                     {/if}
                 </p>
-                <div class="tool-actions">
-                    <button class="primary" on:click={saveImageEdit}>Save changes</button>
-                    <button on:click={cancelImageEdit}>Cancel</button>
-                </div>
             {/if}
 
             <div class="text">
@@ -548,17 +553,36 @@
 
 .right {
     display: grid;
-    grid-template-rows: auto auto auto auto auto 1fr auto;
+    grid-template-rows: auto auto auto auto 1fr auto;    
     gap: 10px;
     padding: 18px;
     overflow: hidden;
 }
 
 .preview-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+    margin: 0 2px;
+}
+
+.edit-toolbar-inline {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.edit-toolbar-inline button.active {
+    border-color: color-mix(in srgb, var(--primary), white 15%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 70%);
 }
 
 .zoom-badge {
@@ -586,6 +610,12 @@
     background: var(--surface);
     cursor: pointer;
     font-weight: 600;
+}
+
+.gallery-upload-btn.disabled {
+    opacity: 0.65;
+    cursor: wait;
+    pointer-events: none;
 }
 
 .gallery-strip {
@@ -653,9 +683,13 @@
 }
 
 .tool-hint {
-    margin: 8px 0 4px;
-    font-size: 0.9rem;
+    margin: 4px 0 2px;
+    font-size: 0.86rem;
+    line-height: 1.2;
     color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .tool-actions {
@@ -734,10 +768,6 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 70%);
 }
 
-.tool-hint {
-    margin: 8px 0;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-}
+
     
 </style>

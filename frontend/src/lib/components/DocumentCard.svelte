@@ -20,6 +20,7 @@
 
     let editing = false
     let editedText = doc.recognized_text
+    let galleryUploading = false
 
 
     type DocumentCardEvents = {
@@ -66,9 +67,29 @@
         const files = event.detail.files
         if (!files.length) return
 
-        const result = await uploadImagesToDocument(doc._id, files)
-        doc = result.document
-        editedText = doc.recognized_text
+        galleryUploading = true
+
+        try {
+            const result = await uploadImagesToDocument(doc._id, files)
+
+            if (!result.document) {
+                throw new Error("Server did not return updated card data")
+            }
+
+            doc = result.document
+            editedText = doc.recognized_text
+
+            const addedCount = Number(result.added_count ?? 0)
+            if (addedCount > 0) {
+                alert(`Added ${addedCount} image${addedCount > 1 ? "s" : ""} to this card.`)
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to add images to this card"
+            alert(message)
+            console.error("Failed to upload gallery images", error)
+        } finally {
+            galleryUploading = false
+        }
     }
 
     async function handleImageEdit(event: CustomEvent<{ payload: { rotate_degrees?: number; image_filename?: string; crop?: { x_percent: number; y_percent: number; width_percent: number; height_percent: number } } }>) {
@@ -153,6 +174,7 @@
             on:tagClick={handleTagClick}
             on:imageEdit={handleImageEdit}
             on:addImages={uploadToCard}
+            {galleryUploading}
         />
     {/if}
 </div>
