@@ -1,13 +1,23 @@
 @echo off
 setlocal EnableExtensions
 
-set "PROJECT_ROOT=%~dp0"
-pushd "%PROJECT_ROOT%" >nul 2>&1 || (
-  echo [ERROR] Cannot access project folder: %PROJECT_ROOT%
+set "SCRIPT_DIR=%~dp0"
+pushd "%SCRIPT_DIR%" >nul 2>&1 || (
+  echo [ERROR] Cannot access script folder: %SCRIPT_DIR%
   pause
   exit /b 1
 )
-set "PROJECT_ROOT=%CD%"
+
+set "SCRIPT_DIR=%CD%"
+
+set "PROJECT_ROOT=%SCRIPT_DIR%"
+if not exist "%PROJECT_ROOT%\backend\requirements.txt" (
+  if exist "%SCRIPT_DIR%\..\backend\requirements.txt" (
+    set "PROJECT_ROOT=%SCRIPT_DIR%\.."
+  )
+)
+for %%I in ("%PROJECT_ROOT%") do set "PROJECT_ROOT=%%~fI"
+cd /d "%PROJECT_ROOT%"
 
 if not exist "backend\requirements.txt" (
   echo [ERROR] Invalid project root. Missing backend\requirements.txt

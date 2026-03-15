@@ -1,6 +1,17 @@
 #!/bin/bash
 set -euo pipefail
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+if [ ! -f "$PROJECT_ROOT/backend/requirements.txt" ] && [ -f "$SCRIPT_DIR/../backend/requirements.txt" ]; then
+  PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
+
+if [ ! -f "$PROJECT_ROOT/backend/requirements.txt" ]; then
+  echo "[ERROR] Could not find project root from script path: $SCRIPT_DIR"
+  exit 1
+fi
+
+cd "$PROJECT_ROOT"
 
 # ---------------------------
 # Functions
