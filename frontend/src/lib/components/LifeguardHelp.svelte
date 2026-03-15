@@ -4,12 +4,13 @@
   let open = false
 
   const projectText = [
-    "This project is an OCR workspace for image documents.",
-    "1) Upload one or more images.",
-    "2) Wait for OCR processing.",
-    "3) Open a card to review/edit recognized text.",
-    "4) Use tags to organize and quickly filter cards.",
-    "5) Use search + sorting to find documents faster."
+    "Это рабочее пространство OCR для распознавания текста на изображениях документов.",
+    "Основные функции: загрузка изображений, автоматическое OCR, редактирование распознанного текста, теги, поиск и сортировка.",
+    "Как работать: 1) Загрузите одно или несколько изображений.",
+    "2) Дождитесь завершения распознавания.",
+    "3) Откройте карточку документа и проверьте/исправьте текст.",
+    "4) Добавьте теги для удобной группировки и быстрого фильтра.",
+    "5) Используйте поиск и сортировку, чтобы быстро находить нужные документы."
   ]
 
   function toggle() {
@@ -48,8 +49,8 @@
 
 <button
   class="lifeguard-btn"
-  aria-label="Project help"
-  title="Project help"
+  aria-label="Справка по проекту"
+  title="Справка по проекту"
   on:click={toggle}
 >
   🛟
@@ -62,9 +63,9 @@
     <div class="help-modal panel" on:click|stopPropagation>
       <button class="help-close" on:click={close}>✕</button>
 
-      <h3>Project Lifeguard</h3>
+      <h3>Навигатор по проекту</h3>
       <p class="intro">
-        Use this panel as your quick guide. You can replace this text later with your own project instructions.
+        Этот блок помогает быстро понять, что делает проект и с чего начать работу.
       </p>
 
       <ul>
@@ -74,7 +75,7 @@
       </ul>
 
       <p class="footnote">
-        Tip: start with uploading one test image and assign a tag immediately — this validates your full flow.
+        Совет: начните с одного тестового изображения и сразу добавьте тег — так вы быстро проверите полный рабочий сценарий.
       </p>
     </div>
   </div>

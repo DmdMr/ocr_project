@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://192.168.31.162:8000", // your backend LAN IP
+        target: "http://localhost:8000", 
         changeOrigin: true,
         secure: false,
       },

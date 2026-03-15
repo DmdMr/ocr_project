@@ -87,7 +87,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-pip install -r backend\requirements.txt
+pip install -r requirements.txt
 if errorlevel 1 (
   echo [ERROR] Failed to install backend dependencies.
   pause
