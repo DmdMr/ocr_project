@@ -11,8 +11,10 @@
         setDocumentTags,
         tagExists,
         updateDocument,
-        uploadImagesToDocument
+        uploadImagesToDocument,
+        UPLOADS_URL
     } from "../api"
+    
 
     let showPreview = false
 
@@ -140,11 +142,8 @@
 <div class="card">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <img
-        src={`http://localhost:8000/uploads/${doc.filename}`}
-        alt=""
-        on:click={() => showPreview = true}
-    />
+    <img src={`${UPLOADS_URL}/${doc.filename}`} alt="" on:click={() => showPreview = true}/>
+
 
     <div class="card-tags">
         {#if doc.tags?.length}

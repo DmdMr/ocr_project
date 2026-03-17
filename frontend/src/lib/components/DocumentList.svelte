@@ -5,6 +5,7 @@
     import DocumentCard from "./DocumentCard.svelte"
     import { updateDocument } from "../api"
     import TagManager from "./TagManager.svelte";
+    import { UPLOADS_URL, API_URL} from "../api"
 
     export let refreshKey: number
 
@@ -14,11 +15,9 @@
     let tags: string[] = []
     let activeTag: string | null = null
 
-
-
     async function load() {
         documents = await getDocuments()
-        const response = await fetch("http://localhost:8000/api/tags")
+        const response = await fetch(`${API_URL}/tags`)
         const data = await response.json()
         tags = await getTags()
     }
@@ -84,13 +83,13 @@
 
 
 
-
+<!--
 <TagManager
     initialTags={tags}
     on:select={handleTagSelect}
     on:tagsChanged={handleTagsChanged}
 />
-
+-->
 
 
 
@@ -117,8 +116,20 @@
 
 
 .grid {
-  column-count: 5;
+  column-count: 2;
   column-gap: 1em;
+}
+
+@media (min-width: 600px) {
+    .grid{
+        column-count: 3;
+    }    
+}
+
+@media (min-width: 1024px) {
+    .grid{
+        column-count: 5;
+    }    
 }
 
 

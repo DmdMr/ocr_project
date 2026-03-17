@@ -45,12 +45,10 @@
 </script>
 
 
-<h2>OCR System</h2>
+<h2>Система распознавания рукописного текста</h2>
 
 
 <!--
-
-
 <div class="theme-switcher">
     <button on:click={() => setTheme('light')}>☀️</button>
     <button on:click={() => setTheme('dark')}>🌙</button>
@@ -72,5 +70,5 @@
 
 
 
-
 <LifeguardHelp />
+

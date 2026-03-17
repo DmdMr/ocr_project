@@ -53,7 +53,7 @@
   title="Справка по проекту"
   on:click={toggle}
 >
-  🛟
+  🆘
 </button>
 
 {#if open}

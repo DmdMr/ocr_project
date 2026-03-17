@@ -199,9 +199,9 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
 async def get_documents():
     documents = []
     async for doc in documents_collection.find().sort("created_at", -1):
-        doc["_id"] = str(doc["_id"])
-        documents.append(doc)
-        documents.append(normalize_document(doc))
+        #doc["_id"] = str(doc["_id"])
+        normalized = normalize_document(doc)
+        documents.append(normalized)
     return documents
 
 class CropRequest(BaseModel):

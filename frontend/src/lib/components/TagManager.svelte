@@ -215,7 +215,6 @@
   .delete-tag {
     border-radius: 999px;
     padding: 6px 10px;
-    min-width: auto;
     background: linear-gradient(180deg, color-mix(in srgb, var(--danger), white 12%), var(--danger));
     color: #fff;
     border-color: transparent;
