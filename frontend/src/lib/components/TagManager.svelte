@@ -98,7 +98,7 @@
       bind:value={createInput}
       on:keydown={handleCreateKeydown}
     />
-    <button class="primary" on:click={submitTag}>Create Tag</button>
+    <button class="primary" on:click={submitTag}>Создать тег</button>
   </div>
 
   {#if createError}
@@ -172,9 +172,11 @@
   .tags-list {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow: hidden;
     margin-top: 8px;
   }
+
 
   .tag-chip {
     border-radius: 999px;
@@ -206,6 +208,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
   }
 
   .tag-chip-row.deleting .tag-chip {
@@ -220,6 +223,13 @@
     border-color: transparent;
   }
 
+  .tags-list::-webkit-scrollbar {
+    height: 6px;
+  }
 
+  .tags-list::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--text-muted), transparent 45%);
+    border-radius: 999px;
+  }
 
 </style>
