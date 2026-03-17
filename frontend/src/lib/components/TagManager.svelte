@@ -119,8 +119,6 @@
 
 
 
-
-
   <div class="tags-list">
     {#if filteredTags.length === 0}
       <p class="empty">Теги не найдены</p>

@@ -6,12 +6,13 @@
     import { updateDocument } from "../api"
     import TagManager from "./TagManager.svelte";
     import { UPLOADS_URL, API_URL} from "../api"
+    import LifeguardHelp from "./LifeguardHelp.svelte"
 
     export let refreshKey: number
 
     let documents: Document[] = []
     let search = ""
-    let sortOrder: "asc" | "desc" = "desc"
+    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc"
     let tags: string[] = []
     let activeTag: string | null = null
 
@@ -52,12 +53,28 @@
         return matchesText && matchesTag
     })
 
-  
 
     $: sortedDocuments = [...filtered].sort((a, b) => {
-        const dateA = new Date(a.created_at).getTime()
+        const dateA = new Date(a.created_at).getTime() 
         const dateB = new Date(b.created_at).getTime()
-        return sortOrder === "asc" ? dateA - dateB : dateB - dateA
+
+        if (sortOrder === "date_asc") {
+            return dateA - dateB
+        }
+
+        if (sortOrder === "date_desc") {
+            return dateB - dateA
+        }
+
+        if (sortOrder === "name_asc") {
+            return (a.filename || "").localeCompare(b.filename || "")
+        }
+
+        if (sortOrder === "name_desc") {
+            return (b.filename || "").localeCompare(a.filename || "")
+        }
+
+        return 0
     })
 
 
@@ -66,18 +83,27 @@
 
 </script>
 
-<div class="controls-row">
-    <input
-        class="search-input"
-        placeholder="Поиск документов"
-        bind:value={search}
-    />
 
-    <select bind:value={sortOrder} class="sort-select">
-        <option value="desc">Сначала новые</option>
-        <option value="asc">Сначала старые</option>
-    </select>
+<div class="search-manager panel">
+    <div class="controls-row">
+        <input
+            type="text"
+            placeholder="Поиск документов"
+            bind:value={search}
+        />
+
+        <select bind:value={sortOrder} class="sort-select">
+            <option value="name_asc">Имя (A–Z)</option>
+            <option value="name_desc">Имя (Z–A)</option>
+            <option value="date_desc">Сначала новые</option>
+            <option value="date_asc">Сначала старые</option>
+            
+        </select>
+    </div>
+
+    
 </div>
+
 
 
 
@@ -103,14 +129,22 @@
 
 
 <style>
+
+.search-manager {
+    padding: 14px;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+
 .controls-row {
     display: flex;
-    justify-content: center;
+    justify-content: left;
     align-items: center;
     gap: 10px;
-    margin-bottom: 16px;
     flex-wrap: wrap;
 }
+
 
 
 .grid {

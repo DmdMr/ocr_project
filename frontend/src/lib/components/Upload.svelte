@@ -92,6 +92,8 @@
 
 <!-- Upload Area -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
+
+<div class="panel upload-manager">
 <div
     class="upload"
     on:drop={handleDrop}
@@ -120,14 +122,14 @@
         <li class="file-item">
             <div class="file-header">
                 <span>{item.name}</span>
-                <span class="status {statusLabel(item.status)}">
-                    {statusLabel(item.status)}
+                <span class="status {item.status}">
+                    {item.status}
                 </span>
             </div>
 
             <div class="progress-container">
                 <div
-                    class="progress-bar {statusLabel(item.status)}"
+                    class="progress-bar {item.status}"
                     style="width: {item.progress}%">
                 </div>
             </div>
@@ -140,15 +142,21 @@
 <p class="message">{message}</p>
 {/if}
 
+    
+</div>
+
 <style>
+
+.upload-manager {
+    padding: 14px;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
 .upload {
-    margin-bottom: 20px;
-    padding: 18px;
-    border: 1px dashed var(--border-strong);
-    border-radius: var(--radius-lg);
     transition: border-color 0.2s ease;
     display: flex;
-    justify-content: center;
+    justify-content: left;
     align-items: center;
     gap: 16px;
 }
