@@ -67,10 +67,10 @@
             id="new-tag-input"
             type="text"
             bind:value={newTag}
-            placeholder="Add new tag"
+            placeholder="Добавить новый тег"
             on:keydown={handleKeyPress}
         />
-        <button on:click={addNewTag}>Add Tag</button>
+        <button on:click={addNewTag}>Добавить тег</button>
     </div>
 </div>
 

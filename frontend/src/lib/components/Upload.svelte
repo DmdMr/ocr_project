@@ -30,6 +30,14 @@
         }))
     }
 
+    function statusLabel(status: UploadStatus) {
+        if (status === "pending") return "ожидание"
+        if (status === "uploading") return "загрузка"
+        if (status === "processing") return "обработка"
+        if (status === "done") return "готово"
+        return "ошибка"
+    }
+
     function handleChange(event: Event) {
         const input = event.target as HTMLInputElement
         setFiles(input.files)
@@ -67,7 +75,7 @@
         }
 
         uploading = false
-        message = "Upload completed"
+        message = "Загрузка завершена"
         dispatch("uploaded")
     }
 
@@ -90,7 +98,7 @@
     on:dragover={handleDragOver}
 >
     <label class="file-btn">
-        Choose Files
+        Выбрать файлы
         <input
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif"
@@ -101,7 +109,7 @@
     </label>
 
     <button class="upload-btn" on:click={handleUpload} disabled={uploading}>
-        {uploading ? "Uploading..." : "Upload"}
+        {uploading ? "Загрузка..." : "Загрузить"}
     </button>
 </div>
 
@@ -112,14 +120,14 @@
         <li class="file-item">
             <div class="file-header">
                 <span>{item.name}</span>
-                <span class="status {item.status}">
-                    {item.status}
+                <span class="status {statusLabel(item.status)}">
+                    {statusLabel(item.status)}
                 </span>
             </div>
 
             <div class="progress-container">
                 <div
-                    class="progress-bar {item.status}"
+                    class="progress-bar {statusLabel(item.status)}"
                     style="width: {item.progress}%">
                 </div>
             </div>
@@ -224,4 +232,5 @@
     font-weight: 600;
     color: #10b981;
 }
+
 </style>

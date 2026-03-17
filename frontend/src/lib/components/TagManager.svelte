@@ -30,7 +30,7 @@
     if (!normalized) return
 
     if (tagExists(tags, normalized)) {
-      createError = "Tag already exists"
+      createError = "Тег уже существует"
       return
     }
 
@@ -41,7 +41,7 @@
       createError = ""
       dispatch("tagsChanged", { tags })
     } catch (error) {
-      console.error("Failed to create tag", error)
+      console.error("Не удалось создать тег", error)
       
       const latestTags = await getTags().catch(() => tags)
       const existsAfterFailure = tagExists(latestTags, normalized)
@@ -54,7 +54,7 @@
         return
       }
 
-      createError = error instanceof Error ? error.message : "Failed to create tag"
+      createError = error instanceof Error ? error.message : "Не удалось создать тег"
     }
   }
 
@@ -82,8 +82,8 @@
 
       dispatch("tagsChanged", { tags })
     } catch (error) {
-      console.error("Failed to delete tag", error)
-      createError = error instanceof Error ? error.message : "Failed to delete tag"
+      console.error("Не удалось создать тег", error)
+      createError = error instanceof Error ? error.message : "Не удалось создать тег"
     }
   }
 
@@ -94,7 +94,7 @@
   <div class="create-row">
     <input
       type="text"
-      placeholder="Create tag"
+      placeholder="Создать тег"
       bind:value={createInput}
       on:keydown={handleCreateKeydown}
     />
@@ -109,11 +109,11 @@
     <input
       class="search"
       type="text"
-      placeholder="Search tags"
+      placeholder="Поиск тегов"
       bind:value={searchInput}
     />
     <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
-      {deleteMode ? "Done" : "Select to delete"}
+      {deleteMode ? "Готово" : "Выбрать для удаления"}
     </button>
   </div>
 
@@ -123,7 +123,7 @@
 
   <div class="tags-list">
     {#if filteredTags.length === 0}
-      <p class="empty">No tags found</p>
+      <p class="empty">Теги не найдены</p>
     {:else}
       {#each filteredTags as tag}
         <div class:deleting={deleteMode} class="tag-chip-row">
@@ -137,7 +137,7 @@
           </button>
 
           {#if deleteMode}
-            <button class="delete-tag" aria-label={`Delete ${tag}`} on:click={() => removeTag(tag)}>X</button>
+            <button class="delete-tag" aria-label={`Удалить ${tag}`} on:click={() => removeTag(tag)}>X</button>
           {/if}
         </div>
       {/each}

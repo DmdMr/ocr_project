@@ -1,75 +1,23 @@
-Design:
-- copy and paste all of the style from the document here, all of the files, check how it works out
-- tell him to change tags colors from only black to the variable, but still readable in light and dark theme
-- tags should be visible in the card, not only in the card preview
-
-
-
-
-
-
-
-
 File uploading + Handling:
 - upload multiple formats, but only one image in the image, so I don't need to be cutting the image
-- we can crop and rotate image later on after it uploaded, in the CardPreview
-
-
 
 
 Multiple select:
-- we can select multiple documents just by hovering the card, and select will be in the left up corner
-- multiple actions for this: delete, add tag...
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-What to add:
-- 
-
-
-
-
-
-
-
-
-What to fix:
-- when uploading new file, the editing field has the text of the previous document
-- 
-
-
-
-
-What to work on:
+- we can select multiple documents just by hovering the card, and select will be in the left up corner. multiple actions for this: delete, add tag...
 
 Image uploading
-- upload multiple file extensions, images, pdfs. 
-- automatically split images, rotate, turn into better quality
-- image uploading progress, like: uploading, recognition, done
-- better handling of uploaded images, not breaking when there's an existing file
+- upload multiple file extensions, images, pdfs. automatically split images if it's pdf
 
-Docs viewing
-- better text viewing, not just plain text, but more
-- sorting, tags, etc.
-- left and right buttons through collections.
+Card view:
+- image needs to be the full height for the better view
 
-
-
-
-Image recognition
-- going from OCR to better things, like advanced documents recognition, and more, so we can have the better structure
-
+Things to do:
+- translate interface into Russian (all of the text visible to the user, all buttons...)
+- have a mobile friednly interface, have a completely different view of the cards, how we have the card preview, and every other function
+- now we have soring docs only by date added, so we need to change that to the alphabetical order
+- for tags display only one line, so it will not cluster the interface, and take up the whole screen
+- filename, now it's based on the date we uploaded the file and filename, but we need to have an ability to change it to something usefull, so add an ability to rename it
+- better recognized text fiew and editing field, right now it's barely readable
 
 
 
@@ -83,14 +31,3 @@ Hardest things to implement:
 - Training a model for the recognition, so it would not make any mistakes, and searching won't be a problem
 
 
-
-
-
-Card view:
-- image needs to be the full height for the better view
-- we can zoom in and out of the image (maybe after clicking on it)
-
-- image crop and rotate buttons need to be placed at the better place
-- rerun recognition script once again
-- adding more images to the existing one, just the same upload function 
-- then add gallery for both image and text

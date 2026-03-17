@@ -48,16 +48,16 @@
         const candidates = availableTags.filter(tag => !currentTags.includes(tag))
 
         if (candidates.length === 0) {
-            alert("No available tags to add")
+            alert("Нет доступных тегов для добавления")
             return
         }
 
-        const entered = prompt(`Enter one tag to add:\n${candidates.join(", ")}`)
+        const entered = prompt(`Введите тег для добавления:\n${candidates.join(", ")}`)
         if (!entered) return
 
         const normalized = normalizeTag(entered)
         if (!tagExists(candidates, normalized)) {
-            alert("Tag is not in available list")
+            alert("Тега нет в списке доступных")
             return
         }
 
@@ -75,7 +75,7 @@
             const result = await uploadImagesToDocument(doc._id, files)
 
             if (!result.document) {
-                throw new Error("Server did not return updated card data")
+                throw new Error("Сервер не вернул обновленные данные карточки")
             }
 
             doc = result.document
@@ -83,12 +83,12 @@
 
             const addedCount = Number(result.added_count ?? 0)
             if (addedCount > 0) {
-                alert(`Added ${addedCount} image${addedCount > 1 ? "s" : ""} to this card.`)
+                alert(`Добавлено ${addedCount} изображений ${addedCount > 1 ? "s" : ""}`)
             }
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to add images to this card"
+            const message = error instanceof Error ? error.message : "Не удалось добавить изображения в карточку"
             alert(message)
-            console.error("Failed to upload gallery images", error)
+            console.error("Не удалось загрузить изображения в галерею", error)
         } finally {
             galleryUploading = false
         }
@@ -103,16 +103,16 @@
     async function removeTagFromCard() {
         const currentTags = doc.tags ?? []
         if (currentTags.length === 0) {
-            alert("This card has no tags")
+            alert("У этой карточки нет тегов")
             return
         }
 
-        const entered = prompt(`Enter one tag to remove:\n${currentTags.join(", ")}`)
+        const entered = prompt(`Введите тег для удаления:\n${currentTags.join(", ")}`)
         if (!entered) return
 
         const normalized = normalizeTag(entered)
         if (!tagExists(currentTags, normalized)) {
-            alert("Tag is not attached to this card")
+            alert("Тег не привязан к этой карточке")
             return
         }
 

@@ -69,13 +69,13 @@
 <div class="controls-row">
     <input
         class="search-input"
-        placeholder="Search documents"
+        placeholder="Поиск документов"
         bind:value={search}
     />
 
     <select bind:value={sortOrder} class="sort-select">
-        <option value="desc">Newest first</option>
-        <option value="asc">Oldest first</option>
+        <option value="desc">Сначала новые</option>
+        <option value="asc">Сначала старые</option>
     </select>
 </div>
 
@@ -83,13 +83,11 @@
 
 
 
-<!--
 <TagManager
     initialTags={tags}
     on:select={handleTagSelect}
     on:tagsChanged={handleTagsChanged}
 />
--->
 
 
 

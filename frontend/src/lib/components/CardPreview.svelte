@@ -379,35 +379,35 @@
             </div>
 
             <div class="preview-tools">
-                <button on:click={zoomOut} aria-label="Zoom out">−</button>
+                <button on:click={zoomOut} aria-label="Уменьшить">−</button>
                 <!--
                 <span class="zoom-badge">{displayZoomPercent()}%</span>
             -->
-                <button on:click={zoomIn} aria-label="Zoom in">+</button>
-                <button on:click={resetZoom}>Reset zoom</button>
+                <button on:click={zoomIn} aria-label="Увеличить">+</button>
+                <button on:click={resetZoom}>Сбросить масштаб</button>
 
                 <span class="toolbar-divider" aria-hidden="true"></span>
 
                 {#if !imageEditOpen}
-                    <button class="primary" on:click={startImageEdit}>Edit image</button>
+                    <button class="primary" on:click={startImageEdit}>Редактировать изображение</button>
                 {:else}
                     <div class="edit-toolbar-inline">
-                        <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Crop</button>
-                        <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Rotate</button>
+                        <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Обрезка</button>
+                        <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Поворот</button>
                         {#if activeTool === "rotate"}
-                            <button on:click={() => nudgeRotation(-1)} aria-label="Rotate left 90 degrees">↺ 90°</button>
-                            <button on:click={() => nudgeRotation(1)} aria-label="Rotate right 90 degrees">↻ 90°</button>
+                            <button on:click={() => nudgeRotation(-1)} aria-label="Повернуть влево на 90 градусов">↺ 90°</button>
+                            <button on:click={() => nudgeRotation(1)} aria-label="Повернуть вправо на 90 градусов">↻ 90°</button>
                             <span class="angle-badge">{displayRotation()}°</span>
                         {/if}
-                        <button class="primary" on:click={saveImageEdit}>Save</button>
-                        <button on:click={cancelImageEdit}>Cancel</button>
+                        <button class="primary" on:click={saveImageEdit}>Сохранить</button>
+                        <button on:click={cancelImageEdit}>Отмена</button>
                     </div>
                 {/if}
             </div>
 
             <div class="gallery-toolbar">
                 <label class="gallery-upload-btn" class:disabled={galleryUploading}>
-                    {galleryUploading ? "Adding images..." : "Add images to this card"}
+                    {galleryUploading ? "Добавление изображений..." : "Добавить изображения в карточку"}
                     <input
                         type="file"
                         accept="image/png,image/jpeg,image/jpg"
@@ -427,7 +427,7 @@
                         on:click={() => activeImageFilename = image.filename}
                     >
                         <img src={`${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`} alt="" />
-                        <span>{index === 0 ? "Original" : `Image ${index + 1}`}</span>
+                        <span>{index === 0 ? "Оригинал" : `Изображение ${index + 1}`}</span>
                     </button>
                 {/each}
             </div>
@@ -436,9 +436,9 @@
             {#if imageEditOpen}
                 <p class="tool-hint">
                     {#if activeTool === "crop"}
-                        Drag on image to draw crop area.
+                        Перетащите курсор по изображению, чтобы выделить область обрезки
                     {:else}
-                        Hold mouse and drag left/right to rotate (snaps to 90°, 180°, 270°).
+                        Зажмите кнопку мыши и ведите влево/вправо для поворота
                     {/if}
                 </p>
             {/if}
@@ -458,19 +458,19 @@
                             <button class="tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`} on:click={() => selectTag(tag)}>{tag}</button>
                         {/each}
                     {:else}
-                        <span class="empty-tags">No tags</span>
+                        <span class="empty-tags">Нет тегов</span>
                     {/if}
                 </div>
 
                 <div class="actions">
-                    <button on:click={addTag}>Add Tag</button>
-                    <button on:click={removeTag}>Remove Tag</button>
+                    <button on:click={addTag}>Добавить тег</button>
+                    <button on:click={removeTag}>Удалить тег</button>
                     {#if editing}
-                        <button on:click={save}>Save</button>
+                        <button on:click={save}>Сохранить</button>
                     {:else}
-                        <button on:click={toggleEdit}>Edit</button>
+                        <button on:click={toggleEdit}>Редактировать</button>
                     {/if}
-                    <button class="delete" on:click={remove}>Delete</button>
+                    <button class="delete" on:click={remove}>Удалить</button>
                 </div>
             </div>
 

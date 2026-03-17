@@ -30,7 +30,8 @@ def object_id_or_404(doc_id: str):
     try:
         return ObjectId(doc_id)
     except Exception as exc:
-        raise HTTPException(status_code=404, detail="Document not found") from exc
+        raise HTTPException(status_code=404, detail="Документ не найден") from exc
+    
 
 def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: str, boxes: list):
     return {
@@ -76,14 +77,14 @@ def save_upload_file(file: UploadFile, file_bytes: bytes):
 async def upload_image(file: UploadFile = File(...)):
 
     if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
-        raise HTTPException(status_code=400, detail="Only PNG and JPG allowed")
+        raise HTTPException(status_code=400, detail="Разрешены только PNG и JPG")
 
     file_bytes = await file.read()
     file_hash = calculate_file_hash(file_bytes)
 
     existing = await documents_collection.find_one({"file_hash": file_hash})
     if existing:
-        return {"message": "File already exists", "document": normalize_document(existing)}
+        return {"message": "Файл уже существует", "document": normalize_document(existing)}
 
     filename, file_path = save_upload_file(file, file_bytes)
     ocr_result = recognize_text(file_path)
@@ -112,17 +113,17 @@ async def upload_image(file: UploadFile = File(...)):
     result = await documents_collection.insert_one(document_data)
     document_data["_id"] = str(result.inserted_id)
 
-    return {"message": "File uploaded successfully", "document": document_data}
+    return {"message": "Файл успешно загружен", "document": document_data}
 
 @router.post("/documents/{doc_id}/gallery")
 async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(...)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
     if not files:
-        raise HTTPException(status_code=400, detail="At least one file is required")
+        raise HTTPException(status_code=400, detail="Требуется хотя бы один файл")
 
     gallery_items = document.get("gallery_images") or []
     existing_hashes = {item.get("file_hash") for item in gallery_items if item.get("file_hash")}
@@ -133,17 +134,17 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
 
     for file in files:
         if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
-            skipped_files.append(f"{file.filename}: unsupported file type")
+            skipped_files.append(f"{file.filename}: неподдерживаемый тип файла")
             continue
 
         file_bytes = await file.read()
         if not file_bytes:
-            skipped_files.append(f"{file.filename}: empty file")
+            skipped_files.append(f"{file.filename}: пустой файл")
             continue
 
         file_hash = calculate_file_hash(file_bytes)
         if file_hash in existing_hashes:
-            skipped_files.append(f"{file.filename}: duplicate image")
+            skipped_files.append(f"{file.filename}: дубликат изображения")
             continue
 
         filename, file_path = save_upload_file(file, file_bytes)
@@ -164,7 +165,7 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
             appended_texts.append(recognized_text)
 
     if not added_items:
-        detail = "No valid new images were uploaded"
+        detail = "Не загружено ни одного нового корректного изображения"
         if skipped_files:
             detail = f"{detail}. " + "; ".join(skipped_files)
         raise HTTPException(status_code=400, detail=detail)
@@ -184,11 +185,11 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
 
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
     updated_doc = normalize_document(updated_doc)
     return {
-        "message": "Gallery updated",
+        "message": "Галерея обновлена",
         "added_count": len(added_items),
         "skipped_files": skipped_files,
         "document": updated_doc,
@@ -199,7 +200,6 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
 async def get_documents():
     documents = []
     async for doc in documents_collection.find().sort("created_at", -1):
-        #doc["_id"] = str(doc["_id"])
         normalized = normalize_document(doc)
         documents.append(normalized)
     return documents
@@ -234,7 +234,7 @@ async def update_document(doc_id: str, data: DocumentUpdate):
 
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
     return normalize_document(updated_doc)
 
@@ -246,15 +246,16 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
 
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
     target_filename = (data.image_filename or document.get("filename") or "").strip()
     if not target_filename:
-        raise HTTPException(status_code=400, detail="Document has no image")
+        raise HTTPException(status_code=400, detail="У документа нет изображения")
 
     file_path = os.path.join(UPLOAD_DIR, target_filename)
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Image file not found")
+        raise HTTPException(status_code=404, detail="Файл изображения не найден")
+
 
     requested_rotation = data.rotate_degrees
     rotate_degrees = int(round(requested_rotation / 90.0) * 90) % 360
@@ -277,7 +278,7 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
             bottom = min(height, top + max(1, crop_height))
 
             if left >= right or top >= bottom:
-                raise HTTPException(status_code=400, detail="Invalid crop area")
+                raise HTTPException(status_code=400, detail="Некорректная область обрезки")
 
             image = image.crop((left, top, right, bottom))
 
@@ -311,7 +312,7 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
 
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
     updated_doc = normalize_document(updated_doc)
     updated_doc["applied_rotate_degrees"] = rotate_degrees
@@ -330,7 +331,7 @@ async def delete_document(doc_id: str):
     document = await documents_collection.find_one({"_id": object_id})
 
     if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
     gallery_images = document.get("gallery_images") or []
     gallery_filenames = [item.get("filename") for item in gallery_images if item.get("filename")]
@@ -346,7 +347,7 @@ async def delete_document(doc_id: str):
             os.remove(file_path)
 
     await documents_collection.delete_one({"_id": object_id})
-    return {"message": "Deleted successfully"}
+    return {"message": "Успешно удалено"}
 
 
 
@@ -379,27 +380,27 @@ async def create_tag(request: TagRequest):
 
     existing_tag = await tags_collection.find_one({"tag": tag})
     if existing_tag:
-        raise HTTPException(status_code=400, detail="Tag already exists")
+        raise HTTPException(status_code=400, detail="Тег уже существует")
 
     new_tag = {"tag": tag}
     await tags_collection.insert_one(new_tag)
-    return {"message": "Tag added", "tag": new_tag}
+    return {"message": "Тег добавлен", "tag": new_tag}
 
 @router.delete("/tags/{tag}")
 async def delete_tag(tag: str):
     normalized = tag.strip().lower()
 
     if not normalized:
-        raise HTTPException(status_code=400, detail="Tag is required")
+        raise HTTPException(status_code=400, detail="Тег обязателен")
 
     result = await tags_collection.delete_one({"tag": normalized})
 
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Tag not found")
+        raise HTTPException(status_code=404, detail="Тег не найден")
 
     await documents_collection.update_many({"tags": normalized}, {"$pull": {"tags": normalized}})
 
-    return {"message": "Tag deleted", "tag": normalized}
+    return {"message": "Тег удалён", "tag": normalized}
 
 
 
