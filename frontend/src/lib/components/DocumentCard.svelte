@@ -5,7 +5,6 @@
     import { tagHue } from "../tagColors"
     import {
         deleteDocument,
-        editDocumentImage,
         getTags,
         normalizeTag,
         setDocumentTags,
@@ -111,9 +110,8 @@
         }
     }
 
-    async function handleImageEdit(event: CustomEvent<{ payload: { rotate_degrees?: number; image_filename?: string; crop?: { x_percent: number; y_percent: number; width_percent: number; height_percent: number } } }>) {
-        const updated = await editDocumentImage(doc._id, event.detail.payload)
-        applyDocumentUpdate(updated)
+    function handleDocumentUpdated(event: CustomEvent<{ document: Document }>) {
+        applyDocumentUpdate(event.detail.document)
     }
 
     async function removeTagFromCard() {
@@ -188,7 +186,7 @@
             on:addTag={addTagToCard}
             on:removeTag={removeTagFromCard}
             on:tagClick={handleTagClick}
-            on:imageEdit={handleImageEdit}
+            on:documentUpdated={handleDocumentUpdated}
             on:addImages={uploadToCard}
             {galleryUploading}
         />

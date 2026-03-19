@@ -2,7 +2,7 @@
     import { createEventDispatcher, onMount } from "svelte"
     import type { Document, GalleryImage } from "../types"
     import { tagHue } from "../tagColors"
-    import { UPLOADS_URL, type ImageEditPayload } from "../api"
+    import { UPLOADS_URL, editDocumentImage, type ImageEditPayload } from "../api"
 
     export let doc: Document
     export let editedText: string
@@ -206,7 +206,7 @@
         isRotating = false
     }
 
-    function saveImageEdit() {
+    async function saveImageEdit() {
         let payload: ImageEditPayload | null = null
 
         if (activeTool === "rotate") {
@@ -251,9 +251,16 @@
 
         if (!payload) return
 
-        dispatch("imageEdit", { payload })
-
-        cancelImageEdit()
+        try {
+            const updated = await editDocumentImage(doc._id, payload)
+            doc = updated
+            dispatch("documentUpdated", { document: updated })
+            cancelImageEdit()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Не удалось обновить изображение"
+            alert(message)
+            console.error("Не удалось обновить изображение", error)
+        }
     }
 
 
@@ -415,15 +422,17 @@
                 on:mousedown={onEditorMouseDown}
                 
             >
-                <!-- svelte-ignore a11y_missing_attribute -->
-                <img
-                    bind:this={imageEl}
-                    src={imageSrc()}
-                    alt=""
-                    draggable="false"
-                    on:dragstart|preventDefault
-                    style={`transform: scale(${zoomLevel}) rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
-                />    
+                {#key imageSrc()}
+                    <!-- svelte-ignore a11y_missing_attribute -->
+                    <img
+                        bind:this={imageEl}
+                        src={imageSrc()}
+                        alt=""
+                        draggable="false"
+                        on:dragstart|preventDefault
+                        style={`transform: scale(${zoomLevel}) rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
+                    />
+                {/key}
 
                 {#if imageEditOpen && activeTool === "crop" && cropRect}
                     <div
