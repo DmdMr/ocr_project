@@ -27,6 +27,10 @@
         documents = documents.filter(doc => doc._id !== id)
     }
 
+    function replaceDocumentInList(updatedDocument: Document) {
+        documents = documents.map(doc => doc._id === updatedDocument._id ? updatedDocument : doc)
+    }
+
     function handleTagSelect(event: CustomEvent<{ tag: string | null }>) {
         activeTag = event.detail.tag
     }
@@ -46,7 +50,9 @@
 
  
     $: filtered = documents.filter(doc => {
+        const displayName = doc.display_filename ?? doc.filename
         const matchesText =
+            displayName.toLowerCase().includes(search.toLowerCase()) ||
             doc.filename.toLowerCase().includes(search.toLowerCase()) ||
             doc.recognized_text.toLowerCase().includes(search.toLowerCase())
         const matchesTag = !activeTag || doc.tags?.includes(activeTag)
@@ -67,11 +73,11 @@
         }
 
         if (sortOrder === "name_asc") {
-            return (a.filename || "").localeCompare(b.filename || "")
+            return (a.display_filename || a.filename || "").localeCompare(b.display_filename || b.filename || "")
         }
 
         if (sortOrder === "name_desc") {
-            return (b.filename || "").localeCompare(a.filename || "")
+            return (b.display_filename || b.filename || "").localeCompare(a.display_filename || a.filename || "")
         }
 
         return 0
@@ -122,6 +128,7 @@
         <DocumentCard
             {doc}
             on:deleted={(e) => removeFromList(e.detail.id)}
+            on:updated={(e) => replaceDocumentInList(e.detail.document)}
         />
     {/each}
 </div>
@@ -148,17 +155,23 @@
 
 
 .grid {
-  column-count: 2;
+  column-count: 1;
   column-gap: 1em;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 640px) {
+    .grid{
+        column-count: 2;
+    }    
+}
+
+@media (min-width: 900px) {
     .grid{
         column-count: 3;
     }    
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
     .grid{
         column-count: 5;
     }    
@@ -190,6 +203,25 @@
 
 .search-input {
     width: 250px;
+}
+
+@media (max-width: 640px) {
+    .search-manager {
+        padding: 12px;
+    }
+
+    .controls-row {
+        align-items: stretch;
+    }
+
+    .controls-row input,
+    .controls-row select {
+        width: 100%;
+    }
+
+    .sort-select {
+        min-width: 0;
+    }
 }
 
 
