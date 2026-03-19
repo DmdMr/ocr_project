@@ -4,6 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from bson import ObjectId
+from pdf2image import convert_from_bytes
+import uuid
 
 
 from backend.app.services.ocr_service import recognize_text
@@ -20,7 +22,7 @@ from backend.app.services.ocr_service import recognize_text
 
 router = APIRouter(prefix="/api")
 
-UPLOAD_DIR = "backend/uploads"
+UPLOAD_DIR = Path("backend/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def calculate_file_hash(file_bytes: bytes):
@@ -98,10 +100,72 @@ def normalize_display_filename(raw_name: str, original_filename: str):
 @router.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
 
-    if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
-        raise HTTPException(status_code=400, detail="Разрешены только PNG и JPG")
-
     file_bytes = await file.read()
+
+
+    if file.content_type == "application/pdf":
+        pages = convert_from_bytes(file_bytes)
+        base_name = Path(file.filename).stem
+        created_documents = []
+
+        for i, page in enumerate(pages, start=1):
+            page_filename = f"{base_name}_page_{i}.png"
+
+            saved_name = f"{uuid.uuid4()}_{page_filename}"
+            page_path = UPLOAD_DIR / saved_name
+            page.save(page_path, "PNG")
+
+            public_path = f"uploads/{saved_name}"
+
+            with open(page_path, "rb") as f:
+                page_bytes = f.read()
+
+            file_hash = calculate_file_hash(page_bytes)
+
+            existing = await documents_collection.find_one({"file_hash": file_hash})
+            if existing:
+                created_documents.append(normalize_document(existing))
+                continue
+
+            ocr_result = recognize_text(str(page_path))
+
+            gallery_item = build_gallery_item(
+                filename=saved_name,
+                path=public_path,
+                file_hash=file_hash,
+                ocr_text=ocr_result["text"],
+                boxes=ocr_result["boxes"],
+            )
+
+            document_data = {
+                "filename": saved_name,
+                "display_filename": page_filename,
+                "path": public_path,
+                "recognized_text": ocr_result["text"],
+                "boxes": ocr_result["boxes"],
+                "file_hash": file_hash,
+                "created_at": datetime.utcnow(),
+                "image_version": datetime.utcnow().isoformat(),
+                "tags": [],
+                "gallery_images": [gallery_item],
+                "source_pdf": file.filename,
+                "page_number": i,
+            }
+
+            result = await documents_collection.insert_one(document_data)
+            document_data["_id"] = str(result.inserted_id)
+
+            created_documents.append(document_data)
+                    
+
+        return {
+            "message": f"PDF обработан, создано {len(created_documents)} страниц",
+            "documents": created_documents
+        }
+
+    if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
+        raise HTTPException(status_code=400, detail="Разрешены только PNG, JPG и PDF")
+
     file_hash = calculate_file_hash(file_bytes)
 
     existing = await documents_collection.find_one({"file_hash": file_hash})
@@ -123,15 +187,14 @@ async def upload_image(file: UploadFile = File(...)):
         "filename": filename,
         "display_filename": file.filename.strip() or file.filename,
         "path": file_path,
-        "recognized_text": ocr_result["text"],  
-        "boxes": ocr_result["boxes"],         
+        "recognized_text": ocr_result["text"],
+        "boxes": ocr_result["boxes"],
         "file_hash": file_hash,
         "created_at": datetime.utcnow(),
         "image_version": datetime.utcnow().isoformat(),
         "tags": [],
         "gallery_images": [gallery_item],
     }
-
 
     result = await documents_collection.insert_one(document_data)
     document_data["_id"] = str(result.inserted_id)

@@ -127,6 +127,7 @@
     {#each sortedDocuments as doc}
         <DocumentCard
             {doc}
+            search={search}
             on:deleted={(e) => removeFromList(e.detail.id)}
             on:updated={(e) => replaceDocumentInList(e.detail.document)}
         />

@@ -171,7 +171,6 @@
 
   .tags-list {
     display: flex;
-    gap: 8px;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
