@@ -165,6 +165,15 @@
         dispatch("tagClick", { tag })
     }
 
+    function getFilenameWithoutExtension(name: string) {
+        if (!name) return ""
+
+        const lastDot = name.lastIndexOf(".")
+        if (lastDot <= 0) return name
+
+        return name.slice(0, lastDot)
+    }
+
 </script>
 
 
@@ -174,7 +183,10 @@
     <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
 
     <div class="card-filename">
-        {@html highlightedFilename(doc.display_filename || doc.filename || "", search)}
+        {@html highlightedFilename(
+            getFilenameWithoutExtension(doc.display_filename || doc.filename || ""),
+            search
+        )}
     </div>
 
     <div class="card-tags">

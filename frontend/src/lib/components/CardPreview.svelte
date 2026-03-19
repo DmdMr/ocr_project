@@ -407,6 +407,16 @@
     function cardImageSrc(currentDoc: Document) {
         return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
     }
+
+
+    function getFilenameWithoutExtension(name: string) {
+        if (!name) return ""
+
+        const lastDot = name.lastIndexOf(".")
+        if (lastDot <= 0) return name
+
+        return name.slice(0, lastDot)
+    }
     
 </script>
 
@@ -475,7 +485,7 @@
                         </div>
                     {:else}
                         <div class="title-display">
-                            <h3>{displayFilename}</h3>
+                            <h3>{getFilenameWithoutExtension(displayFilename)}</h3>
                             <button class="icon-button" on:click={startFilenameEdit} aria-label="Редактировать имя файла">✎</button>
                         </div>
                     {/if}

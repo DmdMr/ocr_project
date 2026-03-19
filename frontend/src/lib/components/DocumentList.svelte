@@ -124,15 +124,16 @@
 
 
 <div class="grid">
-    {#each sortedDocuments as doc}
+    {#each sortedDocuments as doc (doc._id)}
         <DocumentCard
             {doc}
-            search={search}
+            search = {search}
             on:deleted={(e) => removeFromList(e.detail.id)}
             on:updated={(e) => replaceDocumentInList(e.detail.document)}
         />
     {/each}
 </div>
+
 
 
 
