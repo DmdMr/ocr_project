@@ -256,19 +256,9 @@
       width: 100%;
     }
 
-    .tags-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
-    }
 
-    .tag-chip-row {
-      width: 100%;
-      justify-content: space-between;
-    }
 
     .tag-chip {
-      flex: 1;
       text-align: left;
     }
   }

@@ -156,19 +156,19 @@
 
 
 .grid {
-  column-count: 1;
+  column-count: 2;
   column-gap: 1em;
 }
 
 @media (min-width: 640px) {
     .grid{
-        column-count: 2;
+        column-count: 3;
     }    
 }
 
 @media (min-width: 900px) {
     .grid{
-        column-count: 3;
+        column-count: 4;
     }    
 }
 
