@@ -215,7 +215,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .tag-chip-row.deleting .tag-chip {
