@@ -855,9 +855,7 @@
     font-size: 0.86rem;
     line-height: 1.2;
     color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
 }
 
 .tool-actions {
@@ -923,6 +921,131 @@
 
 .close:hover {
     background: var(--surface);
+}
+
+@media (max-width: 900px) {
+    .modal {
+        width: min(96vw, 880px);
+        height: min(92vh, 980px);
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(240px, 42vh) minmax(0, 1fr);
+    }
+
+    .left {
+        min-height: 0;
+        padding: 14px;
+    }
+
+    .right {
+        grid-template-rows: auto auto auto auto minmax(160px, 1fr) auto;
+        padding: 14px;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .overlay {
+        align-items: stretch;
+    }
+
+    .modal {
+        width: 100vw;
+        height: 100dvh;
+        border-radius: 0;
+        grid-template-rows: minmax(220px, 36vh) minmax(0, 1fr);
+    }
+
+    .left {
+        padding: 12px;
+    }
+
+    .right {
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .title-row,
+    .title-display {
+        align-items: flex-start;
+    }
+
+    .title-display {
+        width: 100%;
+    }
+
+    .title-row h3 {
+        font-size: 1.05rem;
+        margin-right: auto;
+    }
+
+    .preview-tools,
+    .edit-toolbar-inline,
+    .filename-actions,
+    .actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    .preview-tools > :global(button),
+    .edit-toolbar-inline > :global(button),
+    .filename-actions > :global(button),
+    .actions > :global(button),
+    .gallery-upload-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .toolbar-divider,
+    .angle-badge {
+        grid-column: 1 / -1;
+        margin-left: 0;
+        width: 100%;
+        text-align: center;
+    }
+
+    .gallery-toolbar {
+        width: 100%;
+    }
+
+    .gallery-strip {
+        grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+        max-height: none;
+    }
+
+    .gallery-item {
+        min-height: 84px;
+    }
+
+    .text {
+        min-height: 180px;
+    }
+
+    .footer {
+        align-items: stretch;
+    }
+
+    .tags,
+    .actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .close {
+        top: 10px;
+        right: 10px;
+        padding: 0.25rem 0.55rem;
+        background: color-mix(in srgb, var(--surface-elevated), transparent 12%);
+    }
+}
+
+@media (max-width: 420px) {
+    .preview-tools,
+    .edit-toolbar-inline,
+    .filename-actions,
+    .actions {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 

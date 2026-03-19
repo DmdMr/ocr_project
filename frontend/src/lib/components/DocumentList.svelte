@@ -156,17 +156,23 @@
 
 
 .grid {
-  column-count: 2;
+  column-count: 1;
   column-gap: 1em;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 640px) {
+    .grid{
+        column-count: 2;
+    }    
+}
+
+@media (min-width: 900px) {
     .grid{
         column-count: 3;
     }    
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
     .grid{
         column-count: 5;
     }    
@@ -198,6 +204,25 @@
 
 .search-input {
     width: 250px;
+}
+
+@media (max-width: 640px) {
+    .search-manager {
+        padding: 12px;
+    }
+
+    .controls-row {
+        align-items: stretch;
+    }
+
+    .controls-row input,
+    .controls-row select {
+        width: 100%;
+    }
+
+    .sort-select {
+        min-width: 0;
+    }
 }
 
 

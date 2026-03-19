@@ -235,6 +235,7 @@
 
 img {
     width: 100%;
+    display: block;
     border-radius: var(--radius-md);
     margin-bottom: 4px;
 }
@@ -258,22 +259,21 @@ img {
     color: var(--text-muted);
 }
 
-.card-filename {
-    margin-top: 10px;
-    margin-bottom: 8px;
-    padding: 0 4px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text);
-    word-break: break-word;
-    line-height: 1.35;
-}
+@media (max-width: 640px) {
+    .card {
+        padding: 10px;
+        margin-bottom: 14px;
+    }
 
-:global(.filename-highlight) {
-    background: #7CFC98;
-    color: #0f172a;
-    padding: 0 2px;
-    border-radius: 4px;
+    .card-tags {
+        gap: 4px;
+    }
+
+    .card-tag {
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 0.78rem;
+    }
 }
 
 
