@@ -2,7 +2,7 @@
     import { createEventDispatcher, onMount } from "svelte"
     import type { Document, GalleryImage } from "../types"
     import { tagHue } from "../tagColors"
-    import { UPLOADS_URL, type ImageEditPayload } from "../api"
+    import { UPLOADS_URL, editDocumentImage, type ImageEditPayload } from "../api"
 
     export let doc: Document
     export let editedText: string
@@ -26,6 +26,9 @@
     const ZOOM_STEP = 0.25
 
     let activeImageFilename = ""
+    let filenameEditing = false
+    let filenameDraft = ""
+    let filenameError = ""
 
     let imageEl: HTMLImageElement | null = null
     let imageStageEl: HTMLDivElement | null = null
@@ -50,6 +53,11 @@
     }
 
     $: selectedImage = galleryImages.find(item => item.filename === activeImageFilename) ?? galleryImages[0]
+    $: displayFilename = doc.display_filename ?? doc.filename
+    $: if (!filenameEditing) {
+        filenameDraft = displayFilename
+        filenameError = ""
+    }
 
     function startImageEdit() {
         imageEditOpen = true
@@ -198,7 +206,7 @@
         isRotating = false
     }
 
-    function saveImageEdit() {
+    async function saveImageEdit() {
         let payload: ImageEditPayload | null = null
 
         if (activeTool === "rotate") {
@@ -243,9 +251,16 @@
 
         if (!payload) return
 
-        dispatch("imageEdit", { payload })
-
-        cancelImageEdit()
+        try {
+            const updated = await editDocumentImage(doc._id, payload)
+            doc = updated
+            dispatch("documentUpdated", { document: updated })
+            cancelImageEdit()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Не удалось обновить изображение"
+            alert(message)
+            console.error("Не удалось обновить изображение", error)
+        }
     }
 
 
@@ -273,6 +288,63 @@
 
     function save() {
         dispatch("save", { text: editedText })
+    }
+
+    function startFilenameEdit() {
+        filenameEditing = true
+        filenameDraft = displayFilename
+        filenameError = ""
+    }
+
+    function cancelFilenameEdit() {
+        filenameEditing = false
+        filenameDraft = displayFilename
+        filenameError = ""
+    }
+
+    function splitFilenameParts(name: string) {
+        const trimmed = name.trim()
+        const dotIndex = trimmed.lastIndexOf(".")
+        if (dotIndex <= 0) {
+            return { base: trimmed, extension: "" }
+        }
+
+        return {
+            base: trimmed.slice(0, dotIndex),
+            extension: trimmed.slice(dotIndex),
+        }
+    }
+
+    function normalizeFilenameDraft(value: string, originalName: string) {
+        const trimmed = value.trim()
+        if (!trimmed) {
+            return { error: "Имя файла не может быть пустым", value: "" }
+        }
+
+        const { extension: originalExtension } = splitFilenameParts(originalName)
+        if (!originalExtension) {
+            return { error: "", value: trimmed }
+        }
+
+        const { base, extension } = splitFilenameParts(trimmed)
+        const normalizedBase = (extension && extension.toLowerCase() === originalExtension.toLowerCase() ? base : trimmed).trim()
+
+        if (!normalizedBase) {
+            return { error: "Имя файла не может быть пустым", value: "" }
+        }
+
+        return { error: "", value: `${normalizedBase}${originalExtension}` }
+    }
+
+    function saveFilename() {
+        const normalized = normalizeFilenameDraft(filenameDraft, displayFilename)
+        if (normalized.error) {
+            filenameError = normalized.error
+            return
+        }
+
+        dispatch("saveFilename", { display_filename: normalized.value })
+        filenameEditing = false
     }
 
     function remove() {
@@ -350,15 +422,17 @@
                 on:mousedown={onEditorMouseDown}
                 
             >
-                <!-- svelte-ignore a11y_missing_attribute -->
-                <img
-                    bind:this={imageEl}
-                    src={imageSrc()}
-                    alt=""
-                    draggable="false"
-                    on:dragstart|preventDefault
-                    style={`transform: scale(${zoomLevel}) rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
-                />    
+                {#key imageSrc()}
+                    <!-- svelte-ignore a11y_missing_attribute -->
+                    <img
+                        bind:this={imageEl}
+                        src={imageSrc()}
+                        alt=""
+                        draggable="false"
+                        on:dragstart|preventDefault
+                        style={`transform: scale(${zoomLevel}) rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
+                    />
+                {/key}
 
                 {#if imageEditOpen && activeTool === "crop" && cropRect}
                     <div
@@ -372,8 +446,40 @@
         <div class="right">
 
             <div class="header">
-                <h3>{doc.filename}</h3>
+                <div class="title-row">
+                    {#if filenameEditing}
+                        <div class="filename-editor">
+                            <input
+                                bind:value={filenameDraft}
+                                aria-label="Имя файла"
+                                on:keydown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault()
+                                        saveFilename()
+                                    }
+
+                                    if (event.key === "Escape") {
+                                        event.preventDefault()
+                                        cancelFilenameEdit()
+                                    }
+                                }}
+                            />
+                            <div class="filename-actions">
+                                <button class="primary" on:click={saveFilename}>Сохранить</button>
+                                <button on:click={cancelFilenameEdit}>Отмена</button>
+                            </div>
+                        </div>
+                    {:else}
+                        <div class="title-display">
+                            <h3>{displayFilename}</h3>
+                            <button class="icon-button" on:click={startFilenameEdit} aria-label="Редактировать имя файла">✎</button>
+                        </div>
+                    {/if}
+                </div>
                 <small>{new Date(doc.created_at).toLocaleString()}</small>
+                {#if filenameError}
+                    <p class="filename-error">{filenameError}</p>
+                {/if}
 
                 
             </div>
@@ -564,6 +670,64 @@
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.header {
+    display: grid;
+    gap: 6px;
+}
+
+.title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.title-row h3 {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.title-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.filename-editor {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+}
+
+.filename-editor input {
+    width: 100%;
+    min-height: 40px;
+    background: var(--surface);
+}
+
+.filename-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filename-error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 0.9rem;
+}
+
+.icon-button {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0.35rem 0.55rem;
+    border-radius: 999px;
+    align-self: center;
+    box-shadow: none;
 }
 
 .toolbar-divider {
