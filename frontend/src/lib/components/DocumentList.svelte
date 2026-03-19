@@ -46,7 +46,9 @@
 
  
     $: filtered = documents.filter(doc => {
+        const displayName = doc.display_filename ?? doc.filename
         const matchesText =
+            displayName.toLowerCase().includes(search.toLowerCase()) ||
             doc.filename.toLowerCase().includes(search.toLowerCase()) ||
             doc.recognized_text.toLowerCase().includes(search.toLowerCase())
         const matchesTag = !activeTag || doc.tags?.includes(activeTag)
@@ -67,11 +69,11 @@
         }
 
         if (sortOrder === "name_asc") {
-            return (a.filename || "").localeCompare(b.filename || "")
+            return (a.display_filename || a.filename || "").localeCompare(b.display_filename || b.filename || "")
         }
 
         if (sortOrder === "name_desc") {
-            return (b.filename || "").localeCompare(a.filename || "")
+            return (b.display_filename || b.filename || "").localeCompare(a.display_filename || a.filename || "")
         }
 
         return 0
