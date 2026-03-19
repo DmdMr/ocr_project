@@ -154,11 +154,13 @@
     display: flex;
     gap: 10px;
     margin-bottom: 8px;
+    flex-wrap: wrap;
   }
 
   .create-row input,
   .search {
     flex: 1;
+    min-width: 0;
   }
 
   .error {
@@ -170,15 +172,20 @@
   .tags-list {
     display: flex;
     gap: 8px;
-    flex-wrap: nowrap;
-    overflow: hidden;
+    flex-wrap: wrap;
+    overflow-x: auto;
     margin-top: 8px;
+    padding-bottom: 4px;
   }
 
 
   .tag-chip {
     border-radius: 999px;
     padding: 8px 14px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .tag-chip.selected {
@@ -196,6 +203,7 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   .mode-toggle {
@@ -206,7 +214,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .tag-chip-row.deleting .tag-chip {
@@ -228,6 +238,39 @@
   .tags-list::-webkit-scrollbar-thumb {
     background: color-mix(in srgb, var(--text-muted), transparent 45%);
     border-radius: 999px;
+  }
+
+  @media (max-width: 640px) {
+    .tag-manager {
+      padding: 12px;
+    }
+
+    .create-row,
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .create-row button,
+    .mode-toggle {
+      width: 100%;
+    }
+
+    .tags-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .tag-chip-row {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .tag-chip {
+      flex: 1;
+      text-align: left;
+    }
   }
 
 </style>

@@ -1,6 +1,7 @@
 import os
 import hashlib
 from datetime import datetime
+from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from bson import ObjectId
 
@@ -72,6 +73,27 @@ def save_upload_file(file: UploadFile, file_bytes: bytes):
     return filename, file_path
 
 
+def normalize_display_filename(raw_name: str, original_filename: str):
+    trimmed = (raw_name or "").strip()
+    if not trimmed:
+        raise HTTPException(status_code=400, detail="Имя файла не может быть пустым")
+
+    original_suffix = Path(original_filename).suffix
+    if not original_suffix:
+        return trimmed
+
+    candidate_suffix = Path(trimmed).suffix
+    if candidate_suffix.lower() == original_suffix.lower():
+        stem = Path(trimmed).stem.strip()
+    else:
+        stem = trimmed[: -len(candidate_suffix)].strip() if candidate_suffix else trimmed
+
+    if not stem:
+        raise HTTPException(status_code=400, detail="Имя файла не может быть пустым")
+
+    return f"{stem}{original_suffix}"
+
+
 
 @router.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
@@ -99,6 +121,7 @@ async def upload_image(file: UploadFile = File(...)):
 
     document_data = {
         "filename": filename,
+        "display_filename": file.filename.strip() or file.filename,
         "path": file_path,
         "recognized_text": ocr_result["text"],  
         "boxes": ocr_result["boxes"],         
@@ -224,11 +247,22 @@ from typing import Optional, List
 class DocumentUpdate(BaseModel):
     recognized_text: Optional[str] = None
     tags: Optional[List[str]] = None
+    display_filename: Optional[str] = None
 
 @router.put("/documents/{doc_id}")
 async def update_document(doc_id: str, data: DocumentUpdate):
     object_id = object_id_or_404(doc_id)
     update_data = {key: value for key, value in data.model_dump().items() if value is not None}
+
+    if "display_filename" in update_data:
+        existing_doc = await documents_collection.find_one({"_id": object_id})
+        if not existing_doc:
+            raise HTTPException(status_code=404, detail="Документ не найден")
+
+        update_data["display_filename"] = normalize_display_filename(
+            update_data["display_filename"],
+            existing_doc.get("filename") or existing_doc.get("display_filename") or "",
+        )
 
     await documents_collection.update_one({"_id": object_id}, {"$set": update_data})
 
@@ -299,11 +333,17 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
     if target_filename == document.get("filename"):
         set_payload["file_hash"] = new_hash
         set_payload["image_version"] = image_version
+
+    if set_payload:
+        await documents_collection.update_one(
+            {"_id": object_id},
+            {"$set": set_payload},
+        )
+
     await documents_collection.update_one(
         {"_id": object_id, "gallery_images.filename": target_filename},
         {
             "$set": {
-                **set_payload,
                 "gallery_images.$.file_hash": new_hash,
                 "gallery_images.$.image_version": image_version,
             }
@@ -359,6 +399,7 @@ async def search_documents(q: str):
         {
             "$or": [
                 {"recognized_text": {"$regex": q, "$options": "i"}},
+                {"display_filename": {"$regex": q, "$options": "i"}},
                 {"filename": {"$regex": q, "$options": "i"}},
                 {"tags": {"$regex": q, "$options": "i"}},
             ]
