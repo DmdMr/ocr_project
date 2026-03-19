@@ -23,6 +23,21 @@
     let editedText = doc.recognized_text
     let galleryUploading = false
 
+    export let search = ""
+
+    function escapeRegExp(value: string) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    }
+
+    function highlightedFilename(filename: string, searchText: string) {
+        if (!searchText.trim()) return filename
+
+        const escaped = escapeRegExp(searchText.trim())
+        const regex = new RegExp(`(${escaped})`, "gi")
+
+        return filename.replace(regex, '<mark class="filename-highlight">$1</mark>')
+    }
+
 
     type DocumentCardEvents = {
         deleted: { id: string }
@@ -158,11 +173,16 @@
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
 
+    <div class="card-filename">
+        {@html highlightedFilename(doc.display_filename || doc.filename || "", search)}
+    </div>
 
     <div class="card-tags">
         {#if doc.tags?.length}
             {#each doc.tags as tag}
-                <button class="card-tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`} on:click={() => selectTagFromCard(tag)}>{tag}</button>
+                <button class="card-tag tag-colored" 
+                style={`--tag-hue: ${tagHue(tag)}`} 
+                on:click={() => selectTagFromCard(tag)}>{tag}</button>
             {/each}
         {:else}
             <!--
@@ -236,6 +256,24 @@ img {
 .card-tags-empty {
     font-size: 0.82rem;
     color: var(--text-muted);
+}
+
+.card-filename {
+    margin-top: 10px;
+    margin-bottom: 8px;
+    padding: 0 4px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+:global(.filename-highlight) {
+    background: #7CFC98;
+    color: #0f172a;
+    padding: 0 2px;
+    border-radius: 4px;
 }
 
 

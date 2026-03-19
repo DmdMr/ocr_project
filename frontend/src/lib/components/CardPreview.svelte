@@ -403,6 +403,10 @@
 
 
     const imageSrc = () => `${UPLOADS_URL}/${activeImageFilename}?v=${encodeURIComponent(selectedImage?.image_version ?? doc.image_version ?? doc.created_at ?? "")}`
+
+    function cardImageSrc(currentDoc: Document) {
+        return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
+    }
     
 </script>
 
