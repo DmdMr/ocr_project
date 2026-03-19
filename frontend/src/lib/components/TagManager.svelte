@@ -171,11 +171,14 @@
 
   .tags-list {
     display: flex;
+    flex-wrap: nowrap;
     gap: 8px;
-    flex-wrap: wrap;
-    overflow-x: auto;
+    overflow: hidden;
     margin-top: 8px;
-    padding-bottom: 4px;
+    padding-bottom: 0;
+    align-items: center;
+    min-height: 42px;
+    position: relative;
   }
 
 
@@ -214,9 +217,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 1;
-    min-width: 0;
-    max-width: 100%;
+    flex-shrink: 0;
   }
 
   .tag-chip-row.deleting .tag-chip {
@@ -255,12 +256,20 @@
     .mode-toggle {
       width: 100%;
     }
-
-
-
-    .tag-chip {
-      text-align: left;
-    }
   }
+
+
+  @media (max-width: 768px) {
+  .tags-list {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; /* smooth iOS scroll */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .tags-list::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+}
 
 </style>
