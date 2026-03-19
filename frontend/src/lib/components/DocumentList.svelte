@@ -27,6 +27,10 @@
         documents = documents.filter(doc => doc._id !== id)
     }
 
+    function replaceDocumentInList(updatedDocument: Document) {
+        documents = documents.map(doc => doc._id === updatedDocument._id ? updatedDocument : doc)
+    }
+
     function handleTagSelect(event: CustomEvent<{ tag: string | null }>) {
         activeTag = event.detail.tag
     }
@@ -124,6 +128,7 @@
         <DocumentCard
             {doc}
             on:deleted={(e) => removeFromList(e.detail.id)}
+            on:updated={(e) => replaceDocumentInList(e.detail.document)}
         />
     {/each}
 </div>

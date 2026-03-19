@@ -333,11 +333,17 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
     if target_filename == document.get("filename"):
         set_payload["file_hash"] = new_hash
         set_payload["image_version"] = image_version
+
+    if set_payload:
+        await documents_collection.update_one(
+            {"_id": object_id},
+            {"$set": set_payload},
+        )
+
     await documents_collection.update_one(
         {"_id": object_id, "gallery_images.filename": target_filename},
         {
             "$set": {
-                **set_payload,
                 "gallery_images.$.file_hash": new_hash,
                 "gallery_images.$.image_version": image_version,
             }
