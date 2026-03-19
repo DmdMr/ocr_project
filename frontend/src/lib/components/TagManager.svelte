@@ -91,19 +91,6 @@
 </script>
 
 <div class="tag-manager panel">
-  <div class="create-row">
-    <input
-      type="text"
-      placeholder="Создать тег"
-      bind:value={createInput}
-      on:keydown={handleCreateKeydown}
-    />
-    <button class="primary" on:click={submitTag}>Создать тег</button>
-  </div>
-
-  {#if createError}
-    <p class="error">{createError}</p>
-  {/if}
 
   <div class="toolbar">
     <input
@@ -112,11 +99,26 @@
       placeholder="Поиск тегов"
       bind:value={searchInput}
     />
+    
+  </div>
+
+  <div class="create-row">
+    <input
+      type="text"
+      placeholder="Создать тег"
+      bind:value={createInput}
+      on:keydown={handleCreateKeydown}
+    />
+    <button class="primary" on:click={submitTag}>Создать тег</button>
+
     <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
       {deleteMode ? "Готово" : "Выбрать для удаления"}
     </button>
   </div>
 
+  {#if createError}
+    <p class="error">{createError}</p>
+  {/if}
 
 
   <div class="tags-list">
@@ -143,6 +145,13 @@
   </div>
 </div>
 
+
+
+
+
+
+
+
 <style>
   .tag-manager {
     padding: 14px;
@@ -152,6 +161,7 @@
 
   .create-row{
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 8px;
   }
@@ -230,5 +240,7 @@
     background: color-mix(in srgb, var(--text-muted), transparent 45%);
     border-radius: 999px;
   }
+
+  
 
 </style>

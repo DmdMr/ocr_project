@@ -947,5 +947,30 @@
 }
 
 
+
+@media (max-width: 900px) {
+    .modal {
+        width: 96vw;
+        height: 92vh;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
+    .left {
+        min-height: 280px;
+        max-height: 40vh;
+        padding: 12px;
+    }
+
+    .right {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 14px;
+    }
+}
+
+
+
+
     
 </style>
