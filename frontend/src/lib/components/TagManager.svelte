@@ -172,8 +172,9 @@
   .tags-list {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
     margin-top: 8px;
     padding-bottom: 4px;
   }
@@ -257,19 +258,7 @@
     }
 
     .tags-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
-    }
-
-    .tag-chip-row {
-      width: 100%;
-      justify-content: space-between;
-    }
-
-    .tag-chip {
-      flex: 1;
-      text-align: left;
+      gap: 8px;
     }
   }
 
