@@ -42,6 +42,14 @@
         editing = false
     }
 
+    async function saveFilename(event: CustomEvent<{ display_filename: string }>) {
+        const updated = await updateDocument(doc._id, {
+            display_filename: event.detail.display_filename
+        })
+
+        doc = updated
+    }
+
     async function addTagToCard() {
         const availableTags = await getTags()
         const currentTags = doc.tags ?? []
@@ -166,6 +174,7 @@
             {editing}
             on:close={() => showPreview = false}
             on:save={save}
+            on:saveFilename={saveFilename}
             on:delete={remove}
             on:editToggle={() => editing = !editing}
             on:addTag={addTagToCard}
