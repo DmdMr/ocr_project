@@ -9,6 +9,8 @@
     let refreshKey = 0
     let themeMode: ThemeMode = "system"
     let language: "en" | "ru" = "en"
+    let viewMode: "grid" | "list" = "grid"
+    let viewModeLoaded = false
 
     function handleUpload() {
         refreshKey += 1
@@ -40,7 +42,17 @@
         const savedLanguage = (localStorage.getItem("language") as "en" | "ru" | null) ?? "en"
         applyTheme(savedTheme)
         setLanguage(savedLanguage)
+        const saved = localStorage.getItem("viewMode")
+        if (saved === "grid" || saved === "list") {
+            viewMode = saved
+        }
+        viewModeLoaded = true
     })
+
+
+    $: if (viewModeLoaded) {
+        localStorage.setItem("viewMode", viewMode)
+    }
 
 </script>
 
@@ -69,9 +81,9 @@
 
 <Upload on:uploaded={handleUpload} />
 
-<DocumentList {refreshKey} />
+<DocumentList {refreshKey} {viewMode} />
 
 
 
 
-<LifeguardHelp />
+<LifeguardHelp bind:viewMode />

@@ -176,34 +176,40 @@
 
 </script>
 
-
-<div class="card">
+<div class="row-card">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
+    <img
+        class="row-thumb"
+        src={cardImageSrc(doc)}
+        alt=""
+        on:click={() => showPreview = true}
+    />
 
-    <div class="card-filename">
-        {@html highlightedFilename(
-            getFilenameWithoutExtension(doc.display_filename || doc.filename || ""),
-            search
-        )}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="row-main" on:click={() => showPreview = true}>
+        <div class="row-filename">
+            {@html highlightedFilename(
+                getFilenameWithoutExtension(doc.display_filename || doc.filename || ""),
+                search
+            )}
+        </div>
+
+        <div class="row-tags">
+            {#if doc.tags?.length}
+                {#each doc.tags as tag}
+                    <button
+                        class="row-tag tag-colored"
+                        style={`--tag-hue: ${tagHue(tag)}`}
+                        on:click|stopPropagation={() => selectTagFromCard(tag)}
+                    >
+                        {tag}
+                    </button>
+                {/each}
+            {/if}
+        </div>
     </div>
-
-    <div class="card-tags">
-        {#if doc.tags?.length}
-            {#each doc.tags as tag}
-                <button class="card-tag tag-colored" 
-                style={`--tag-hue: ${tagHue(tag)}`} 
-                on:click={() => selectTagFromCard(tag)}>{tag}</button>
-            {/each}
-        {:else}
-            <!--
-        <span class="card-tags-empty">No tags</span>
-            -->
-            
-        {/if}
-    </div>
-
 
     {#if showPreview}
         <CardPreview
@@ -226,59 +232,70 @@
 </div>
 
 
-
 <style>
 
+.row-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 12px;
 
-
-
-.card {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 14px;
     background: var(--surface-strong);
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    break-inside: avoid;
-    margin-bottom: 20px;
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
 
-
-img {
-    width: 100%;
-    border-radius: var(--radius-md);
-    margin-bottom: 4px;
+.row-thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 12px;
+    flex-shrink: 0;
+    margin: 0;
+    cursor: pointer;
 }
 
-.card-tags {
+.row-main {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
     align-items: center;
+    gap: 14px;
+    min-width: 0;
+    width: 100%;
+    cursor: pointer;
 }
 
-.card-tag {
+.row-filename {
+    flex: left;
+    min-width: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.row-tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.row-tag {
     min-height: 30px;
     padding: 4px 10px;
     border-radius: 999px;
     font-size: 0.82rem;
-}
-
-.card-tags-empty {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-}
-
-.card-filename {
-    margin-top: 10px;
-    margin-bottom: 8px;
-    padding: 0 4px;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text);
-    word-break: break-word;
-    line-height: 1.35;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 :global(.filename-highlight) {
@@ -288,6 +305,37 @@ img {
     border-radius: 4px;
 }
 
+@media (max-width: 768px) {
+    .row-card {
+        gap: 10px;
+        padding: 10px 12px;
+    }
+
+    .row-thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+    }
+
+    .row-main {
+        gap: 10px;
+    }
+
+    .row-filename {
+        font-size: 0.95rem;
+    }
+
+    .row-tags {
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .row-tags::-webkit-scrollbar {
+        display: none;
+    }
+}
 
 
 </style>

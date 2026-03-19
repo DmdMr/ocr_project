@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte"
 
+
+  export let viewMode: "grid" | "list" = "grid"
+
+
   let open = false
 
   const projectText = [
@@ -67,6 +71,27 @@
       <button class="help-close" on:click={close}>✕</button>
 
       <h3>Навигатор по проекту</h3>
+
+      <div class="setting-row">
+      <span>Режим отображения</span>
+
+      <div class="view-switch">
+        <button
+          class:active={viewMode === "grid"}
+          on:click={() => viewMode = "grid"}
+        >
+          Сетка
+        </button>
+
+        <button
+          class:active={viewMode === "list"}
+          on:click={() => viewMode = "list"}
+        >
+          Список
+        </button>
+      </div>
+    </div>
+
       <p class="intro">
         Этот блок помогает быстро понять, что делает проект и с чего начать работу.
       </p>
@@ -82,7 +107,16 @@
       </p>
     </div>
   </div>
+
+  
 {/if}
+
+
+
+
+
+
+
 
 <style>
   .lifeguard-btn {

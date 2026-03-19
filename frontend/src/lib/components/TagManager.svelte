@@ -150,7 +150,13 @@
     text-align: left;
   }
 
-  .create-row {
+  .create-row{
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .toolbar {
     display: flex;
     gap: 10px;
     margin-bottom: 8px;
@@ -192,11 +198,6 @@
     opacity: 0.7;
   }
 
-  .toolbar {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
 
   .mode-toggle {
     white-space: nowrap;

@@ -3,12 +3,14 @@
     import { getDocuments, getTags } from "../api"
     import type { Document } from "../types"
     import DocumentCard from "./DocumentCard.svelte"
+    import DocumentRow from "./DocumentRow.svelte"
     import { updateDocument } from "../api"
     import TagManager from "./TagManager.svelte";
     import { UPLOADS_URL, API_URL} from "../api"
     import LifeguardHelp from "./LifeguardHelp.svelte"
 
     export let refreshKey: number
+    export let viewMode: "grid" | "list" = "grid"
 
     let documents: Document[] = []
     let search = ""
@@ -122,7 +124,7 @@
 />
 
 
-
+<!--
 <div class="grid">
     {#each sortedDocuments as doc (doc._id)}
         <DocumentCard
@@ -134,6 +136,32 @@
     {/each}
 </div>
 
+-->
+
+
+{#if viewMode === "grid"}
+  <div class="grid">
+    {#each sortedDocuments as doc (doc._id)}
+      <DocumentCard
+        {doc}
+        search={search}
+        on:deleted={(e) => removeFromList(e.detail.id)}
+        on:updated={(e) => replaceDocumentInList(e.detail.document)}
+      />
+    {/each}
+  </div>
+{:else}
+  <div class="list-view">
+    {#each sortedDocuments as doc (doc._id)}
+      <DocumentRow
+        {doc}
+        search={search}
+        on:deleted={(e) => removeFromList(e.detail.id)}
+        on:updated={(e) => replaceDocumentInList(e.detail.document)}
+      />
+    {/each}
+  </div>
+{/if}
 
 
 
