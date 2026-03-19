@@ -11,6 +11,7 @@ export interface GalleryImage {
 export interface Document {
     _id: string
     filename: string
+    display_filename?: string
     recognized_text: string
     created_at: string
     tags?: string[]  

@@ -5,7 +5,6 @@
     import { tagHue } from "../tagColors"
     import {
         deleteDocument,
-        editDocumentImage,
         getTags,
         normalizeTag,
         setDocumentTags,
@@ -28,18 +27,36 @@
     type DocumentCardEvents = {
         deleted: { id: string }
         tagClick: { tag: string }
+        updated: { document: Document }
     }
 
     const dispatch = createEventDispatcher<DocumentCardEvents>()
+
+    function applyDocumentUpdate(updated: Document) {
+        doc = updated
+        editedText = updated.recognized_text
+        dispatch("updated", { document: updated })
+    }
+
+    function cardImageSrc(currentDoc: Document) {
+        return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
+    }
 
     async function save() {
         const updated = await updateDocument(doc._id, {
             recognized_text: editedText
         })
 
-        doc = updated
-        editedText = updated.recognized_text
+        applyDocumentUpdate(updated)
         editing = false
+    }
+
+    async function saveFilename(event: CustomEvent<{ display_filename: string }>) {
+        const updated = await updateDocument(doc._id, {
+            display_filename: event.detail.display_filename
+        })
+
+        applyDocumentUpdate(updated)
     }
 
     async function addTagToCard() {
@@ -62,7 +79,7 @@
         }
 
         const updated = await setDocumentTags(doc._id, [...currentTags, normalized])
-        doc.tags = updated.tags ?? [...currentTags, normalized]
+        applyDocumentUpdate(updated)
     }
 
     async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
@@ -78,8 +95,7 @@
                 throw new Error("Сервер не вернул обновленные данные карточки")
             }
 
-            doc = result.document
-            editedText = doc.recognized_text
+            applyDocumentUpdate(result.document)
 
             const addedCount = Number(result.added_count ?? 0)
             if (addedCount > 0) {
@@ -94,10 +110,8 @@
         }
     }
 
-    async function handleImageEdit(event: CustomEvent<{ payload: { rotate_degrees?: number; image_filename?: string; crop?: { x_percent: number; y_percent: number; width_percent: number; height_percent: number } } }>) {
-        const updated = await editDocumentImage(doc._id, event.detail.payload)
-        doc = updated
-        editedText = updated.recognized_text
+    function handleDocumentUpdated(event: CustomEvent<{ document: Document }>) {
+        applyDocumentUpdate(event.detail.document)
     }
 
     async function removeTagFromCard() {
@@ -118,7 +132,7 @@
 
         const nextTags = currentTags.filter(tag => normalizeTag(tag) !== normalized)
         const updated = await setDocumentTags(doc._id, nextTags)
-        doc.tags = updated.tags ?? nextTags
+        applyDocumentUpdate(updated)
     }
 
 
@@ -142,7 +156,7 @@
 <div class="card">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <img src={`${UPLOADS_URL}/${doc.filename}`} alt="" on:click={() => showPreview = true}/>
+    <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
 
 
     <div class="card-tags">
@@ -166,12 +180,13 @@
             {editing}
             on:close={() => showPreview = false}
             on:save={save}
+            on:saveFilename={saveFilename}
             on:delete={remove}
             on:editToggle={() => editing = !editing}
             on:addTag={addTagToCard}
             on:removeTag={removeTagFromCard}
             on:tagClick={handleTagClick}
-            on:imageEdit={handleImageEdit}
+            on:documentUpdated={handleDocumentUpdated}
             on:addImages={uploadToCard}
             {galleryUploading}
         />
@@ -200,6 +215,7 @@
 
 img {
     width: 100%;
+    display: block;
     border-radius: var(--radius-md);
     margin-bottom: 4px;
 }
@@ -221,6 +237,23 @@ img {
 .card-tags-empty {
     font-size: 0.82rem;
     color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+    .card {
+        padding: 10px;
+        margin-bottom: 14px;
+    }
+
+    .card-tags {
+        gap: 4px;
+    }
+
+    .card-tag {
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 0.78rem;
+    }
 }
 
 
