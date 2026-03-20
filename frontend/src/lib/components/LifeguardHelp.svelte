@@ -5,7 +5,8 @@
   export let viewMode: "grid" | "list" = "grid"
 
 
-  let open = false
+  export let isHelpOpen = false
+
 
   const projectText = [
     "📄 Это приложение помогает извлекать текст с изображений документов (например, фото, сканов, чеков или заметок).",
@@ -21,11 +22,11 @@
   ]
 
   function toggle() {
-    open = !open
+    isHelpOpen = !isHelpOpen
   }
 
   function close() {
-    open = false
+    isHelpOpen = false
   }
 
   function handleKey(event: KeyboardEvent) {
@@ -63,7 +64,7 @@
   🆘
 </button>
 
-{#if open}
+{#if isHelpOpen}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="help-overlay" use:portal on:click={close}>

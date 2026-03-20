@@ -7,11 +7,15 @@
 
 export const API_URL = "/api"; // Use your LAN IP
 
+//export const API_URL = `http://${window.location.hostname}:8000/api`
+
+console.log(API_URL);
+
 //export const UPLOADS_URL = "http://localhost:8000/uploads";
 
 export const UPLOADS_URL = "/uploads"
 
-console.log(API_URL);
+console.log(UPLOADS_URL);
 
 export async function uploadImage(file: File) {
     const formData = new FormData()

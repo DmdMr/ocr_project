@@ -15,19 +15,47 @@
     } from "../api"
     
 
-    let showPreview = false
+    export let showPreview = false
 
     export let doc: Document
+
+    export let search = ""
+
+    export let selected = false
+    export let selectionActive = false
+
+    const dispatch = createEventDispatcher()
+
+
+    //const dispatch = createEventDispatcher<DocumentCardEvents & {
+    //    toggleSelect: undefined
+    //}>()
 
     let editing = false
     let editedText = doc.recognized_text
     let galleryUploading = false
 
-    export let search = ""
+    
 
     function escapeRegExp(value: string) {
         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     }
+
+    function handleCardClick() {
+        if (selectionActive) {
+            dispatch("toggleSelect")
+            return
+        }
+
+        showPreview = true
+    }
+
+    function handleCheckboxClick(event: MouseEvent) {
+        event.stopPropagation()
+        dispatch("toggleSelect")
+    }
+
+
 
     function highlightedFilename(filename: string, searchText: string) {
         if (!searchText.trim()) return filename
@@ -43,9 +71,32 @@
         deleted: { id: string }
         tagClick: { tag: string }
         updated: { document: Document }
+        toggleSelection: { id: string }
+
     }
 
-    const dispatch = createEventDispatcher<DocumentCardEvents>()
+    function openPreview() {
+        if (selectionActive) {
+            dispatch("toggleSelection", { id: doc._id })
+            return
+        }
+
+        showPreview = true
+    }
+
+    function toggleSelection(event: MouseEvent) {
+        event.stopPropagation()
+        dispatch("toggleSelection", { id: doc._id })
+    }
+
+    function handleCardKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            openPreview()
+        }
+    }
+
+    //const dispatch = createEventDispatcher<DocumentCardEvents>()
 
     function applyDocumentUpdate(updated: Document) {
         doc = updated
@@ -174,20 +225,51 @@
         return name.slice(0, lastDot)
     }
 
+    
+
 </script>
 
 
-<div class="card">
+
+
+
+<div
+    class:selected-card={selected}
+    class:selected
+    class="card"
+    role="button"
+    tabindex="0"
+    aria-pressed={selectionActive ? selected : undefined}
+    on:click={openPreview}
+    on:keydown={handleCardKeydown}
+>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="card-media" on:click={handleCardClick}>
+        <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
 
+
+        
+
+        <button
+            class="select-checkbox"
+            class:visible={selected}
+            aria-label="Выбрать карточку"
+            on:click={handleCheckboxClick}
+        >
+            {#if selected}{/if}
+        </button>
+    </div>
+    
     <div class="card-filename">
         {@html highlightedFilename(
             getFilenameWithoutExtension(doc.display_filename || doc.filename || ""),
             search
         )}
     </div>
+
+
 
     <div class="card-tags">
         {#if doc.tags?.length}
@@ -208,6 +290,8 @@
     {#if showPreview}
         <CardPreview
             {doc}
+            //on:openPreview={() => isPreviewOpen = true}
+            //on:closePreview={() => isPreviewOpen = false}
             bind:editedText
             {editing}
             on:close={() => showPreview = false}
@@ -223,26 +307,36 @@
             {galleryUploading}
         />
     {/if}
+    
 </div>
 
 
 
 <style>
 
-
-
-
 .card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 14px;
-    background: var(--surface-strong);
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    break-inside: avoid;
-    margin-bottom: 20px;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  background: var(--surface-strong);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  break-inside: avoid;
+  margin-bottom: 20px;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
+
+
+.card-media {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+
 
 
 img {
@@ -274,7 +368,7 @@ img {
     margin-top: 10px;
     margin-bottom: 8px;
     padding: 0 4px;
-    font-size: 1rem;
+    font-size: rem;
     font-weight: 600;
     color: var(--text);
     word-break: break-word;
@@ -288,6 +382,77 @@ img {
     border-radius: 4px;
 }
 
+.selected-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(59, 130, 246, 0.22);
+    border: 3px solid #3b82f6;
+    border-radius: var(--radius-md);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.selected-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    pointer-events: none;
+    z-index: 3;
+}
+
+
+.select-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.card:hover .select-checkbox,
+.card.selected-card .select-checkbox,
+.select-checkbox.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  background: var(--surface-strong);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  break-inside: avoid;
+  margin-bottom: 20px;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.card.selected-card {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--surface-strong), var(--accent) 6%);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent), transparent 65%),
+    var(--shadow-soft);
+}
 
 
 </style>

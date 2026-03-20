@@ -4,6 +4,8 @@
     import Settings from "./lib/components/Settings.svelte";
     import { onMount } from "svelte"
     import LifeguardHelp from "./lib/components/LifeguardHelp.svelte"
+    import DocumentCard from "./lib/components/DocumentCard.svelte";
+    
 
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
@@ -11,6 +13,8 @@
     let language: "en" | "ru" = "en"
     let viewMode: "grid" | "list" = "grid"
     let viewModeLoaded = false
+    let isHelpOpen = false
+    let showPreview = false
 
     function handleUpload() {
         refreshKey += 1
@@ -85,5 +89,6 @@
 
 
 
-
-<LifeguardHelp bind:viewMode />
+{#if !isHelpOpen && !showPreview}
+<LifeguardHelp bind:viewMode/>
+{/if}

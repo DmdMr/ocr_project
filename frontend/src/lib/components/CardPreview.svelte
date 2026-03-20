@@ -499,14 +499,19 @@
             </div>
 
             <div class="preview-tools">
-                <button on:click={zoomOut} aria-label="Уменьшить">−</button>
+
                 <!--
+                <button on:click={zoomOut} aria-label="Уменьшить">−</button>
+                
                 <span class="zoom-badge">{displayZoomPercent()}%</span>
-            -->
+         
                 <button on:click={zoomIn} aria-label="Увеличить">+</button>
                 <button on:click={resetZoom}>Сбросить масштаб</button>
 
+
                 <span class="toolbar-divider" aria-hidden="true"></span>
+
+            -->
 
                 {#if !imageEditOpen}
                     <button class="primary" on:click={startImageEdit}>Редактировать изображение</button>
@@ -948,7 +953,7 @@
 
 
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
     .modal {
         width: 96vw;
         height: 92vh;

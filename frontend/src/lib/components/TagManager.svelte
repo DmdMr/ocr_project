@@ -172,10 +172,7 @@
     margin-bottom: 8px;
   }
 
-  .create-row input,
-  .search {
-    flex: 1;
-  }
+  
 
   .error {
     margin: 0 0 8px;
@@ -192,10 +189,7 @@
   }
 
 
-  .tag-chip {
-    border-radius: 999px;
-    padding: 8px 14px;
-  }
+
 
   .tag-chip.selected {
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 68%);

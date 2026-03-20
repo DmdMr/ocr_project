@@ -6,7 +6,14 @@
     import DocumentRow from "./DocumentRow.svelte"
     import { updateDocument } from "../api"
     import TagManager from "./TagManager.svelte";
-    import { UPLOADS_URL, API_URL} from "../api"
+    import { 
+        UPLOADS_URL, 
+        API_URL,
+        normalizeTag,
+        setDocumentTags,
+        deleteDocument
+    
+    } from "../api"
     import LifeguardHelp from "./LifeguardHelp.svelte"
 
     export let refreshKey: number
@@ -17,6 +24,71 @@
     let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc"
     let tags: string[] = []
     let activeTag: string | null = null
+    let selectedIds: string[] = []
+
+    console.log(selectedIds);
+
+    function isSelected(id: string) {
+        return selectedIds.includes(id)
+    }
+
+
+    function toggleCardSelection(id: string) {
+        if (selectedIds.includes(id)) {
+            selectedIds = selectedIds.filter(item => item !== id)
+        } else {
+            selectedIds = [...selectedIds, id]
+        }
+        console.log(selectedIds);
+    }
+
+    function clearSelection() {
+        selectedIds = []
+    }
+
+    async function bulkDelete() {
+        if (!selectedIds.length) return
+
+        const confirmed = confirm(`Удалить ${selectedIds.length} карточек?`)
+        if (!confirmed) return
+
+        await Promise.all(selectedIds.map(id => deleteDocument(id)))
+
+        documents = documents.filter(doc => !selectedIds.includes(doc._id))
+        clearSelection()
+    }
+
+    async function bulkAddTag() {
+
+        const availableTags = await getTags()
+
+        if (!selectedIds.length) return
+
+        const entered = prompt(`Введите тег для выбранных карточек:\n${availableTags.join(", ")}`)
+        if (!entered) return
+
+        const normalized = normalizeTag(entered)
+
+        const selectedDocs = documents.filter(doc => selectedIds.includes(doc._id))
+
+        const updatedDocs = await Promise.all(
+            selectedDocs.map(async (doc) => {
+            const currentTags = doc.tags ?? []
+            const nextTags = currentTags.includes(normalized)
+                ? currentTags
+                : [...currentTags, normalized]
+
+            return await setDocumentTags(doc._id, nextTags)
+            })
+        )
+
+        documents = documents.map(doc => {
+            const updated = updatedDocs.find(item => item._id === doc._id)
+            return updated ?? doc
+        })
+
+        clearSelection()
+    }
 
     async function load() {
         documents = await getDocuments()
@@ -56,7 +128,8 @@
         const matchesText =
             displayName.toLowerCase().includes(search.toLowerCase()) ||
             doc.filename.toLowerCase().includes(search.toLowerCase()) ||
-            doc.recognized_text.toLowerCase().includes(search.toLowerCase())
+            doc.recognized_text.toLowerCase().includes(search.toLowerCase()) ||
+            doc.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
         const matchesTag = !activeTag || doc.tags?.includes(activeTag)
         return matchesText && matchesTag
     })
@@ -104,24 +177,10 @@
             <option value="name_asc">Имя (A–Z)</option>
             <option value="name_desc">Имя (Z–A)</option>
             <option value="date_desc">Сначала новые</option>
-            <option value="date_asc">Сначала старые</option>
-            
+            <option value="date_asc">Сначала старые</option> 
         </select>
     </div>
-
-    
 </div>
-
-
-
-
-
-
-<TagManager
-    initialTags={tags}
-    on:select={handleTagSelect}
-    on:tagsChanged={handleTagsChanged}
-/>
 
 
 <!--
@@ -139,12 +198,41 @@
 -->
 
 
+
+<TagManager
+    initialTags={tags}
+    on:select={handleTagSelect}
+    on:tagsChanged={handleTagsChanged}
+/>
+
+
+{#if selectedIds.length > 0}
+  <div class="bulk-actions-manager panel">
+    <div class="bulk-left">
+      Выбрано: {selectedIds.length}
+    </div>
+
+    <div class="bulk-right">
+      <button on:click={bulkAddTag}>Добавить тег</button>
+      <button class="danger" on:click={bulkDelete}>Удалить</button>
+      <button on:click={clearSelection}>Отмена</button>
+    </div>
+  </div>
+{/if}
+
+
+
+
 {#if viewMode === "grid"}
   <div class="grid">
     {#each sortedDocuments as doc (doc._id)}
       <DocumentCard
         {doc}
         search={search}
+        //selected={isSelected(doc._id)}
+        selected={selectedIds.includes(doc._id)}
+        selectionActive={selectedIds.length > 0}
+        on:toggleSelect={() => toggleCardSelection(doc._id)}
         on:deleted={(e) => removeFromList(e.detail.id)}
         on:updated={(e) => replaceDocumentInList(e.detail.document)}
       />
@@ -189,9 +277,25 @@
   column-gap: 1em;
 }
 
-@media (min-width: 600px) {
+
+.bulk-actions-manager {
+    padding: 14px;
+    margin-bottom: 16px;
+    text-align: left;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+@media (min-width: 480px) {
     .grid{
         column-count: 3;
+    }    
+}
+
+@media (min-width: 640px) {
+    .grid{
+        column-count: 4;
     }    
 }
 
