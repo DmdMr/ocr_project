@@ -272,12 +272,6 @@
 
 
 
-.grid {
-  column-count: 2;
-  column-gap: 1em;
-}
-
-
 .bulk-actions-manager {
     padding: 14px;
     margin-bottom: 16px;
@@ -286,6 +280,23 @@
     flex-wrap: wrap;
     gap: 10px;
 }
+
+
+
+/*
+
+.grid {
+    columns: 250px;
+}
+
+*/
+
+.grid {
+  column-count: 2;
+  column-gap: 1em;
+}
+
+
 
 @media (min-width: 480px) {
     .grid{
@@ -304,6 +315,7 @@
         column-count: 5;
     }    
 }
+
 
 
 .search-input {
