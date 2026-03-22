@@ -13,6 +13,7 @@
   --border-strong: rgba(153, 169, 191, 0.38);
   --shadow-soft: 0 14px 40px rgba(28, 39, 56, 0.12);
   --shadow-press: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --focus-ring: color-mix(in srgb, var(--primary), white 30%);
   --primary: #2f6cdf;
   --primary-hover: #2358bc;
   --danger: #e5484d;
@@ -46,6 +47,7 @@
     --border-strong: rgba(162, 178, 204, 0.28);
     --shadow-soft: 0 16px 42px rgba(0, 0, 0, 0.45);
     --shadow-press: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --focus-ring: color-mix(in srgb, var(--primary), white 20%);
     --primary: #5a94ff;
     --primary-hover: #4a84ed;
     --danger: #ff6269;
@@ -70,6 +72,7 @@
   --border-strong: rgba(153, 169, 191, 0.38);
   --shadow-soft: 0 14px 40px rgba(28, 39, 56, 0.12);
   --shadow-press: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --focus-ring: color-mix(in srgb, var(--primary), white 30%);
   --primary: #2f6cdf;
   --primary-hover: #2358bc;
   --danger: #e5484d;
@@ -93,6 +96,7 @@
   --border-strong: rgba(162, 178, 204, 0.28);
   --shadow-soft: 0 16px 42px rgba(0, 0, 0, 0.45);
   --shadow-press: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --focus-ring: color-mix(in srgb, var(--primary), white 20%);
   --primary: #5a94ff;
   --primary-hover: #4a84ed;
   --danger: #ff6269;
@@ -152,6 +156,10 @@ textarea {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: var(--shadow-press);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 button,
@@ -169,6 +177,7 @@ button {
 
 button:hover {
   transform: translateY(0.25px);
+  border-color: color-mix(in srgb, var(--primary), white 20%);
 }
 
 button:active {
@@ -193,18 +202,29 @@ textarea {
 button.primary,
 button.upload-btn,
 button[type="submit"] {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary), white 18%), var(--primary));
   color: #fff;
   border-color: transparent;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary), transparent 70%);
 }
 
-
+button.primary:hover,
+button.upload-btn:hover,
+button[type="submit"]:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary-hover), white 12%), var(--primary-hover));
+}
 
 button.delete,
 button.danger {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--danger), white 12%), var(--danger));
   color: #fff;
   border-color: transparent;
 }
 
+button.delete:hover,
+button.danger:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--danger-hover), white 10%), var(--danger-hover));
+}
 
 .card,
 .panel,
@@ -212,6 +232,9 @@ button.danger {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background: var(--surface-strong);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
 
 .tag-chip {
