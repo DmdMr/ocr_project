@@ -18,6 +18,7 @@
 
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
+    export let columnCount = 5
 
     let documents: Document[] = []
     let search = ""
@@ -224,7 +225,7 @@
 
 
 {#if viewMode === "grid"}
-  <div class="grid">
+<div class="grid" style={`--column-count: ${columnCount};`}>
     {#each sortedDocuments as doc (doc._id)}
       <DocumentCard
         {doc}
@@ -292,10 +293,17 @@
 */
 
 .grid {
-  column-count: 2;
+  column-count: var(--column-count);
   column-gap: 1em;
 }
 
+
+/*
+@media (min-width: 320px) {
+    .grid{
+        column-count: 2;
+    }    
+}
 
 
 @media (min-width: 480px) {
@@ -316,7 +324,7 @@
     }    
 }
 
-
+*/
 
 .search-input {
     width: min(560px, 100%);

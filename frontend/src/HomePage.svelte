@@ -17,6 +17,21 @@
     let viewModeLoaded = false
     let isHelpOpen = false
     let showPreview = false
+    let columnCount = 5
+    let columnsLoaded = false
+
+
+    onMount(() => {
+        const saved = localStorage.getItem("columnCount")
+        if (saved) {
+        columnCount = Number(saved)
+        }
+        columnsLoaded = true
+    })
+
+    $: if (columnsLoaded) {
+        localStorage.setItem("columnCount", String(columnCount))
+    }
 
     function handleUpload() {
         refreshKey += 1
@@ -92,13 +107,12 @@
 
 <Upload on:uploaded={handleUpload} />
 
-<DocumentList {refreshKey} {viewMode} />
+<DocumentList {refreshKey} {viewMode} {columnCount} />
 
 
 
-{#if !isHelpOpen && !showPreview}
-<LifeguardHelp bind:viewMode/>
-{/if}
+<LifeguardHelp bind:viewMode bind:columnCount />
+
 
 <style>
 .about-manager {

@@ -4,8 +4,11 @@
 
   export let viewMode: "grid" | "list" = "grid"
 
+  export let columnCount = 5
+
 
   export let isHelpOpen = false
+
 
 
   const projectText = [
@@ -91,6 +94,20 @@
           Список
         </button>
       </div>
+      <div class="setting-row">
+        <label for="columns-range">Количество колонок: {columnCount}</label>
+        <input
+          id="columns-range"
+          type="range"
+          min="2"
+          max="15"
+          step="1"
+          bind:value={columnCount}
+        />
+      </div>
+      
+
+
     </div>
 
       <p class="intro">
@@ -120,6 +137,11 @@
 
 
 <style>
+
+
+  input[type="range"] {
+    width: 300px;
+  }
   .lifeguard-btn {
     position: fixed;
     right: 18px;
