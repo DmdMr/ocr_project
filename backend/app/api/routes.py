@@ -46,6 +46,17 @@ def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: st
     }
 
 
+def build_attachment_item(*, filename: str, path: str, original_name: str, content_type: str, size: int):
+    return {
+        "filename": filename,
+        "path": path,
+        "original_name": original_name,
+        "content_type": content_type,
+        "size": size,
+        "created_at": datetime.utcnow(),
+    }
+
+
 def normalize_document(doc: dict):
     doc["_id"] = str(doc["_id"])
     gallery = doc.get("gallery_images")
@@ -61,6 +72,8 @@ def normalize_document(doc: dict):
                 "image_version": doc.get("image_version"),
             }
         ]
+    if doc.get("attachments") is None:
+        doc["attachments"] = []
     return doc
 
 
@@ -130,6 +143,7 @@ async def upload_image(file: UploadFile = File(...)):
         "image_version": datetime.utcnow().isoformat(),
         "tags": [],
         "gallery_images": [gallery_item],
+        "attachments": [],
     }
 
 
@@ -216,6 +230,76 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
         "added_count": len(added_items),
         "skipped_files": skipped_files,
         "document": updated_doc,
+    }
+
+
+@router.post("/documents/{doc_id}/attachments")
+async def upload_attachments_to_document(doc_id: str, files: List[UploadFile] = File(...)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    if not files:
+        raise HTTPException(status_code=400, detail="Требуется хотя бы один файл")
+
+    attachments = document.get("attachments") or []
+    existing_names = {item.get("original_name", "").strip().lower() for item in attachments}
+
+    added_items = []
+    skipped_files: List[str] = []
+
+    for file in files:
+        original_name = (file.filename or "").strip()
+        if not original_name:
+            skipped_files.append("Безымянный файл: пустое имя файла")
+            continue
+
+        if (file.content_type or "").startswith("image/"):
+            skipped_files.append(f"{original_name}: изображения добавляются через галерею")
+            continue
+
+        file_bytes = await file.read()
+        if not file_bytes:
+            skipped_files.append(f"{original_name}: пустой файл")
+            continue
+
+        normalized_name = original_name.lower()
+        if normalized_name in existing_names:
+            skipped_files.append(f"{original_name}: такой файл уже прикреплён")
+            continue
+
+        filename, file_path = save_upload_file(file, file_bytes)
+        attachment = build_attachment_item(
+            filename=filename,
+            path=file_path,
+            original_name=original_name,
+            content_type=file.content_type or "application/octet-stream",
+            size=len(file_bytes),
+        )
+        added_items.append(attachment)
+        existing_names.add(normalized_name)
+
+    if not added_items:
+        detail = "Не загружено ни одного нового файла"
+        if skipped_files:
+            detail = f"{detail}. " + "; ".join(skipped_files)
+        raise HTTPException(status_code=400, detail=detail)
+
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$push": {"attachments": {"$each": added_items}}},
+    )
+
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    return {
+        "message": "Файлы прикреплены",
+        "added_count": len(added_items),
+        "skipped_files": skipped_files,
+        "document": normalize_document(updated_doc),
     }
 
 
@@ -360,6 +444,34 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
     return updated_doc
 
 
+@router.delete("/documents/{doc_id}/attachments/{attachment_filename}")
+async def delete_attachment(doc_id: str, attachment_filename: str):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    attachments = document.get("attachments") or []
+    attachment = next((item for item in attachments if item.get("filename") == attachment_filename), None)
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+    file_path = os.path.join(UPLOAD_DIR, attachment_filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$pull": {"attachments": {"filename": attachment_filename}}},
+    )
+
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    return normalize_document(updated_doc)
+
+
 
 
 UPLOAD_FOLDER = "backend/uploads"
@@ -375,8 +487,11 @@ async def delete_document(doc_id: str):
 
     gallery_images = document.get("gallery_images") or []
     gallery_filenames = [item.get("filename") for item in gallery_images if item.get("filename")]
+    attachment_files = document.get("attachments") or []
+    attachment_filenames = [item.get("filename") for item in attachment_files if item.get("filename")]
 
     filenames_to_delete = set(gallery_filenames)
+    filenames_to_delete.update(attachment_filenames)
     if document.get("filename"):
         filenames_to_delete.add(document.get("filename"))
 

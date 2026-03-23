@@ -53,6 +53,26 @@ export async function uploadImagesToDocument(documentId: string, files: File[]) 
     return data
 }
 
+export async function uploadDocumentAttachments(documentId: string, files: File[]) {
+    const formData = new FormData()
+    for (const file of files) {
+        formData.append("files", file)
+    }
+
+    const response = await fetch(`${API_URL}/documents/${documentId}/attachments`, {
+        method: "POST",
+        body: formData
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to upload files to card")
+    }
+
+    return data
+}
+
 export async function getDocuments() {
     const res = await fetch(`${API_URL}/documents`)
     if (!res.ok) throw new Error("Failed to fetch documents")
@@ -172,6 +192,20 @@ export async function editDocumentImage(id: string, payload: ImageEditPayload) {
 
     if (!response.ok) {
         throw new Error(data.detail || "Failed to edit image")
+    }
+
+    return data
+}
+
+export async function deleteDocumentAttachment(id: string, attachmentFilename: string) {
+    const response = await fetch(`${API_URL}/documents/${id}/attachments/${encodeURIComponent(attachmentFilename)}`, {
+        method: "DELETE"
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to delete attachment")
     }
 
     return data
