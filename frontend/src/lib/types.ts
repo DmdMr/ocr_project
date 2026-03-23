@@ -7,6 +7,15 @@ export interface GalleryImage {
     created_at?: string
 }
 
+export interface AttachmentFile {
+    filename: string
+    path?: string
+    original_name?: string
+    content_type?: string
+    size?: number
+    created_at?: string
+}
+
 
 export interface Document {
     _id: string
@@ -17,4 +26,5 @@ export interface Document {
     tags?: string[]  
     image_version?: string
     gallery_images?: GalleryImage[]
+    attachments?: AttachmentFile[]
 }

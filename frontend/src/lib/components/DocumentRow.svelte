@@ -5,10 +5,6 @@
     import { tagHue } from "../tagColors"
     import {
         deleteDocument,
-        getTags,
-        normalizeTag,
-        setDocumentTags,
-        tagExists,
         updateDocument,
         uploadImagesToDocument,
         UPLOADS_URL
@@ -74,29 +70,6 @@
         applyDocumentUpdate(updated)
     }
 
-    async function addTagToCard() {
-        const availableTags = await getTags()
-        const currentTags = doc.tags ?? []
-        const candidates = availableTags.filter(tag => !currentTags.includes(tag))
-
-        if (candidates.length === 0) {
-            alert("Нет доступных тегов для добавления")
-            return
-        }
-
-        const entered = prompt(`Введите тег для добавления:\n${candidates.join(", ")}`)
-        if (!entered) return
-
-        const normalized = normalizeTag(entered)
-        if (!tagExists(candidates, normalized)) {
-            alert("Тега нет в списке доступных")
-            return
-        }
-
-        const updated = await setDocumentTags(doc._id, [...currentTags, normalized])
-        applyDocumentUpdate(updated)
-    }
-
     async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
         const files = event.detail.files
         if (!files.length) return
@@ -128,29 +101,6 @@
     function handleDocumentUpdated(event: CustomEvent<{ document: Document }>) {
         applyDocumentUpdate(event.detail.document)
     }
-
-    async function removeTagFromCard() {
-        const currentTags = doc.tags ?? []
-        if (currentTags.length === 0) {
-            alert("У этой карточки нет тегов")
-            return
-        }
-
-        const entered = prompt(`Введите тег для удаления:\n${currentTags.join(", ")}`)
-        if (!entered) return
-
-        const normalized = normalizeTag(entered)
-        if (!tagExists(currentTags, normalized)) {
-            alert("Тег не привязан к этой карточке")
-            return
-        }
-
-        const nextTags = currentTags.filter(tag => normalizeTag(tag) !== normalized)
-        const updated = await setDocumentTags(doc._id, nextTags)
-        applyDocumentUpdate(updated)
-    }
-
-
 
     async function remove() {
         await deleteDocument(doc._id)
@@ -221,8 +171,6 @@
             on:saveFilename={saveFilename}
             on:delete={remove}
             on:editToggle={() => editing = !editing}
-            on:addTag={addTagToCard}
-            on:removeTag={removeTagFromCard}
             on:tagClick={handleTagClick}
             on:documentUpdated={handleDocumentUpdated}
             on:addImages={uploadToCard}

@@ -1,8 +1,17 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte"
-    import type { Document, GalleryImage } from "../types"
+    import type { AttachmentFile, Document, GalleryImage } from "../types"
     import { tagHue } from "../tagColors"
-    import { UPLOADS_URL, editDocumentImage, type ImageEditPayload } from "../api"
+    import CardTagPicker from "./CardTagPicker.svelte"
+    import {
+        UPLOADS_URL,
+        deleteDocumentAttachment,
+        editDocumentImage,
+        getTags,
+        setDocumentTags,
+        uploadDocumentAttachments,
+        type ImageEditPayload
+    } from "../api"
 
     export let doc: Document
     export let editedText: string
@@ -29,6 +38,13 @@
     let filenameEditing = false
     let filenameDraft = ""
     let filenameError = ""
+    let tagPickerOpen = false
+    let imageViewerOpen = false
+    let allTags: string[] = []
+    let tagsLoading = false
+    let tagsError = ""
+    let attachmentUploadError = ""
+    let attachmentsUploading = false
 
     let imageEl: HTMLImageElement | null = null
     let imageStageEl: HTMLDivElement | null = null
@@ -53,6 +69,7 @@
     }
 
     $: selectedImage = galleryImages.find(item => item.filename === activeImageFilename) ?? galleryImages[0]
+    $: attachments = (doc.attachments ?? []) as AttachmentFile[]
     $: displayFilename = doc.display_filename ?? doc.filename
     $: if (!filenameEditing) {
         filenameDraft = displayFilename
@@ -263,6 +280,33 @@
         }
     }
 
+    function openImageViewer() {
+        if (!selectedImage) return
+        imageViewerOpen = true
+    }
+
+    function closeImageViewer() {
+        imageViewerOpen = false
+    }
+
+    function currentGalleryIndex() {
+        return galleryImages.findIndex(item => item.filename === activeImageFilename)
+    }
+
+    function showPreviousImage() {
+        if (!galleryImages.length) return
+        const index = currentGalleryIndex()
+        const nextIndex = index <= 0 ? galleryImages.length - 1 : index - 1
+        activeImageFilename = galleryImages[nextIndex]?.filename ?? activeImageFilename
+    }
+
+    function showNextImage() {
+        if (!galleryImages.length) return
+        const index = currentGalleryIndex()
+        const nextIndex = index >= galleryImages.length - 1 ? 0 : index + 1
+        activeImageFilename = galleryImages[nextIndex]?.filename ?? activeImageFilename
+    }
+
 
     function startDrag() {
         isDragging = true
@@ -354,16 +398,108 @@
     function toggleEdit() {
         dispatch("editToggle")
     }
-    function addTag() {
-        dispatch("addTag")
-    }
-
-    function removeTag() {
-        dispatch("removeTag")
-    }
-
     function selectTag(tag: string) {
         dispatch("tagClick", { tag })
+    }
+
+    async function loadTags(force = false) {
+        if (tagsLoading) return
+        if (allTags.length && !force) return
+
+        tagsLoading = true
+        tagsError = ""
+
+        try {
+            allTags = await getTags()
+        } catch (error) {
+            tagsError = error instanceof Error ? error.message : "Не удалось загрузить теги"
+        } finally {
+            tagsLoading = false
+        }
+    }
+
+    async function openTagPicker() {
+        tagPickerOpen = true
+        await loadTags()
+    }
+
+    function closeTagPicker() {
+        tagPickerOpen = false
+        tagsError = ""
+    }
+
+    async function saveDocumentTags(nextTags: string[]) {
+        tagsError = ""
+
+        try {
+            const updated = await setDocumentTags(doc._id, nextTags)
+            doc = updated
+            dispatch("documentUpdated", { document: updated })
+        } catch (error) {
+            tagsError = error instanceof Error ? error.message : "Не удалось обновить теги"
+        }
+    }
+
+    async function handleTagAdded(event: CustomEvent<{ tag: string }>) {
+        const normalized = event.detail.tag.trim().toLowerCase()
+        const currentTags = doc.tags ?? []
+        if (currentTags.some(tag => tag.trim().toLowerCase() === normalized)) return
+
+        await saveDocumentTags([...currentTags, normalized])
+    }
+
+    async function handleTagRemoved(event: CustomEvent<{ tag: string }>) {
+        const normalized = event.detail.tag.trim().toLowerCase()
+        const nextTags = (doc.tags ?? []).filter(tag => tag.trim().toLowerCase() !== normalized)
+        await saveDocumentTags(nextTags)
+    }
+
+    async function handleAttachmentFiles(event: Event) {
+        const input = event.target as HTMLInputElement
+        const files = Array.from(input.files ?? [])
+        input.value = ""
+
+        if (!files.length) return
+
+        const nonImageFiles = files.filter(file => !file.type.startsWith("image/"))
+        if (!nonImageFiles.length) {
+            attachmentUploadError = "Изображения нужно добавлять через галерею"
+            return
+        }
+
+        attachmentsUploading = true
+        attachmentUploadError = ""
+
+        try {
+            const result = await uploadDocumentAttachments(doc._id, nonImageFiles)
+            if (!result.document) {
+                throw new Error("Сервер не вернул обновлённые данные карточки")
+            }
+
+            doc = result.document
+            dispatch("documentUpdated", { document: result.document })
+
+            if (result.skipped_files?.length) {
+                attachmentUploadError = result.skipped_files.join("; ")
+            }
+        } catch (error) {
+            attachmentUploadError = error instanceof Error ? error.message : "Не удалось прикрепить файлы"
+        } finally {
+            attachmentsUploading = false
+        }
+    }
+
+    async function removeAttachment(attachment: AttachmentFile) {
+        if (!attachment.filename) return
+
+        try {
+            const updated = await deleteDocumentAttachment(doc._id, attachment.filename)
+            doc = updated
+            dispatch("documentUpdated", { document: updated })
+            attachmentUploadError = ""
+        } catch (error) {
+            attachmentUploadError = error instanceof Error ? error.message : "Не удалось удалить файл"
+        }
     }
 
     function uploadGalleryFiles(event: Event) {
@@ -375,13 +511,40 @@
         input.value = ""
     }
 
+    function attachmentDownloadUrl(attachment: AttachmentFile) {
+        return `${UPLOADS_URL}/${attachment.filename}`
+    }
+
+    function attachmentLabel(attachment: AttachmentFile) {
+        return attachment.original_name || attachment.filename || "Файл"
+    }
+
+    function formatFileSize(value?: number) {
+        if (!value || value <= 0) return "Размер неизвестен"
+        if (value < 1024) return `${value} Б`
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} КБ`
+        return `${(value / (1024 * 1024)).toFixed(1)} МБ`
+    }
+
     function handleKey(e: KeyboardEvent) {
         if (e.key === "Escape") {
+            if (imageViewerOpen) {
+                closeImageViewer()
+                return
+            }
             if (imageEditOpen) {
                 cancelImageEdit()
                 return
             }
             close()
+        }
+
+        if (imageViewerOpen && e.key === "ArrowLeft") {
+            showPreviousImage()
+        }
+
+        if (imageViewerOpen && e.key === "ArrowRight") {
+            showNextImage()
         }
     }
 
@@ -397,6 +560,7 @@
     }
 
     onMount(() => {
+        loadTags()
         window.addEventListener("keydown", handleKey)
         return () => window.removeEventListener("keydown", handleKey)
     })
@@ -438,6 +602,7 @@
             >
                 {#key imageSrc()}
                     <!-- svelte-ignore a11y_missing_attribute -->
+                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                     <img
                         bind:this={imageEl}
                         src={imageSrc()}
@@ -445,6 +610,7 @@
                         draggable="false"
                         on:dragstart|preventDefault
                         style={`transform: scale(${zoomLevel}) rotate(${imageEditOpen && activeTool === 'rotate' ? previewRotation : 0}deg);`}
+                        on:click={!imageEditOpen ? openImageViewer : undefined}
                     />
                 {/key}
 
@@ -542,6 +708,17 @@
                         on:change={uploadGalleryFiles}
                     />
                 </label>
+
+                <label class="gallery-upload-btn secondary" class:disabled={attachmentsUploading}>
+                    {attachmentsUploading ? "Прикрепление файлов..." : "Добавить PDF и другие файлы"}
+                    <input
+                        type="file"
+                        multiple
+                        hidden
+                        disabled={attachmentsUploading}
+                        on:change={handleAttachmentFiles}
+                    />
+                </label>
             </div>
 
             <div class="gallery-strip">
@@ -555,6 +732,51 @@
                         <span>{index === 0 ? "Оригинал" : `Изображение ${index + 1}`}</span>
                     </button>
                 {/each}
+            </div>
+
+            <div class="gallery-actions">
+                <button on:click={showPreviousImage} disabled={galleryImages.length < 2}>← Предыдущее</button>
+                <button on:click={openImageViewer}>Открыть галерею</button>
+                <button on:click={showNextImage} disabled={galleryImages.length < 2}>Следующее →</button>
+            </div>
+
+            <div class="attachments-panel">
+                <div class="attachments-header">
+                    <h4>Файлы карточки</h4>
+                    <span>{attachments.length}</span>
+                </div>
+
+                {#if attachmentUploadError}
+                    <p class="attachment-error">{attachmentUploadError}</p>
+                {/if}
+
+                {#if attachments.length}
+                    <div class="attachment-list">
+                        {#each attachments as attachment}
+                            <div class="attachment-item">
+                                <div class="attachment-meta">
+                                    <strong>{attachmentLabel(attachment)}</strong>
+                                    <span>{attachment.content_type || "Файл"} · {formatFileSize(attachment.size)}</span>
+                                </div>
+
+                                <div class="attachment-actions">
+                                    <a
+                                        class="attachment-link"
+                                        href={attachmentDownloadUrl(attachment)}
+                                        download={attachment.original_name || attachment.filename}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        Скачать
+                                    </a>
+                                    <button class="danger" on:click={() => removeAttachment(attachment)}>Удалить</button>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <p class="attachment-empty">Дополнительных файлов пока нет.</p>
+                {/if}
             </div>
 
 
@@ -588,8 +810,7 @@
                 </div>
 
                 <div class="actions">
-                    <button on:click={addTag}>Добавить тег</button>
-                    <button on:click={removeTag}>Удалить тег</button>
+                    <button on:click={openTagPicker}>Управлять тегами</button>
                     {#if editing}
                         <button on:click={save}>Сохранить</button>
                     {:else}
@@ -598,6 +819,41 @@
                     <button class="delete" on:click={remove}>Удалить</button>
                 </div>
             </div>
+
+            {#if tagPickerOpen}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div class="tag-picker-backdrop" on:click={closeTagPicker}>
+                    <div class="tag-picker-modal" on:click|stopPropagation>
+                        <CardTagPicker
+                            assignedTags={doc.tags ?? []}
+                            allTags={allTags}
+                            loading={tagsLoading}
+                            error={tagsError}
+                            on:add={handleTagAdded}
+                            on:remove={handleTagRemoved}
+                            on:close={closeTagPicker}
+                        />
+                    </div>
+                </div>
+            {/if}
+
+            {#if imageViewerOpen}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div class="lightbox-backdrop" on:click={closeImageViewer}>
+                    <div class="lightbox-modal" on:click|stopPropagation>
+                        <button class="lightbox-close" on:click={closeImageViewer}>✕</button>
+                        <button class="lightbox-nav left" on:click={showPreviousImage} disabled={galleryImages.length < 2}>←</button>
+                        <img src={imageSrc()} alt="" />
+                        <button class="lightbox-nav right" on:click={showNextImage} disabled={galleryImages.length < 2}>→</button>
+                        <div class="lightbox-caption">
+                            <strong>{currentGalleryIndex() + 1} / {galleryImages.length}</strong>
+                            <span>{selectedImage?.filename || ""}</span>
+                        </div>
+                    </div>
+                </div>
+            {/if}
 
 
 
@@ -621,6 +877,21 @@
     justify-content: center;
     align-items: center;
     z-index: 1000;
+}
+
+.tag-picker-backdrop {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(10, 14, 20, 0.66);
+    z-index: 5;
+}
+
+.tag-picker-modal {
+    max-width: 100%;
 }
 
 .modal {
@@ -768,6 +1039,8 @@
 .gallery-toolbar {
     display: flex;
     justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .gallery-upload-btn {
@@ -780,6 +1053,10 @@
     background: var(--surface);
     cursor: pointer;
     font-weight: 600;
+}
+
+.gallery-upload-btn.secondary {
+    background: color-mix(in srgb, var(--surface), transparent 5%);
 }
 
 .gallery-upload-btn.disabled {
@@ -825,6 +1102,175 @@
 .gallery-item.active {
     border-color: color-mix(in srgb, var(--primary), white 15%);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 72%);
+}
+
+.gallery-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.attachments-panel {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--surface), transparent 6%);
+}
+
+.attachments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.attachments-header h4 {
+    margin: 0;
+}
+
+.attachments-header span {
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--surface-elevated);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.attachment-list {
+    display: grid;
+    gap: 10px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.attachment-meta {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.attachment-meta strong {
+    overflow-wrap: anywhere;
+}
+
+.attachment-meta span {
+    color: var(--text-muted);
+    font-size: 0.84rem;
+}
+
+.attachment-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.attachment-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0.55rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.attachment-empty,
+.attachment-error {
+    margin: 0;
+}
+
+.attachment-empty {
+    color: var(--text-muted);
+}
+
+.attachment-error {
+    color: var(--danger);
+}
+
+.lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(10, 14, 20, 0.82);
+}
+
+.lightbox-modal {
+    position: relative;
+    width: min(100%, 980px);
+    height: min(100%, 760px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-modal img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    margin: 0;
+}
+
+.lightbox-close,
+.lightbox-nav {
+    position: absolute;
+    z-index: 1;
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 999px;
+    background: rgba(16, 22, 32, 0.72);
+    color: #fff;
+    border-color: transparent;
+}
+
+.lightbox-close {
+    top: 0;
+    right: 0;
+}
+
+.lightbox-nav.left {
+    left: 0;
+}
+
+.lightbox-nav.right {
+    right: 0;
+}
+
+.lightbox-caption {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    display: grid;
+    gap: 4px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(16, 22, 32, 0.72);
+    color: #fff;
+    text-align: center;
 }
 
 
