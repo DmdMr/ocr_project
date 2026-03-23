@@ -110,6 +110,17 @@
         />
     </label>
 
+    <label class="file-btn">
+        Сделать фото
+        <input
+            type="file"
+            accept="image/png,image/jpeg,image/jpg"
+            capture="environment"
+            on:change={handleChange}
+            hidden
+        />
+    </label>
+
     <button class="upload-btn" on:click={handleUpload} disabled={uploading}>
         {uploading ? "Загрузка..." : "Загрузить"}
     </button>

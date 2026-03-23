@@ -1,0 +1,41 @@
+this is the file on how to export and import database and uploads folder 
+
+
+EXPORT UPLOADS AND DB:
+
+compress files of uploads:
+tar -czvf uploads.tar.gz backend/uploads/
+
+database:
+mongosh - go to the mongoshell
+show dbs - view all of the created databases
+use db_name - self explanatory
+
+
+
+to use command below exit the mongoshell (exit/ctrl+d)
+mongodump --db your_db_name --out dump/
+
+mongodump --db ocr_database --out dump/
+
+dump/
+└── your_db_name/
+    ├── documents.bson
+    ├── documents.metadata.json
+(structure of the database)
+
+
+
+
+
+IMPORT TO THE NEW PC:
+
+restore uploads:
+tar -xzvf uploads.tar.gz
+
+restore database:
+mongorestore --db your_db_name dump/your_db_name
+
+
+
+

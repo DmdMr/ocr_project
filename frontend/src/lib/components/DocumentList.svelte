@@ -298,7 +298,6 @@
 }
 
 
-/*
 @media (min-width: 320px) {
     .grid{
         column-count: 2;
@@ -324,7 +323,7 @@
     }    
 }
 
-*/
+
 
 
 
