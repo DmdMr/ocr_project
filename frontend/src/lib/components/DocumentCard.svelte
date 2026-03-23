@@ -359,10 +359,7 @@ img {
     font-size: 0.82rem;
 }
 
-.card-tags-empty {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-}
+
 
 .card-filename {
     margin-top: 10px;
@@ -382,34 +379,8 @@ img {
     border-radius: 4px;
 }
 
-.selected-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(59, 130, 246, 0.22);
-    border: 3px solid #3b82f6;
-    border-radius: var(--radius-md);
-    pointer-events: none;
-    z-index: 2;
-}
 
-.selected-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    background: #2563eb;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1rem;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
-    pointer-events: none;
-    z-index: 3;
-}
+
 
 
 .select-checkbox {

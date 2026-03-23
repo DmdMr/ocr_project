@@ -326,20 +326,7 @@
 
 */
 
-.search-input {
-    width: min(560px, 100%);
-    min-height: 42px;
-    padding: 0.58rem 0.92rem;
-    border-radius: 14px;
-    border-color: color-mix(in srgb, var(--border-strong), var(--primary) 20%);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white, transparent 35%),
-      0 8px 24px color-mix(in srgb, var(--primary), transparent 88%);
-}
 
-.search-input::placeholder {
-    color: color-mix(in srgb, var(--text-muted), transparent 12%);
-}
 
 
 .sort-select {
@@ -349,9 +336,7 @@
 }
 
 
-.search-input {
-    width: 250px;
-}
+
 
 
 </style>

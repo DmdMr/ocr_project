@@ -749,12 +749,7 @@
     box-shadow: none;
 }
 
-.toolbar-divider {
-    width: 1px;
-    height: 28px;
-    background: var(--border);
-    margin: 0 2px;
-}
+
 
 .edit-toolbar-inline {
     display: inline-flex;
@@ -768,15 +763,7 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 70%);
 }
 
-.zoom-badge {
-    min-width: 62px;
-    text-align: center;
-    padding: 4px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--border-strong);
-    font-size: 0.84rem;
-    color: var(--text-muted);
-}
+
 
 .gallery-toolbar {
     display: flex;
@@ -840,21 +827,7 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 72%);
 }
 
-.tool-switch {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
 
-.tool-switch button {
-    min-height: 36px;
-    padding: 0.4rem 0.85rem;
-}
-
-.tool-switch button.active {
-    border-color: color-mix(in srgb, var(--primary), white 15%);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 70%);
-}
 
 .angle-badge {
     margin-left: auto;
@@ -875,12 +848,7 @@
     text-overflow: ellipsis;
 }
 
-.tool-actions {
-    margin-top: 8px;
-    display: flex;
-    gap: 8px;
-    justify-content: flex-start;
-}
+
 
 .text {
     overflow-y: auto;
@@ -941,15 +909,6 @@
 }
 
 
-.tool-switch {
-    display: flex;
-    gap: 8px;
-}
-
-.tool-switch button.active {
-    border-color: color-mix(in srgb, var(--primary), white 15%);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 70%);
-}
 
 
 
