@@ -423,7 +423,7 @@ async def create_tag(request: TagRequest):
     if existing_tag:
         raise HTTPException(status_code=400, detail="Тег уже существует")
 
-    new_tag = {"tag": tag}
+    new_tag = {"tag": tag, "created_at": datetime.utcnow()}
     await tags_collection.insert_one(new_tag)
     return {"message": "Тег добавлен", "tag": new_tag}
 
@@ -449,6 +449,6 @@ async def delete_tag(tag: str):
 @router.get("/tags")
 async def get_tags():
     tags = []
-    async for tag in tags_collection.find():
+    async for tag in tags_collection.find().sort([("created_at", -1), ("_id", -1)]):
         tags.append(tag["tag"])
     return {"tags": tags}
