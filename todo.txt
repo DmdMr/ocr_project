@@ -31,3 +31,24 @@ Hardest things to implement:
 - Training a model for the recognition, so it would not make any mistakes, and searching won't be a problem
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+Urgent things to do:
+- card - being able to add and remove tags visually 
+- card - text - have better text editor, like in microsoft word, so text will be prettier
+- card - images - upload images to the card, being able to view them in the gallery + remove them from the card
+- card - files - being able to upload files to the card, and then we can download them later
+
+
+
+

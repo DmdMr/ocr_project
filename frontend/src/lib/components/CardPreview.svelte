@@ -490,7 +490,9 @@
                         </div>
                     {/if}
                 </div>
+                <!--
                 <small>{new Date(doc.created_at).toLocaleString()}</small>
+                -->
                 {#if filenameError}
                     <p class="filename-error">{filenameError}</p>
                 {/if}
@@ -558,6 +560,7 @@
             </div>
 
 
+            <!--
             {#if imageEditOpen}
                 <p class="tool-hint">
                     {#if activeTool === "crop"}
@@ -567,6 +570,7 @@
                     {/if}
                 </p>
             {/if}
+            -->
 
             <div class="text">
                 {#if editing}

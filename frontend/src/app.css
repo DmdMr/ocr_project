@@ -127,7 +127,7 @@ body {
 }
 
 #app {
-  width: min(1100px, 100%);
+  width: min(90%, 100%);
   margin: 0 auto;
   padding: 2rem 1rem;
   text-align: center;
