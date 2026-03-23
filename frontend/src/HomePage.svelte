@@ -79,9 +79,15 @@
 
 
 <div class="panel about-manager">
-<button on:click={() => push('/about')}>
-  About
-</button>
+  <div class="quick-actions">
+    <button on:click={() => push('/about')}>
+      About
+    </button>
+
+    <button class="primary" on:click={() => push('/assistant')}>
+      Чат-помощник
+    </button>
+  </div>
 </div>
 
 <!--
@@ -121,6 +127,11 @@
     text-align: left;
 }
 
+.quick-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
 
 
 
