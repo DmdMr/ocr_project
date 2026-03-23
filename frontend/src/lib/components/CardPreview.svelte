@@ -2,7 +2,8 @@
     import { createEventDispatcher, onMount } from "svelte"
     import type { Document, GalleryImage } from "../types"
     import { tagHue } from "../tagColors"
-    import { UPLOADS_URL, editDocumentImage, type ImageEditPayload } from "../api"
+    import CardTagPicker from "./CardTagPicker.svelte"
+    import { UPLOADS_URL, editDocumentImage, getTags, setDocumentTags, type ImageEditPayload } from "../api"
 
     export let doc: Document
     export let editedText: string
@@ -29,6 +30,10 @@
     let filenameEditing = false
     let filenameDraft = ""
     let filenameError = ""
+    let tagPickerOpen = false
+    let allTags: string[] = []
+    let tagsLoading = false
+    let tagsError = ""
 
     let imageEl: HTMLImageElement | null = null
     let imageStageEl: HTMLDivElement | null = null
@@ -354,16 +359,60 @@
     function toggleEdit() {
         dispatch("editToggle")
     }
-    function addTag() {
-        dispatch("addTag")
-    }
-
-    function removeTag() {
-        dispatch("removeTag")
-    }
-
     function selectTag(tag: string) {
         dispatch("tagClick", { tag })
+    }
+
+    async function loadTags(force = false) {
+        if (tagsLoading) return
+        if (allTags.length && !force) return
+
+        tagsLoading = true
+        tagsError = ""
+
+        try {
+            allTags = await getTags()
+        } catch (error) {
+            tagsError = error instanceof Error ? error.message : "Не удалось загрузить теги"
+        } finally {
+            tagsLoading = false
+        }
+    }
+
+    async function openTagPicker() {
+        tagPickerOpen = true
+        await loadTags()
+    }
+
+    function closeTagPicker() {
+        tagPickerOpen = false
+        tagsError = ""
+    }
+
+    async function saveDocumentTags(nextTags: string[]) {
+        tagsError = ""
+
+        try {
+            const updated = await setDocumentTags(doc._id, nextTags)
+            doc = updated
+            dispatch("documentUpdated", { document: updated })
+        } catch (error) {
+            tagsError = error instanceof Error ? error.message : "Не удалось обновить теги"
+        }
+    }
+
+    async function handleTagAdded(event: CustomEvent<{ tag: string }>) {
+        const normalized = event.detail.tag.trim().toLowerCase()
+        const currentTags = doc.tags ?? []
+        if (currentTags.some(tag => tag.trim().toLowerCase() === normalized)) return
+
+        await saveDocumentTags([...currentTags, normalized])
+    }
+
+    async function handleTagRemoved(event: CustomEvent<{ tag: string }>) {
+        const normalized = event.detail.tag.trim().toLowerCase()
+        const nextTags = (doc.tags ?? []).filter(tag => tag.trim().toLowerCase() !== normalized)
+        await saveDocumentTags(nextTags)
     }
 
     function uploadGalleryFiles(event: Event) {
@@ -397,6 +446,7 @@
     }
 
     onMount(() => {
+        loadTags()
         window.addEventListener("keydown", handleKey)
         return () => window.removeEventListener("keydown", handleKey)
     })
@@ -592,8 +642,7 @@
                 </div>
 
                 <div class="actions">
-                    <button on:click={addTag}>Добавить тег</button>
-                    <button on:click={removeTag}>Удалить тег</button>
+                    <button on:click={openTagPicker}>Управлять тегами</button>
                     {#if editing}
                         <button on:click={save}>Сохранить</button>
                     {:else}
@@ -602,6 +651,24 @@
                     <button class="delete" on:click={remove}>Удалить</button>
                 </div>
             </div>
+
+            {#if tagPickerOpen}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div class="tag-picker-backdrop" on:click={closeTagPicker}>
+                    <div class="tag-picker-modal" on:click|stopPropagation>
+                        <CardTagPicker
+                            assignedTags={doc.tags ?? []}
+                            allTags={allTags}
+                            loading={tagsLoading}
+                            error={tagsError}
+                            on:add={handleTagAdded}
+                            on:remove={handleTagRemoved}
+                            on:close={closeTagPicker}
+                        />
+                    </div>
+                </div>
+            {/if}
 
 
 
@@ -625,6 +692,21 @@
     justify-content: center;
     align-items: center;
     z-index: 1000;
+}
+
+.tag-picker-backdrop {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(10, 14, 20, 0.66);
+    z-index: 5;
+}
+
+.tag-picker-modal {
+    max-width: 100%;
 }
 
 .modal {
