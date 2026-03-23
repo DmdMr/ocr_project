@@ -36,7 +36,7 @@
 
     try {
       await createTag(normalized)
-      tags = [...tags, normalized]
+      tags = [normalized, ...tags]
       createInput = ""
       createError = ""
       dispatch("tagsChanged", { tags })
