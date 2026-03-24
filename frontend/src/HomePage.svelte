@@ -129,6 +129,14 @@
     text-align: left;
 }
 
+@media (max-width: 640px) {
+    .about-manager {
+        padding: 8px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+}
+
 .quick-actions {
     display: flex;
     gap: 10px;

@@ -175,10 +175,10 @@
         />
 
         <select bind:value={sortOrder} class="sort-select">
-            <option value="name_asc">Имя (A–Z)</option>
-            <option value="name_desc">Имя (Z–A)</option>
             <option value="date_desc">Сначала новые</option>
             <option value="date_asc">Сначала старые</option> 
+            <option value="name_asc">Имя (A–Z)</option>
+            <option value="name_desc">Имя (Z–A)</option>
         </select>
     </div>
 </div>
@@ -265,6 +265,14 @@
     text-align: left;
 }
 
+@media (max-width: 640px) {
+    .search-manager {
+        padding: 8px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+}
+
 
 .controls-row {
     display: flex;
@@ -285,6 +293,13 @@
     gap: 10px;
 }
 
+@media (max-width: 640px) {
+    .bulk-actions-manager {
+        padding: 8px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+}
 
 
 /*
@@ -299,7 +314,6 @@
   column-count: var(--column-count);
   column-gap: 1em;
 }
-
 
 @media (min-width: 320px) {
     .grid{

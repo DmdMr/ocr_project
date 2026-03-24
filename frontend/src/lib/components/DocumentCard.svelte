@@ -276,6 +276,14 @@
   transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
+@media (max-width: 640px) {
+    .card {
+        padding: 8px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+}
+
 
 .card-media {
   position: relative;

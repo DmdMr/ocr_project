@@ -159,6 +159,14 @@
     text-align: left;
   }
 
+  @media (max-width: 640px) {
+    .tag-manager {
+        padding: 8px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+}
+
   .create-row{
     display: flex;
     flex-wrap: wrap;

@@ -488,6 +488,7 @@
   .about-card {
     padding: 1.5rem;
     text-align: left;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .about-card-wide {
@@ -526,37 +527,8 @@
     margin-bottom: 0;
   }
 
-  .about-card {
-    padding: 1.5rem;
-    text-align: left;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
   .about-card:hover {
     transform: translateY(-2px);
-  }
-
-  @media (max-width: 820px) {
-    .about-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .about-card-wide {
-      grid-column: auto;
-    }
-
-    .about-page {
-      padding: 1rem 0 2rem;
-    }
-
-    .about-hero,
-    .about-card {
-      padding: 1.25rem;
-    }
-
-    .about-hero-top {
-      justify-content: center;
-    }
   }
 
   .code-block {
@@ -570,5 +542,120 @@
     color: #e6edf3;
   }
 
-  
+  @media (max-width: 820px) {
+    .about-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .about-card-wide {
+      grid-column: auto;
+    }
+
+    .about-page {
+      padding: 0.75rem 0 1.5rem;
+    }
+
+    .about-hero,
+    .about-card {
+      padding: 1rem;
+    }
+
+    .about-hero {
+      margin-bottom: 1rem;
+    }
+
+    .about-hero-top {
+      justify-content: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero-icon {
+      font-size: 2rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .about-heading {
+      margin-bottom: 0.5rem;
+      font-size: 1.7rem;
+      line-height: 1.15;
+    }
+
+    .about-subheading {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .about-card h2 {
+      margin-bottom: 0.75rem;
+      font-size: 1.05rem;
+      line-height: 1.3;
+    }
+
+    .about-card p {
+      margin-bottom: 0.7rem;
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+
+    .about-list {
+      padding-left: 1rem;
+    }
+
+    .about-list li {
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .back-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .code-block {
+      padding: 0.65rem 0.8rem;
+      font-size: 0.82rem;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .about-page {
+      padding: 0.5rem 0 1rem;
+    }
+
+    .about-hero,
+    .about-card {
+      padding: 0.85rem;
+    }
+
+    .about-grid {
+      gap: 0.75rem;
+    }
+
+    .about-heading {
+      font-size: 1.45rem;
+    }
+
+    .about-subheading,
+    .about-card p,
+    .about-list li {
+      font-size: 0.9rem;
+    }
+
+    .about-card h2 {
+      font-size: 1rem;
+    }
+
+    .hero-icon {
+      font-size: 1.7rem;
+    }
+
+    .code-block {
+      font-size: 0.78rem;
+      padding: 0.6rem 0.7rem;
+    }
+  }
 </style>

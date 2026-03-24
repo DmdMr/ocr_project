@@ -2,6 +2,17 @@
     import { createEventDispatcher } from "svelte"
     import { uploadImage } from "../api"
 
+    export let galleryUploading = false
+
+    function uploadGalleryFiles(event: Event) {
+        const input = event.target as HTMLInputElement
+        const files = Array.from(input.files ?? [])
+        if (!files.length) return
+
+        dispatch("addImages", { files })
+        input.value = ""
+    }
+
     const dispatch = createEventDispatcher()
 
     type UploadStatus = "pending" | "uploading" | "processing" | "done" | "error"
@@ -100,29 +111,17 @@
     on:dragover={handleDragOver}
 >
     <label class="file-btn upload-btn">
-        Выбрать файлы
+        Выбрать изображения
         <input
             type="file"
-            accept="image/png,image/jpeg,image/jpg,image/gif"
+            accept="image/*"
             multiple
-            capture="environment"
             on:change={handleChange}
             hidden
         />
     </label>
 
-    <!--
-    <label class="file-btn">
-        Сделать фото
-        <input
-            type="file"
-            accept="image/png,image/jpeg,image/jpg"
-            capture="environment"
-            on:change={handleChange}
-            hidden
-        />
-    </label>
-    -->
+    
 
     <button class="upload-btn" on:click={handleUpload} disabled={uploading}>
         {uploading ? "Загрузка..." : "Загрузить"}
@@ -165,6 +164,14 @@
     padding: 14px;
     margin-bottom: 16px;
     text-align: left;
+}
+
+@media (max-width: 640px) {
+    .upload-manager {
+        padding: 8px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
 }
 
 .upload {

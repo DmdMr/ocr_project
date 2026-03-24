@@ -133,6 +133,13 @@ body {
   text-align: center;
 }
 
+@media (max-width: 640px) {
+  #app {
+    width: 100%;
+    padding: 1rem 0.6rem;
+  }
+}
+
 h1,
 h2,
 h3 {
@@ -179,6 +186,21 @@ textarea {
   padding: 0.55rem 0.8rem;
 }
 
+@media (max-width: 640px) {
+  select,
+  input[type="text"],
+  input[type="search"],
+  textarea {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.95rem;
+  }
+
+  button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.95rem;
+  }
+}
+
 button {
   padding: 0.55rem 1rem;
   font-weight: 600;
@@ -209,6 +231,19 @@ button[type="submit"]:hover {
   border-color: var(--primary-hover);
 }
 
+@media (max-width: 640px) {
+  .upload-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .upload-row button,
+  .upload-row label {
+    width: 100%;
+  }
+}
+
 button.delete,
 button.danger {
   background-color: var(--danger);
@@ -231,6 +266,20 @@ button.danger:hover {
   box-shadow: var(--shadow-soft);
 }
 
+@media (max-width: 640px) {
+  .card,
+  .about-card,
+  .about-hero {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    margin-bottom: 0.5rem;
+  }
+}
+
 .tag-chip {
   display: inline-flex;
   align-items: center;
@@ -246,4 +295,18 @@ button.danger:hover {
 
 ::placeholder {
   color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .tags-list {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    border-radius: 12px;
+  }
 }
