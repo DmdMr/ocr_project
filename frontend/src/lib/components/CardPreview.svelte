@@ -5,6 +5,7 @@
     import CardTagPicker from "./CardTagPicker.svelte"
     import {
         UPLOADS_URL,
+        deleteDocumentImage,
         deleteDocumentAttachment,
         editDocumentImage,
         getTags,
@@ -20,21 +21,14 @@
 
     const dispatch = createEventDispatcher()
 
-    let leftWidth = 50 // percent
-    let isDragging = false
-
-
     type EditTool = "crop" | "rotate"
 
     let imageEditOpen = false
     let activeTool: EditTool = "crop"
     let previewRotation = 0
     let zoomLevel = 1
-    const MIN_ZOOM = 0.5
-    const MAX_ZOOM = 3
-    const ZOOM_STEP = 0.25
 
-    let activeImageFilename = ""
+    let selectedImageIndex = 0
     let filenameEditing = false
     let filenameDraft = ""
     let filenameError = ""
@@ -63,12 +57,12 @@
 
 
     $: galleryImages = (doc.gallery_images?.length ? doc.gallery_images : [{ filename: doc.filename, image_version: doc.image_version }]) as GalleryImage[]
-
-    $: if (!activeImageFilename || !galleryImages.some(item => item.filename === activeImageFilename)) {
-        activeImageFilename = galleryImages[0]?.filename ?? doc.filename
+    $: if (!galleryImages.length) {
+        selectedImageIndex = 0
+    } else if (selectedImageIndex < 0 || selectedImageIndex >= galleryImages.length) {
+        selectedImageIndex = Math.max(0, galleryImages.length - 1)
     }
-
-    $: selectedImage = galleryImages.find(item => item.filename === activeImageFilename) ?? galleryImages[0]
+    $: selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0]
     $: attachments = (doc.attachments ?? []) as AttachmentFile[]
     $: displayFilename = doc.display_filename ?? doc.filename
     $: if (!filenameEditing) {
@@ -111,10 +105,6 @@
         return Math.round(normalizeRotation(previewRotation))
     }
 
-    function displayZoomPercent() {
-        return Math.round(zoomLevel * 100)
-    }
-
     function saveRotationValue() {
         const snapped = Math.round(previewRotation / SNAP_STEP) * SNAP_STEP
         return normalizeRotation(snapped)
@@ -122,22 +112,6 @@
 
     function nudgeRotation(direction: -1 | 1) {
         previewRotation = normalizeRotation(saveRotationValue() + direction * SNAP_STEP)
-    }
-
-    function clampZoom(value: number) {
-        return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
-    }
-
-    function zoomIn() {
-        zoomLevel = clampZoom(zoomLevel + ZOOM_STEP)
-    }
-
-    function zoomOut() {
-        zoomLevel = clampZoom(zoomLevel - ZOOM_STEP)
-    }
-
-    function resetZoom() {
-        zoomLevel = 1
     }
 
     function getStageCoords(event: MouseEvent) {
@@ -223,6 +197,14 @@
         isRotating = false
     }
 
+    function setSelectedImageIndex(index: number) {
+        if (!galleryImages.length) {
+            selectedImageIndex = 0
+            return
+        }
+        selectedImageIndex = Math.max(0, Math.min(index, galleryImages.length - 1))
+    }
+
     async function saveImageEdit() {
         let payload: ImageEditPayload | null = null
 
@@ -232,7 +214,7 @@
                 return
             }
 
-            payload = { rotate_degrees: normalized, image_filename: activeImageFilename }
+            payload = { rotate_degrees: normalized, image_filename: selectedImage?.filename }
         }
 
         if (activeTool === "crop") {
@@ -256,7 +238,7 @@
             }
 
             payload = {
-                image_filename: activeImageFilename,
+                image_filename: selectedImage?.filename,
                 crop: {
                     x_percent: Math.max(0, Math.min(100, xPercent)),
                     y_percent: Math.max(0, Math.min(100, yPercent)),
@@ -289,42 +271,18 @@
         imageViewerOpen = false
     }
 
-    function currentGalleryIndex() {
-        return galleryImages.findIndex(item => item.filename === activeImageFilename)
-    }
-
     function showPreviousImage() {
         if (!galleryImages.length) return
-        const index = currentGalleryIndex()
-        const nextIndex = index <= 0 ? galleryImages.length - 1 : index - 1
-        activeImageFilename = galleryImages[nextIndex]?.filename ?? activeImageFilename
+        const nextIndex = selectedImageIndex <= 0 ? galleryImages.length - 1 : selectedImageIndex - 1
+        setSelectedImageIndex(nextIndex)
     }
 
     function showNextImage() {
         if (!galleryImages.length) return
-        const index = currentGalleryIndex()
-        const nextIndex = index >= galleryImages.length - 1 ? 0 : index + 1
-        activeImageFilename = galleryImages[nextIndex]?.filename ?? activeImageFilename
+        const nextIndex = selectedImageIndex >= galleryImages.length - 1 ? 0 : selectedImageIndex + 1
+        setSelectedImageIndex(nextIndex)
     }
 
-
-    function startDrag() {
-        isDragging = true
-        window.addEventListener("mousemove", onDrag)
-        window.addEventListener("mouseup", stopDrag)
-    }
-
-    function onDrag(e: MouseEvent) {
-        if (!isDragging) return
-        const newWidth = (e.clientX / window.innerWidth) * 100
-        leftWidth = Math.min(80, Math.max(20, newWidth))
-    }
-
-    function stopDrag() {
-        isDragging = false
-        window.removeEventListener("mousemove", onDrag)
-        window.removeEventListener("mouseup", stopDrag)
-    }
 
     function close() {
         dispatch("close")
@@ -502,6 +460,30 @@
         }
     }
 
+    async function removeGalleryImage(index: number) {
+        const image = galleryImages[index]
+        if (!image?.filename || galleryImages.length <= 1) return
+        if (!confirm("Удалить это изображение из карточки?")) return
+
+        try {
+            const updated = await deleteDocumentImage(doc._id, image.filename)
+
+            const nextImages = (updated.gallery_images?.length ? updated.gallery_images : []) as GalleryImage[]
+            const nextIndex = Math.max(0, Math.min(selectedImageIndex >= index ? selectedImageIndex - 1 : selectedImageIndex, nextImages.length - 1))
+
+            doc = {
+                ...updated,
+                gallery_images: [...nextImages],
+                attachments: [...(updated.attachments ?? [])]
+            }
+            setSelectedImageIndex(nextIndex)
+            dispatch("documentUpdated", { document: doc })
+            attachmentUploadError = ""
+        } catch (error) {
+            attachmentUploadError = error instanceof Error ? error.message : "Не удалось удалить изображение"
+        }
+    }
+
     function uploadGalleryFiles(event: Event) {
         const input = event.target as HTMLInputElement
         const files = Array.from(input.files ?? [])
@@ -566,13 +548,7 @@
     })
 
 
-    const imageSrc = () => `${UPLOADS_URL}/${activeImageFilename}?v=${encodeURIComponent(selectedImage?.image_version ?? doc.image_version ?? doc.created_at ?? "")}`
-
-    function cardImageSrc(currentDoc: Document) {
-        return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
-    }
-
-
+    const imageSrc = () => `${UPLOADS_URL}/${selectedImage?.filename ?? doc.filename}?v=${encodeURIComponent(selectedImage?.image_version ?? doc.image_version ?? doc.created_at ?? "")}`
     function getFilenameWithoutExtension(name: string) {
         if (!name) return ""
 
@@ -580,6 +556,12 @@
         if (lastDot <= 0) return name
 
         return name.slice(0, lastDot)
+    }
+
+    function autoResizeDescription(event: Event) {
+        const target = event.target as HTMLTextAreaElement
+        target.style.height = "auto"
+        target.style.height = `${Math.max(220, target.scrollHeight)}px`
     }
     
 </script>
@@ -592,6 +574,23 @@
     <div class="modal" on:click|stopPropagation>
 
         <div class="left">
+            <div class="image-panel-toolbar">
+                {#if !imageEditOpen}
+                    <button class="primary" on:click={startImageEdit}>Редактировать изображение</button>
+                {:else}
+                    <div class="edit-toolbar-inline">
+                        <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Обрезка</button>
+                        <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Поворот</button>
+                        {#if activeTool === "rotate"}
+                            <button on:click={() => nudgeRotation(-1)} aria-label="Повернуть влево на 90 градусов">↺ 90°</button>
+                            <button on:click={() => nudgeRotation(1)} aria-label="Повернуть вправо на 90 градусов">↻ 90°</button>
+                            <span class="angle-badge">{displayRotation()}°</span>
+                        {/if}
+                        <button class="primary" on:click={saveImageEdit}>Сохранить</button>
+                        <button on:click={cancelImageEdit}>Отмена</button>
+                    </div>
+                {/if}
+            </div>
             <!-- svelte-ignore a11y_missing_attribute -->
             <div
                 class:editing={imageEditOpen}
@@ -613,6 +612,8 @@
                         on:click={!imageEditOpen ? openImageViewer : undefined}
                     />
                 {/key}
+                <button class="stage-nav left" on:click={showPreviousImage} disabled={galleryImages.length < 2} aria-label="Предыдущее изображение">←</button>
+                <button class="stage-nav right" on:click={showNextImage} disabled={galleryImages.length < 2} aria-label="Следующее изображение">→</button>
 
                 {#if imageEditOpen && activeTool === "crop" && cropRect}
                     <div
@@ -620,6 +621,21 @@
                         style={`left:${cropRect.x}px; top:${cropRect.y}px; width:${cropRect.width}px; height:${cropRect.height}px;`}
                     ></div>
                 {/if}
+            </div>
+            <div class="gallery-strip">
+                {#each galleryImages as image, index}
+                    <div class="gallery-thumb">
+                        <button
+                            class="gallery-item"
+                            class:active={index === selectedImageIndex}
+                            on:click={() => setSelectedImageIndex(index)}
+                        >
+                            <img src={`${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`} alt="" />
+                            <span>{index === 0 ? "Оригинал" : `Изображение ${index + 1}`}</span>
+                        </button>
+                        <button class="thumb-delete" on:click={() => removeGalleryImage(index)} disabled={galleryImages.length <= 1}>✕</button>
+                    </div>
+                {/each}
             </div>
         </div>
 
@@ -666,38 +682,6 @@
                 
             </div>
 
-            <div class="preview-tools">
-
-                <!--
-                <button on:click={zoomOut} aria-label="Уменьшить">−</button>
-                
-                <span class="zoom-badge">{displayZoomPercent()}%</span>
-         
-                <button on:click={zoomIn} aria-label="Увеличить">+</button>
-                <button on:click={resetZoom}>Сбросить масштаб</button>
-
-
-                <span class="toolbar-divider" aria-hidden="true"></span>
-
-            -->
-
-                {#if !imageEditOpen}
-                    <button class="primary" on:click={startImageEdit}>Редактировать изображение</button>
-                {:else}
-                    <div class="edit-toolbar-inline">
-                        <button class:active={activeTool === "crop"} on:click={() => setTool("crop")}>Обрезка</button>
-                        <button class:active={activeTool === "rotate"} on:click={() => setTool("rotate")}>Поворот</button>
-                        {#if activeTool === "rotate"}
-                            <button on:click={() => nudgeRotation(-1)} aria-label="Повернуть влево на 90 градусов">↺ 90°</button>
-                            <button on:click={() => nudgeRotation(1)} aria-label="Повернуть вправо на 90 градусов">↻ 90°</button>
-                            <span class="angle-badge">{displayRotation()}°</span>
-                        {/if}
-                        <button class="primary" on:click={saveImageEdit}>Сохранить</button>
-                        <button on:click={cancelImageEdit}>Отмена</button>
-                    </div>
-                {/if}
-            </div>
-
             <div class="gallery-toolbar">
                 <label class="gallery-upload-btn" class:disabled={galleryUploading}>
                     {galleryUploading ? "Добавление изображений..." : "Добавить изображения в карточку"}
@@ -721,19 +705,6 @@
                         on:change={handleAttachmentFiles}
                     />
                 </label>
-            </div>
-
-            <div class="gallery-strip">
-                {#each galleryImages as image, index}
-                    <button
-                        class="gallery-item"
-                        class:active={image.filename === activeImageFilename}
-                        on:click={() => activeImageFilename = image.filename}
-                    >
-                        <img src={`${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`} alt="" />
-                        <span>{index === 0 ? "Оригинал" : `Изображение ${index + 1}`}</span>
-                    </button>
-                {/each}
             </div>
 
 
@@ -791,9 +762,9 @@
 
             <div class="text">
                 {#if editing}
-                    <textarea bind:value={editedText}></textarea>
+                    <textarea bind:value={editedText} class="description-editor" on:input={autoResizeDescription}></textarea>
                 {:else}
-                    <p>{doc.recognized_text}</p>
+                    <p class="description-text">{doc.recognized_text}</p>
                 {/if}
             </div>
 
@@ -847,7 +818,7 @@
                         <img src={imageSrc()} alt="" />
                         <button class="lightbox-nav right" on:click={showNextImage} disabled={galleryImages.length < 2}>→</button>
                         <div class="lightbox-caption">
-                            <strong>{currentGalleryIndex() + 1} / {galleryImages.length}</strong>
+                            <strong>{selectedImageIndex + 1} / {galleryImages.length}</strong>
                             <span>{selectedImage?.filename || ""}</span>
                         </div>
                     </div>
@@ -905,18 +876,25 @@
 }
 
 .left {
-    overflow: auto;
     display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
     background: color-mix(in srgb, var(--surface-elevated), black 45%);
+    min-height: 0;
+}
+
+.image-panel-toolbar {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    min-height: 38px;
 }
 
 .image-stage {
     position: relative;
     width: 100%;
-    height: 100%;
+    flex: 1;
     min-height: 0;
     display: flex;
     justify-content: center;
@@ -939,6 +917,27 @@
     transform-origin: center center;
 }
 
+.stage-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 38px;
+    min-height: 38px;
+    border-radius: 999px;
+    border-color: transparent;
+    background: rgba(16, 22, 32, 0.68);
+    color: #fff;
+    box-shadow: none;
+}
+
+.stage-nav.left {
+    left: 10px;
+}
+
+.stage-nav.right {
+    right: 10px;
+}
+
 .crop-box {
     position: absolute;
     border: 2px solid color-mix(in srgb, var(--primary), white 15%);
@@ -948,17 +947,10 @@
 
 .right {
     display: grid;
-    grid-template-rows: auto auto auto auto 1fr auto;    
+    grid-template-rows: auto auto 1fr auto;    
     gap: 10px;
-    padding: 18px;
+    padding: 16px;
     overflow: hidden;
-}
-
-.preview-tools {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
 }
 
 .header {
@@ -1066,15 +1058,21 @@
 
 .gallery-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
     gap: 8px;
-    max-height: 132px;
+    max-height: 152px;
     overflow: auto;
     padding-right: 4px;
+    width: 100%;
+}
+
+.gallery-thumb {
+    position: relative;
 }
 
 .gallery-item {
-    min-height: 92px;
+    width: 100%;
+    min-height: 98px;
     padding: 6px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -1103,12 +1101,26 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 72%);
 }
 
+.thumb-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    border-radius: 999px;
+    border-color: transparent;
+    background: rgba(10, 14, 20, 0.72);
+    color: #fff;
+    font-size: 0.74rem;
+}
+
 
 
 .attachments-panel {
     display: grid;
     gap: 10px;
-    padding: 12px;
+    padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--surface), transparent 6%);
@@ -1139,7 +1151,7 @@
 
 .attachment-list {
     display: grid;
-    gap: 10px;
+    gap: 6px;
 }
 
 .attachment-item {
@@ -1147,7 +1159,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 10px 12px;
+    padding: 6px 8px;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--surface);
@@ -1170,7 +1182,7 @@
 
 .attachment-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
     align-items: center;
 }
@@ -1179,14 +1191,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
-    padding: 0.55rem 1rem;
+    min-height: 28px;
+    padding: 0.35rem 0.55rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-strong);
     background: var(--surface);
     color: var(--text);
     font-weight: 600;
     text-decoration: none;
+    font-size: 0.82rem;
 }
 
 .attachment-empty,
@@ -1284,13 +1297,28 @@
 
 .text {
     overflow-y: auto;
+    padding: 2px;
 }
 
-.text textarea {
+.description-editor {
     width: 100%;
-    height: 100%;
+    min-height: 220px;
     resize: none;
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface), transparent 5%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    line-height: 1.55;
+    letter-spacing: 0.01em;
+    font-size: 0.98rem;
+}
+
+.description-text {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.65;
+    padding: 10px 8px;
+    color: color-mix(in srgb, var(--text), white 6%);
 }
 
 .footer {

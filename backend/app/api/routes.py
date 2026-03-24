@@ -444,6 +444,54 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
     return updated_doc
 
 
+@router.delete("/documents/{doc_id}/gallery/{image_filename}")
+async def delete_gallery_image(doc_id: str, image_filename: str):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    gallery_images = document.get("gallery_images") or []
+    if len(gallery_images) <= 1:
+        raise HTTPException(status_code=400, detail="Нельзя удалить последнее изображение карточки")
+
+    image_index = next((idx for idx, item in enumerate(gallery_images) if item.get("filename") == image_filename), -1)
+    if image_index < 0:
+        raise HTTPException(status_code=404, detail="Изображение не найдено")
+
+    removed_image = gallery_images[image_index]
+    updated_gallery = [item for item in gallery_images if item.get("filename") != image_filename]
+    new_primary = updated_gallery[0]
+
+    set_payload = {
+        "gallery_images": updated_gallery,
+    }
+
+    if document.get("filename") == image_filename:
+        set_payload.update(
+            {
+                "filename": new_primary.get("filename"),
+                "path": new_primary.get("path"),
+                "file_hash": new_primary.get("file_hash"),
+                "image_version": new_primary.get("image_version"),
+                "recognized_text": new_primary.get("recognized_text", ""),
+                "boxes": new_primary.get("boxes", []),
+            }
+        )
+
+    await documents_collection.update_one({"_id": object_id}, {"$set": set_payload})
+
+    removed_path = removed_image.get("path") or os.path.join(UPLOAD_DIR, image_filename)
+    if removed_path and os.path.exists(removed_path):
+        os.remove(removed_path)
+
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    return normalize_document(updated_doc)
+
+
 @router.delete("/documents/{doc_id}/attachments/{attachment_filename}")
 async def delete_attachment(doc_id: str, attachment_filename: str):
     object_id = object_id_or_404(doc_id)
