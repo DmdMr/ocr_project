@@ -210,3 +210,17 @@ export async function deleteDocumentAttachment(id: string, attachmentFilename: s
 
     return data
 }
+
+export async function deleteDocumentImage(id: string, imageFilename: string) {
+    const response = await fetch(`${API_URL}/documents/${id}/gallery/${encodeURIComponent(imageFilename)}`, {
+        method: "DELETE"
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to delete image")
+    }
+
+    return data
+}
