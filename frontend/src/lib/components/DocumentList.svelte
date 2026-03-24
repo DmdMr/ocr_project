@@ -245,6 +245,9 @@
       <DocumentRow
         {doc}
         search={search}
+        selected={selectedIds.includes(doc._id)}
+        selectionActive={selectedIds.length > 0}
+        on:toggleSelect={() => toggleCardSelection(doc._id)}
         on:deleted={(e) => removeFromList(e.detail.id)}
         on:updated={(e) => replaceDocumentInList(e.detail.document)}
       />
