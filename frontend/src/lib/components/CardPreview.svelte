@@ -612,8 +612,8 @@
                         on:click={!imageEditOpen ? openImageViewer : undefined}
                     />
                 {/key}
-                <button class="stage-nav left" on:click={showPreviousImage} disabled={galleryImages.length < 2} aria-label="Предыдущее изображение">←</button>
-                <button class="stage-nav right" on:click={showNextImage} disabled={galleryImages.length < 2} aria-label="Следующее изображение">→</button>
+                <button class="stage-nav left" on:click={showPreviousImage} disabled={galleryImages.length < 2} aria-label="Предыдущее изображение"><span>‹</span></button>
+                <button class="stage-nav right" on:click={showNextImage} disabled={galleryImages.length < 2} aria-label="Следующее изображение"><span>›</span></button>
 
                 {#if imageEditOpen && activeTool === "crop" && cropRect}
                     <div
@@ -683,7 +683,7 @@
 
             <div class="gallery-toolbar">
                 <label class="gallery-upload-btn" class:disabled={galleryUploading}>
-                    {galleryUploading ? "Добавление изображений..." : "Добавить изображения в карточку"}
+                    {galleryUploading ? "Добавление изображений..." : "Добавить изображения"}
                     <input
                         type="file"
                         accept="image/png,image/jpeg,image/jpg"
@@ -695,7 +695,7 @@
                 </label>
 
                 <label class="gallery-upload-btn secondary" class:disabled={attachmentsUploading}>
-                    {attachmentsUploading ? "Прикрепление файлов..." : "Добавить PDF и другие файлы"}
+                    {attachmentsUploading ? "Прикрепление файлов..." : "Прикрепить файлы"}
                     <input
                         type="file"
                         multiple
@@ -745,19 +745,6 @@
                     <p class="attachment-empty">Дополнительных файлов пока нет.</p>
                 {/if}
             </div>
-
-
-            <!--
-            {#if imageEditOpen}
-                <p class="tool-hint">
-                    {#if activeTool === "crop"}
-                        Перетащите курсор по изображению, чтобы выделить область обрезки
-                    {:else}
-                        Зажмите кнопку мыши и ведите влево/вправо для поворота
-                    {/if}
-                </p>
-            {/if}
-            -->
 
             <div class="text">
                 {#if editing}
@@ -813,9 +800,9 @@
                 <div class="lightbox-backdrop" on:click={closeImageViewer}>
                     <div class="lightbox-modal" on:click|stopPropagation>
                         <button class="lightbox-close" on:click={closeImageViewer}>✕</button>
-                        <button class="lightbox-nav left" on:click={showPreviousImage} disabled={galleryImages.length < 2}>←</button>
+                        <button class="lightbox-nav left" on:click={showPreviousImage} disabled={galleryImages.length < 2}><span>‹</span></button>
                         <img src={selectedImageSrc} alt="" />
-                        <button class="lightbox-nav right" on:click={showNextImage} disabled={galleryImages.length < 2}>→</button>
+                        <button class="lightbox-nav right" on:click={showNextImage} disabled={galleryImages.length < 2}><span>›</span></button>
                         <div class="lightbox-caption">
                             <strong>{selectedImageIndex + 1} / {galleryImages.length}</strong>
                             <span>{selectedImage?.filename || ""}</span>
@@ -920,13 +907,19 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    min-width: 38px;
-    min-height: 38px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: none;
     border-radius: 999px;
-    border-color: transparent;
     background: rgba(16, 22, 32, 0.68);
     color: #fff;
     box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-sizing: border-box;
 }
 
 .stage-nav.left {
@@ -946,10 +939,11 @@
 
 .right {
     display: grid;
-    grid-template-rows: auto auto 1fr auto;    
+    grid-template-rows: auto auto auto 1fr auto;
     gap: 10px;
     padding: 16px;
     overflow: hidden;
+    min-height: 0;
 }
 
 .header {
