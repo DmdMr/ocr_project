@@ -9,17 +9,17 @@
         uploadImagesToDocument,
         UPLOADS_URL
     } from "../api"
-    
 
     let showPreview = false
 
     export let doc: Document
+    export let search = ""
+    export let selected = false
+    export let selectionActive = false
 
     let editing = false
     let editedText = doc.recognized_text
     let galleryUploading = false
-
-    export let search = ""
 
     function escapeRegExp(value: string) {
         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -34,14 +34,45 @@
         return filename.replace(regex, '<mark class="filename-highlight">$1</mark>')
     }
 
-
-    type DocumentCardEvents = {
+    type DocumentRowEvents = {
         deleted: { id: string }
         tagClick: { tag: string }
         updated: { document: Document }
+        toggleSelect: undefined
+        toggleSelection: { id: string }
     }
 
-    const dispatch = createEventDispatcher<DocumentCardEvents>()
+    const dispatch = createEventDispatcher<DocumentRowEvents>()
+
+    function openPreview() {
+        if (selectionActive) {
+            dispatch("toggleSelection", { id: doc._id })
+            return
+        }
+
+        showPreview = true
+    }
+
+    function handleRowClick() {
+        if (selectionActive) {
+            dispatch("toggleSelect")
+            return
+        }
+
+        showPreview = true
+    }
+
+    function handleCheckboxClick(event: MouseEvent) {
+        event.stopPropagation()
+        dispatch("toggleSelect")
+    }
+
+    function handleRowKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            openPreview()
+        }
+    }
 
     function applyDocumentUpdate(updated: Document) {
         doc = updated
@@ -123,22 +154,41 @@
 
         return name.slice(0, lastDot)
     }
-
 </script>
 
-<div class="row-card">
+<div
+    class="row-card"
+    class:selected-row={selected}
+    role="button"
+    tabindex="0"
+    aria-pressed={selectionActive ? selected : undefined}
+    on:click={openPreview}
+    on:keydown={handleRowKeydown}
+>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <img
-        class="row-thumb"
-        src={cardImageSrc(doc)}
-        alt=""
-        on:click={() => showPreview = true}
-    />
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="row-media" on:click={handleRowClick}>
+        <img
+            class="row-thumb"
+            src={cardImageSrc(doc)}
+            alt=""
+            on:click={() => showPreview = true}
+        />
+
+        <button
+            class="select-checkbox"
+            class:visible={selected}
+            aria-label="Выбрать карточку"
+            on:click={handleCheckboxClick}
+        >
+            {#if selected}{/if}
+        </button>
+    </div>
 
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="row-main" on:click={() => showPreview = true}>
+    <div class="row-main" on:click={handleRowClick}>
         <div class="row-filename">
             {@html highlightedFilename(
                 getFilenameWithoutExtension(doc.display_filename || doc.filename || ""),
@@ -183,6 +233,7 @@
 <style>
 
 .row-card {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -196,6 +247,22 @@
     box-shadow: var(--shadow-soft);
     backdrop-filter: blur(16px) saturate(1.15);
     -webkit-backdrop-filter: blur(16px) saturate(1.15);
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.row-card.selected-row {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--surface-strong), var(--accent) 6%);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--accent), transparent 65%),
+        var(--shadow-soft);
+}
+
+.row-media {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
 }
 
 .row-thumb {
@@ -244,6 +311,26 @@
     font-size: 0.82rem;
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+.select-checkbox {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    z-index: 3;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.row-card:hover .select-checkbox,
+.row-card.selected-row .select-checkbox,
+.select-checkbox.visible {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 :global(.filename-highlight) {
