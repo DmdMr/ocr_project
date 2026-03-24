@@ -70,6 +70,20 @@
         filenameError = ""
     }
 
+
+    let isMobile = false;
+
+    onMount(() => {
+        const check = () => {
+            isMobile = window.innerWidth < 640;
+        };
+
+        check();
+        window.addEventListener('resize', check);
+
+        return () => window.removeEventListener('resize', check);
+    });
+
     function startImageEdit() {
         imageEditOpen = true
         activeTool = "crop"
@@ -574,6 +588,7 @@
     <div class="modal" on:click|stopPropagation>
 
         <div class="left">
+            {#if !isMobile}
             <div class="image-panel-toolbar">
                 {#if !imageEditOpen}
                     <button class="primary" on:click={startImageEdit}>Редактировать изображение</button>
@@ -587,10 +602,11 @@
                             <span class="angle-badge">{displayRotation()}°</span>
                         {/if}
                         <button class="primary" on:click={saveImageEdit}>Сохранить</button>
-                        <button on:click={cancelImageEdit}>Отмена</button>
+                         <button on:click={cancelImageEdit}>Отмена</button>
                     </div>
                 {/if}
             </div>
+            {/if}
             <!-- svelte-ignore a11y_missing_attribute -->
             <div
                 class:editing={imageEditOpen}
@@ -745,7 +761,7 @@
                     <p class="attachment-empty">Дополнительных файлов пока нет.</p>
                 {/if}
             </div>
-
+            {#if !isMobile}
             <div class="text">
                 {#if editing}
                     <textarea bind:value={editedText} class="description-editor" on:input={autoResizeDescription}></textarea>
@@ -753,7 +769,10 @@
                     <p class="description-text">{doc.recognized_text}</p>
                 {/if}
             </div>
+            {/if}
 
+            
+            {#if !isMobile}
             <div class="footer">
                 <div class="tags">
                     {#if doc.tags?.length}
@@ -775,6 +794,7 @@
                     <button class="delete" on:click={remove}>Удалить</button>
                 </div>
             </div>
+            {/if}
 
             {#if tagPickerOpen}
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -1380,6 +1400,21 @@
     }
 }
 
+@media (max-width: 640px) {
+    .stage-nav {
+        width: 36px;
+        height: 36px;
+        opacity: 0.8;
+    }
+
+    .stage-nav.left {
+        left: 6px;
+    }
+
+    .stage-nav.right {
+        right: 6px;
+    }
+}
 
 
 

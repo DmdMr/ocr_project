@@ -99,17 +99,19 @@
     on:drop={handleDrop}
     on:dragover={handleDragOver}
 >
-    <label class="file-btn">
+    <label class="file-btn upload-btn">
         Выбрать файлы
         <input
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif"
             multiple
+            capture="environment"
             on:change={handleChange}
             hidden
         />
     </label>
 
+    <!--
     <label class="file-btn">
         Сделать фото
         <input
@@ -120,6 +122,7 @@
             hidden
         />
     </label>
+    -->
 
     <button class="upload-btn" on:click={handleUpload} disabled={uploading}>
         {uploading ? "Загрузка..." : "Загрузить"}
@@ -178,7 +181,7 @@
 }
 
 .file-btn {
-    padding: 10px 16px;
+    padding: 10px;
     border-radius: var(--radius-md);
     background: var(--surface);
     border: 1px solid var(--border-strong);

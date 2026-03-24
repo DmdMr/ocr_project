@@ -81,7 +81,7 @@
 <div class="panel about-manager">
   <div class="quick-actions">
     <button on:click={() => push('/about')}>
-      About
+      О проекте
     </button>
 
     <button class="primary" on:click={() => push('/assistant')}>
@@ -116,9 +116,11 @@
 <DocumentList {refreshKey} {viewMode} {columnCount} />
 
 
-
+<!--
 <LifeguardHelp bind:viewMode bind:columnCount />
 
+
+-->
 
 <style>
 .about-manager {
