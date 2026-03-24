@@ -736,11 +736,6 @@
                 {/each}
             </div>
 
-            <div class="gallery-actions">
-                <button on:click={showPreviousImage} disabled={galleryImages.length < 2}>← Предыдущее</button>
-                <button on:click={openImageViewer}>Открыть галерею</button>
-                <button on:click={showNextImage} disabled={galleryImages.length < 2}>Следующее →</button>
-            </div>
 
             <div class="attachments-panel">
                 <div class="attachments-header">
@@ -1108,11 +1103,7 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 72%);
 }
 
-.gallery-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
+
 
 .attachments-panel {
     display: grid;
@@ -1288,15 +1279,6 @@
     color: var(--text-muted);
 }
 
-.tool-hint {
-    margin: 4px 0 2px;
-    font-size: 0.86rem;
-    line-height: 1.2;
-    color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
 
 
 

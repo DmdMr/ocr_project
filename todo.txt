@@ -52,3 +52,13 @@ Urgent things to do:
 
 
 
+
+
+CardPreview fixes:
+- i can add images to the card, and also files to that card
+- i can download uploaded files, and delete them from the card, but cannot delete image from the card
+- i can click on that image preview like original, image 2, 3 and so on, but the image on the left remains the same
+- i can manage tags by pressing manage tags, this works don't change that
+- uploaded files space takes too much space, how to make it tidier (so it will take less space)
+- i can open the gallery when i press on the image on the left, but the index of the image is what image i've clicked before on the right side of the card
+- and also make a text below the uploaded files more prettier for the view and edit, like in Obsidian, or MS Word, same minimal tools, prettier view
