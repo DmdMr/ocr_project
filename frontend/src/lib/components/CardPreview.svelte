@@ -548,7 +548,7 @@
     })
 
 
-    const imageSrc = () => `${UPLOADS_URL}/${selectedImage?.filename ?? doc.filename}?v=${encodeURIComponent(selectedImage?.image_version ?? doc.image_version ?? doc.created_at ?? "")}`
+    $: selectedImageSrc = `${UPLOADS_URL}/${selectedImage?.filename ?? doc.filename}?v=${encodeURIComponent(selectedImage?.image_version ?? doc.image_version ?? doc.created_at ?? "")}`
     function getFilenameWithoutExtension(name: string) {
         if (!name) return ""
 
@@ -599,12 +599,12 @@
                 on:mousedown={onEditorMouseDown}
                 
             >
-                {#key imageSrc()}
+                {#key selectedImageSrc}
                     <!-- svelte-ignore a11y_missing_attribute -->
                     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                     <img
                         bind:this={imageEl}
-                        src={imageSrc()}
+                        src={selectedImageSrc}
                         alt=""
                         draggable="false"
                         on:dragstart|preventDefault
@@ -631,7 +631,6 @@
                             on:click={() => setSelectedImageIndex(index)}
                         >
                             <img src={`${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`} alt="" />
-                            <span>{index === 0 ? "Оригинал" : `Изображение ${index + 1}`}</span>
                         </button>
                         <button class="thumb-delete" on:click={() => removeGalleryImage(index)} disabled={galleryImages.length <= 1}>✕</button>
                     </div>
@@ -815,7 +814,7 @@
                     <div class="lightbox-modal" on:click|stopPropagation>
                         <button class="lightbox-close" on:click={closeImageViewer}>✕</button>
                         <button class="lightbox-nav left" on:click={showPreviousImage} disabled={galleryImages.length < 2}>←</button>
-                        <img src={imageSrc()} alt="" />
+                        <img src={selectedImageSrc} alt="" />
                         <button class="lightbox-nav right" on:click={showNextImage} disabled={galleryImages.length < 2}>→</button>
                         <div class="lightbox-caption">
                             <strong>{selectedImageIndex + 1} / {galleryImages.length}</strong>
@@ -1058,9 +1057,9 @@
 
 .gallery-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
-    gap: 8px;
-    max-height: 152px;
+    grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+    gap: 6px;
+    max-height: 112px;
     overflow: auto;
     padding-right: 4px;
     width: 100%;
@@ -1072,8 +1071,8 @@
 
 .gallery-item {
     width: 100%;
-    min-height: 98px;
-    padding: 6px;
+    min-height: 68px;
+    padding: 4px;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: color-mix(in srgb, var(--surface), transparent 8%);
@@ -1085,15 +1084,9 @@
 
 .gallery-item img {
     width: 100%;
-    height: 54px;
+    height: 58px;
     object-fit: cover;
-    border-radius: 8px;
-}
-
-.gallery-item span {
-    font-size: 0.74rem;
-    color: var(--text-muted);
-    text-align: left;
+    border-radius: 6px;
 }
 
 .gallery-item.active {
