@@ -133,16 +133,23 @@
     .about-manager {
         padding: 8px;
         margin-bottom: 12px;
-        text-align: left;
+        text-align: center;
     }
 }
 
 .quick-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
+@media (max-width: 640px) {
+    .quick-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        text-align: center;
+    }
+}
 
 
 </style>

@@ -92,29 +92,32 @@
 
 <div class="tag-manager panel">
 
-  <div class="toolbar">
-    <input
-      class="search"
-      type="text"
-      placeholder="Поиск тегов"
-      bind:value={searchInput}
-    />
-    
-  </div>
 
-  <div class="create-row">
+  <div class="tags-creation">
     <input
       type="text"
+      class="my-input"
       placeholder="Создать тег"
       bind:value={createInput}
       on:keydown={handleCreateKeydown}
     />
-    <button class="primary" on:click={submitTag}>Создать тег</button>
+
+    <button class="primary" on:click={submitTag}>Создать тег</button> 
+  </div>
+
+  <div class="tags-management">
+    <input
+      class="my-input"
+      type="text"
+      placeholder="Поиск тегов"
+      bind:value={searchInput}
+    />
 
     <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
-      {deleteMode ? "Готово" : "Выбрать для удаления"}
+      {deleteMode ? "Готово" : "Удалить"}
     </button>
   </div>
+
 
   {#if createError}
     <p class="error">{createError}</p>
@@ -145,13 +148,6 @@
   </div>
 </div>
 
-
-
-
-
-
-
-
 <style>
   .tag-manager {
     padding: 14px;
@@ -165,22 +161,45 @@
         margin-bottom: 12px;
         text-align: left;
     }
-}
+  }
 
-  .create-row{
+  .tags-creation{
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 8px;
   }
 
-  .toolbar {
+  .tags-management {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 8px;
   }
 
+
+  @media (max-width: 640px) {
+    .tags-creation{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      text-align: center;
+    }
+
+    .tags-management {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      text-align: center;
+    }
+
+    .my-input {
+        flex: 0 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+  }
   
+
+
 
   .error {
     margin: 0 0 8px;
@@ -195,6 +214,24 @@
     overflow: hidden;
     margin-top: 8px;
   }
+
+  @media (max-width: 640px) {
+    .tags-list {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      padding-bottom: 4px;
+    }
+    .tags-list > * {
+      flex-shrink: 0;
+
+    }
+
+  }
+
+
 
 
 

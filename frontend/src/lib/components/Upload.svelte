@@ -111,7 +111,7 @@
     on:dragover={handleDragOver}
 >
     <label class="file-btn upload-btn">
-        Выбрать изображения
+        Выбор
         <input
             type="file"
             accept="image/*"
@@ -179,9 +179,16 @@
     display: flex;
     justify-content: left;
     align-items: center;
-    gap: 16px;
+    gap: 8px;
 }
 
+@media (max-width: 640px) {
+    .upload {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        text-align: center;
+    }
+}
 
 .upload:hover {
     border-color: color-mix(in srgb, var(--primary), var(--border-strong) 50%);

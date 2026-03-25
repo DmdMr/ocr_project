@@ -121,6 +121,10 @@ body {
   min-height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   color: var(--text);
   background-color: var(--bg);
@@ -176,7 +180,7 @@ button,
 select,
 input[type="text"],
 input[type="search"] {
-  min-height: 40px;
+  min-height: 32px;
 }
 
 select,

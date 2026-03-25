@@ -170,6 +170,7 @@
     <div class="controls-row">
         <input
             type="text"
+            class="my-input"
             placeholder="Поиск документов"
             bind:value={search}
         />
@@ -182,21 +183,6 @@
         </select>
     </div>
 </div>
-
-
-<!--
-<div class="grid">
-    {#each sortedDocuments as doc (doc._id)}
-        <DocumentCard
-            {doc}
-            search = {search}
-            on:deleted={(e) => removeFromList(e.detail.id)}
-            on:updated={(e) => replaceDocumentInList(e.detail.document)}
-        />
-    {/each}
-</div>
-
--->
 
 
 
@@ -282,6 +268,23 @@
     flex-wrap: wrap;
 }
 
+@media (max-width: 640px) {
+    .controls-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        text-align: center;
+    }
+
+    .my-input {
+        flex: 0 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+}
+
+
+
+
 
 
 .bulk-actions-manager {
@@ -302,6 +305,8 @@
 }
 
 
+
+
 /*
 
 .grid {
@@ -312,7 +317,7 @@
 
 .grid {
   column-count: var(--column-count);
-  column-gap: 1em;
+  column-gap: 0.5em;
 }
 
 @media (min-width: 320px) {
@@ -342,12 +347,7 @@
 
 
 
-
-
-
 .sort-select {
-    
-    min-width: 180px;
     min-height: 42px;
 }
 

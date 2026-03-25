@@ -281,6 +281,7 @@
         padding: 8px;
         margin-bottom: 12px;
         text-align: left;
+        margin-bottom: 4px;
     }
 }
 
