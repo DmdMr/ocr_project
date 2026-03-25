@@ -23,6 +23,8 @@ export interface Document {
     display_filename?: string
     recognized_text: string
     created_at: string
+    is_archived?: boolean
+    archived_at?: string | null
     tags?: string[]  
     image_version?: string
     gallery_images?: GalleryImage[]

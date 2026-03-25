@@ -18,6 +18,7 @@ from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 from backend.app.db.database import documents_collection, tags_collection
+from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
 
@@ -81,6 +82,10 @@ def build_attachment_item(*, filename: str, path: str, original_name: str, conte
 
 def normalize_document(doc: dict):
     doc["_id"] = str(doc["_id"])
+    if doc.get("is_archived") is None:
+        doc["is_archived"] = False
+    if "archived_at" not in doc:
+        doc["archived_at"] = None
     gallery = doc.get("gallery_images")
     if not gallery:
         doc["gallery_images"] = [
@@ -188,6 +193,8 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         "created_at": now_yekaterinburg(),
         "image_version": now_yekaterinburg().isoformat(),
         "tags": [],
+        "is_archived": False,
+        "archived_at": None,
         "gallery_images": [gallery_item],
         "attachments": [],
     }
@@ -367,8 +374,10 @@ async def upload_attachments_to_document(request: Request, doc_id: str, files: L
 
 @router.get("/documents")
 async def get_documents():
+    await cleanup_expired_archived_documents(documents_collection, UPLOAD_DIR, retention_days=30)
     documents = []
-    async for doc in documents_collection.find().sort("created_at", -1):
+    query = {"$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]}
+    async for doc in documents_collection.find(query).sort("created_at", -1):
         normalized = normalize_document(doc)
         documents.append(normalized)
     return documents
@@ -394,6 +403,10 @@ class DocumentUpdate(BaseModel):
     recognized_text: Optional[str] = None
     tags: Optional[List[str]] = None
     display_filename: Optional[str] = None
+
+
+class DocumentIdsRequest(BaseModel):
+    ids: List[str] = Field(default_factory=list)
 
 @router.put("/documents/{doc_id}")
 async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
@@ -609,35 +622,104 @@ UPLOAD_FOLDER = "backend/uploads"
 @router.delete("/documents/{doc_id}")
 async def delete_document(request: Request, doc_id: str):
     object_id = object_id_or_404(doc_id)
-
     document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    if document.get("is_archived"):
+        return {"message": "Карточка уже в архиве"}
 
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"is_archived": True, "archived_at": datetime.now(timezone.utc)}},
+    )
+    write_audit_log(
+        request,
+        "document.archive",
+        {"document_id": doc_id},
+    )
+    return {"message": "Карточка перемещена в архив"}
+
+
+@router.get("/documents/archived")
+async def get_archived_documents():
+    await cleanup_expired_archived_documents(documents_collection, UPLOAD_DIR, retention_days=30)
+    documents = []
+    async for doc in documents_collection.find({"is_archived": True}).sort("archived_at", -1):
+        documents.append(normalize_document(doc))
+    return documents
+
+
+@router.post("/documents/{doc_id}/restore")
+async def restore_archived_document(request: Request, doc_id: str):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
     if not document:
         raise HTTPException(status_code=404, detail="Документ не найден")
 
-    gallery_images = document.get("gallery_images") or []
-    gallery_filenames = [item.get("filename") for item in gallery_images if item.get("filename")]
-    attachment_files = document.get("attachments") or []
-    attachment_filenames = [item.get("filename") for item in attachment_files if item.get("filename")]
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"is_archived": False, "archived_at": None}},
+    )
+    restored_doc = await documents_collection.find_one({"_id": object_id})
+    if not restored_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
-    filenames_to_delete = set(gallery_filenames)
-    filenames_to_delete.update(attachment_filenames)
-    if document.get("filename"):
-        filenames_to_delete.add(document.get("filename"))
+    write_audit_log(request, "document.restore", {"document_id": doc_id})
+    return normalize_document(restored_doc)
 
-    for filename in filenames_to_delete:
-        file_path = os.path.join(UPLOAD_DIR, filename)
 
-        if os.path.exists(file_path):
-            os.remove(file_path)
+@router.delete("/documents/{doc_id}/permanent")
+async def permanently_delete_archived_document(request: Request, doc_id: str):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    if not document.get("is_archived"):
+        raise HTTPException(status_code=400, detail="Сначала переместите карточку в архив")
 
-    await documents_collection.delete_one({"_id": object_id})
+    removed_files = await permanently_delete_document(document, documents_collection, UPLOAD_DIR)
     write_audit_log(
         request,
-        "document.delete",
-        {"document_id": doc_id, "files_deleted": sorted(filenames_to_delete)},
+        "document.permanent_delete",
+        {"document_id": doc_id, "files_deleted": removed_files},
     )
-    return {"message": "Успешно удалено"}
+    return {"message": "Карточка удалена навсегда"}
+
+
+@router.post("/documents/archive/restore-bulk")
+async def restore_archived_documents_bulk(request: Request, payload: DocumentIdsRequest):
+    object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
+    if not object_ids:
+        raise HTTPException(status_code=400, detail="Список карточек пуст")
+
+    await documents_collection.update_many(
+        {"_id": {"$in": object_ids}, "is_archived": True},
+        {"$set": {"is_archived": False, "archived_at": None}},
+    )
+    write_audit_log(request, "document.bulk_restore", {"document_ids": payload.ids})
+    return {"message": "Карточки восстановлены"}
+
+
+@router.post("/documents/archive/permanent-delete-bulk")
+async def permanently_delete_archived_documents_bulk(request: Request, payload: DocumentIdsRequest):
+    object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
+    if not object_ids:
+        raise HTTPException(status_code=400, detail="Список карточек пуст")
+
+    cursor = documents_collection.find({"_id": {"$in": object_ids}, "is_archived": True})
+    deleted_ids: List[str] = []
+    deleted_files: List[str] = []
+    async for document in cursor:
+        removed_files = await permanently_delete_document(document, documents_collection, UPLOAD_DIR)
+        deleted_ids.append(str(document["_id"]))
+        deleted_files.extend(removed_files)
+
+    write_audit_log(
+        request,
+        "document.bulk_permanent_delete",
+        {"document_ids": deleted_ids, "files_deleted": deleted_files},
+    )
+    return {"message": "Карточки удалены навсегда", "deleted_count": len(deleted_ids)}
 
 
 
@@ -647,6 +729,7 @@ async def search_documents(q: str):
     results = []
     async for doc in documents_collection.find(
         {
+            "is_archived": {"$ne": True},
             "$or": [
                 {"recognized_text": {"$regex": q, "$options": "i"}},
                 {"display_filename": {"$regex": q, "$options": "i"}},

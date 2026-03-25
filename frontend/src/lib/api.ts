@@ -85,6 +85,53 @@ export async function deleteDocument(id: string) {
     })
 
     if (!res.ok) throw new Error("Failed to delete document")
+    return await res.json().catch(() => ({}))
+}
+
+export async function getArchivedDocuments() {
+    const res = await fetch(`${API_URL}/documents/archived`)
+    if (!res.ok) throw new Error("Failed to fetch archived documents")
+    return await res.json()
+}
+
+export async function restoreArchivedDocument(id: string) {
+    const res = await fetch(`${API_URL}/documents/${id}/restore`, {
+        method: "POST"
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to restore document")
+    return data
+}
+
+export async function permanentlyDeleteArchivedDocument(id: string) {
+    const res = await fetch(`${API_URL}/documents/${id}/permanent`, {
+        method: "DELETE"
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to permanently delete document")
+    return data
+}
+
+export async function bulkRestoreArchivedDocuments(ids: string[]) {
+    const res = await fetch(`${API_URL}/documents/archive/restore-bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to restore documents")
+    return data
+}
+
+export async function bulkPermanentlyDeleteArchivedDocuments(ids: string[]) {
+    const res = await fetch(`${API_URL}/documents/archive/permanent-delete-bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to permanently delete documents")
+    return data
 }
 
 export async function updateDocument(id: string, data: any) {
