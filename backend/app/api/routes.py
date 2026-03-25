@@ -1,8 +1,10 @@
 import os
 import hashlib
-from datetime import datetime
+import json
+import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from bson import ObjectId
 
 
@@ -16,15 +18,36 @@ from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 from backend.app.db.database import documents_collection, tags_collection
+from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.ocr_service import recognize_text
+from backend.app.utils.image_preprocessing import autocrop_whitespace
 
 router = APIRouter(prefix="/api")
 
 UPLOAD_DIR = "backend/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+AUDIT_LOG_DIR = "backend/logs"
+AUDIT_LOG_FILE = os.path.join(AUDIT_LOG_DIR, "audit.log")
+os.makedirs(AUDIT_LOG_DIR, exist_ok=True)
+
+
+audit_logger = logging.getLogger("backend.audit")
+if not audit_logger.handlers:
+    audit_logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(AUDIT_LOG_FILE, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(message)s"))
+    audit_logger.addHandler(file_handler)
+    audit_logger.propagate = False
 
 def calculate_file_hash(file_bytes: bytes):
     return hashlib.md5(file_bytes).hexdigest()
+
+
+YEKATERINBURG_TZ = timezone(timedelta(hours=5))
+
+
+def now_yekaterinburg():
+    return datetime.now(YEKATERINBURG_TZ)
 
 
 def object_id_or_404(doc_id: str):
@@ -41,8 +64,8 @@ def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: st
         "file_hash": file_hash,
         "recognized_text": ocr_text,
         "boxes": boxes,
-        "created_at": datetime.utcnow(),
-        "image_version": datetime.utcnow().isoformat(),
+        "created_at": now_yekaterinburg(),
+        "image_version": now_yekaterinburg().isoformat(),
     }
 
 
@@ -53,12 +76,16 @@ def build_attachment_item(*, filename: str, path: str, original_name: str, conte
         "original_name": original_name,
         "content_type": content_type,
         "size": size,
-        "created_at": datetime.utcnow(),
+        "created_at": now_yekaterinburg(),
     }
 
 
 def normalize_document(doc: dict):
     doc["_id"] = str(doc["_id"])
+    if doc.get("is_archived") is None:
+        doc["is_archived"] = False
+    if "archived_at" not in doc:
+        doc["archived_at"] = None
     gallery = doc.get("gallery_images")
     if not gallery:
         doc["gallery_images"] = [
@@ -68,7 +95,7 @@ def normalize_document(doc: dict):
                 "file_hash": doc.get("file_hash"),
                 "recognized_text": doc.get("recognized_text", ""),
                 "boxes": doc.get("boxes", []),
-                "created_at": doc.get("created_at", datetime.utcnow()),
+                "created_at": doc.get("created_at", now_yekaterinburg()),
                 "image_version": doc.get("image_version"),
             }
         ]
@@ -107,9 +134,32 @@ def normalize_display_filename(raw_name: str, original_filename: str):
     return f"{stem}{original_suffix}"
 
 
+def get_request_actor(request: Request):
+    forwarded_for = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    client_host = request.client.host if request.client else None
+    ip_address = forwarded_for or client_host or "unknown"
+
+    return {
+        "ip": ip_address,
+        "device_name": request.headers.get("x-device-name") or "unknown",
+        "user_agent": request.headers.get("user-agent") or "unknown",
+    }
+
+
+def write_audit_log(request: Request, action: str, payload: dict):
+    actor = get_request_actor(request)
+    entry = {
+        "timestamp": now_yekaterinburg().isoformat(),
+        "action": action,
+        "actor": actor,
+        "payload": payload,
+    }
+    audit_logger.info(json.dumps(entry, ensure_ascii=False))
+
+
 
 @router.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(request: Request, file: UploadFile = File(...)):
 
     if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
         raise HTTPException(status_code=400, detail="Разрешены только PNG и JPG")
@@ -122,6 +172,7 @@ async def upload_image(file: UploadFile = File(...)):
         return {"message": "Файл уже существует", "document": normalize_document(existing)}
 
     filename, file_path = save_upload_file(file, file_bytes)
+    file_path = autocrop_whitespace(file_path)
     ocr_result = recognize_text(file_path)
 
     gallery_item = build_gallery_item(
@@ -139,9 +190,11 @@ async def upload_image(file: UploadFile = File(...)):
         "recognized_text": ocr_result["text"],  
         "boxes": ocr_result["boxes"],         
         "file_hash": file_hash,
-        "created_at": datetime.utcnow(),
-        "image_version": datetime.utcnow().isoformat(),
+        "created_at": now_yekaterinburg(),
+        "image_version": now_yekaterinburg().isoformat(),
         "tags": [],
+        "is_archived": False,
+        "archived_at": None,
         "gallery_images": [gallery_item],
         "attachments": [],
     }
@@ -149,11 +202,16 @@ async def upload_image(file: UploadFile = File(...)):
 
     result = await documents_collection.insert_one(document_data)
     document_data["_id"] = str(result.inserted_id)
+    write_audit_log(
+        request,
+        "document.upload",
+        {"document_id": document_data["_id"], "filename": document_data["filename"]},
+    )
 
     return {"message": "Файл успешно загружен", "document": document_data}
 
 @router.post("/documents/{doc_id}/gallery")
-async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(...)):
+async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -185,6 +243,7 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
             continue
 
         filename, file_path = save_upload_file(file, file_bytes)
+        file_path = autocrop_whitespace(file_path)
         ocr_result = recognize_text(file_path)
 
         item = build_gallery_item(
@@ -225,6 +284,11 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
         raise HTTPException(status_code=404, detail="Документ не найден")
 
     updated_doc = normalize_document(updated_doc)
+    write_audit_log(
+        request,
+        "document.gallery.upload",
+        {"document_id": doc_id, "added_count": len(added_items), "skipped_files": skipped_files},
+    )
     return {
         "message": "Галерея обновлена",
         "added_count": len(added_items),
@@ -234,7 +298,7 @@ async def upload_images_to_document(doc_id: str, files: List[UploadFile] = File(
 
 
 @router.post("/documents/{doc_id}/attachments")
-async def upload_attachments_to_document(doc_id: str, files: List[UploadFile] = File(...)):
+async def upload_attachments_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -294,6 +358,11 @@ async def upload_attachments_to_document(doc_id: str, files: List[UploadFile] = 
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
+    write_audit_log(
+        request,
+        "document.attachment.upload",
+        {"document_id": doc_id, "added_count": len(added_items), "skipped_files": skipped_files},
+    )
 
     return {
         "message": "Файлы прикреплены",
@@ -305,8 +374,10 @@ async def upload_attachments_to_document(doc_id: str, files: List[UploadFile] = 
 
 @router.get("/documents")
 async def get_documents():
+    await cleanup_expired_archived_documents(documents_collection, UPLOAD_DIR, retention_days=30)
     documents = []
-    async for doc in documents_collection.find().sort("created_at", -1):
+    query = {"$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]}
+    async for doc in documents_collection.find(query).sort("created_at", -1):
         normalized = normalize_document(doc)
         documents.append(normalized)
     return documents
@@ -333,8 +404,12 @@ class DocumentUpdate(BaseModel):
     tags: Optional[List[str]] = None
     display_filename: Optional[str] = None
 
+
+class DocumentIdsRequest(BaseModel):
+    ids: List[str] = Field(default_factory=list)
+
 @router.put("/documents/{doc_id}")
-async def update_document(doc_id: str, data: DocumentUpdate):
+async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
     object_id = object_id_or_404(doc_id)
     update_data = {key: value for key, value in data.model_dump().items() if value is not None}
 
@@ -353,13 +428,18 @@ async def update_document(doc_id: str, data: DocumentUpdate):
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
+    write_audit_log(
+        request,
+        "document.update",
+        {"document_id": doc_id, "updated_fields": sorted(update_data.keys())},
+    )
 
     return normalize_document(updated_doc)
 
 
 
 @router.put("/documents/{doc_id}/image")
-async def edit_document_image(doc_id: str, data: ImageEditRequest):
+async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequest):
     object_id = object_id_or_404(doc_id)
 
     document = await documents_collection.find_one({"_id": object_id})
@@ -412,7 +492,7 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
     with open(file_path, "rb") as updated_file:
         new_hash = calculate_file_hash(updated_file.read())
 
-    image_version = datetime.utcnow().isoformat()
+    image_version = now_yekaterinburg().isoformat()
     set_payload = {}
     if target_filename == document.get("filename"):
         set_payload["file_hash"] = new_hash
@@ -441,11 +521,16 @@ async def edit_document_image(doc_id: str, data: ImageEditRequest):
     updated_doc = normalize_document(updated_doc)
     updated_doc["applied_rotate_degrees"] = rotate_degrees
     updated_doc["edited_image_filename"] = target_filename
+    write_audit_log(
+        request,
+        "document.image.edit",
+        {"document_id": doc_id, "image_filename": target_filename, "rotate_degrees": rotate_degrees},
+    )
     return updated_doc
 
 
 @router.delete("/documents/{doc_id}/gallery/{image_filename}")
-async def delete_gallery_image(doc_id: str, image_filename: str):
+async def delete_gallery_image(request: Request, doc_id: str, image_filename: str):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -488,12 +573,17 @@ async def delete_gallery_image(doc_id: str, image_filename: str):
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
+    write_audit_log(
+        request,
+        "document.gallery.delete",
+        {"document_id": doc_id, "image_filename": image_filename},
+    )
 
     return normalize_document(updated_doc)
 
 
 @router.delete("/documents/{doc_id}/attachments/{attachment_filename}")
-async def delete_attachment(doc_id: str, attachment_filename: str):
+async def delete_attachment(request: Request, doc_id: str, attachment_filename: str):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -516,6 +606,11 @@ async def delete_attachment(doc_id: str, attachment_filename: str):
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
+    write_audit_log(
+        request,
+        "document.attachment.delete",
+        {"document_id": doc_id, "attachment_filename": attachment_filename},
+    )
 
     return normalize_document(updated_doc)
 
@@ -525,32 +620,106 @@ async def delete_attachment(doc_id: str, attachment_filename: str):
 UPLOAD_FOLDER = "backend/uploads"
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(doc_id: str):
+async def delete_document(request: Request, doc_id: str):
     object_id = object_id_or_404(doc_id)
-
     document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    if document.get("is_archived"):
+        return {"message": "Карточка уже в архиве"}
 
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"is_archived": True, "archived_at": datetime.now(timezone.utc)}},
+    )
+    write_audit_log(
+        request,
+        "document.archive",
+        {"document_id": doc_id},
+    )
+    return {"message": "Карточка перемещена в архив"}
+
+
+@router.get("/documents/archived")
+async def get_archived_documents():
+    await cleanup_expired_archived_documents(documents_collection, UPLOAD_DIR, retention_days=30)
+    documents = []
+    async for doc in documents_collection.find({"is_archived": True}).sort("archived_at", -1):
+        documents.append(normalize_document(doc))
+    return documents
+
+
+@router.post("/documents/{doc_id}/restore")
+async def restore_archived_document(request: Request, doc_id: str):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
     if not document:
         raise HTTPException(status_code=404, detail="Документ не найден")
 
-    gallery_images = document.get("gallery_images") or []
-    gallery_filenames = [item.get("filename") for item in gallery_images if item.get("filename")]
-    attachment_files = document.get("attachments") or []
-    attachment_filenames = [item.get("filename") for item in attachment_files if item.get("filename")]
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"is_archived": False, "archived_at": None}},
+    )
+    restored_doc = await documents_collection.find_one({"_id": object_id})
+    if not restored_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
 
-    filenames_to_delete = set(gallery_filenames)
-    filenames_to_delete.update(attachment_filenames)
-    if document.get("filename"):
-        filenames_to_delete.add(document.get("filename"))
+    write_audit_log(request, "document.restore", {"document_id": doc_id})
+    return normalize_document(restored_doc)
 
-    for filename in filenames_to_delete:
-        file_path = os.path.join(UPLOAD_DIR, filename)
 
-        if os.path.exists(file_path):
-            os.remove(file_path)
+@router.delete("/documents/{doc_id}/permanent")
+async def permanently_delete_archived_document(request: Request, doc_id: str):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    if not document.get("is_archived"):
+        raise HTTPException(status_code=400, detail="Сначала переместите карточку в архив")
 
-    await documents_collection.delete_one({"_id": object_id})
-    return {"message": "Успешно удалено"}
+    removed_files = await permanently_delete_document(document, documents_collection, UPLOAD_DIR)
+    write_audit_log(
+        request,
+        "document.permanent_delete",
+        {"document_id": doc_id, "files_deleted": removed_files},
+    )
+    return {"message": "Карточка удалена навсегда"}
+
+
+@router.post("/documents/archive/restore-bulk")
+async def restore_archived_documents_bulk(request: Request, payload: DocumentIdsRequest):
+    object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
+    if not object_ids:
+        raise HTTPException(status_code=400, detail="Список карточек пуст")
+
+    await documents_collection.update_many(
+        {"_id": {"$in": object_ids}, "is_archived": True},
+        {"$set": {"is_archived": False, "archived_at": None}},
+    )
+    write_audit_log(request, "document.bulk_restore", {"document_ids": payload.ids})
+    return {"message": "Карточки восстановлены"}
+
+
+@router.post("/documents/archive/permanent-delete-bulk")
+async def permanently_delete_archived_documents_bulk(request: Request, payload: DocumentIdsRequest):
+    object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
+    if not object_ids:
+        raise HTTPException(status_code=400, detail="Список карточек пуст")
+
+    cursor = documents_collection.find({"_id": {"$in": object_ids}, "is_archived": True})
+    deleted_ids: List[str] = []
+    deleted_files: List[str] = []
+    async for document in cursor:
+        removed_files = await permanently_delete_document(document, documents_collection, UPLOAD_DIR)
+        deleted_ids.append(str(document["_id"]))
+        deleted_files.extend(removed_files)
+
+    write_audit_log(
+        request,
+        "document.bulk_permanent_delete",
+        {"document_ids": deleted_ids, "files_deleted": deleted_files},
+    )
+    return {"message": "Карточки удалены навсегда", "deleted_count": len(deleted_ids)}
 
 
 
@@ -560,6 +729,7 @@ async def search_documents(q: str):
     results = []
     async for doc in documents_collection.find(
         {
+            "is_archived": {"$ne": True},
             "$or": [
                 {"recognized_text": {"$regex": q, "$options": "i"}},
                 {"display_filename": {"$regex": q, "$options": "i"}},
@@ -579,19 +749,20 @@ class TagRequest(BaseModel):
     tag: str
 
 @router.post("/tags")
-async def create_tag(request: TagRequest):
+async def create_tag(http_request: Request, request: TagRequest):
     tag = request.tag.strip().lower()
 
     existing_tag = await tags_collection.find_one({"tag": tag})
     if existing_tag:
         raise HTTPException(status_code=400, detail="Тег уже существует")
 
-    new_tag = {"tag": tag, "created_at": datetime.utcnow()}
+    new_tag = {"tag": tag, "created_at": now_yekaterinburg()}
     await tags_collection.insert_one(new_tag)
+    write_audit_log(http_request, "tag.create", {"tag": tag})
     return {"message": "Тег добавлен", "tag": new_tag}
 
 @router.delete("/tags/{tag}")
-async def delete_tag(tag: str):
+async def delete_tag(request: Request, tag: str):
     normalized = tag.strip().lower()
 
     if not normalized:
@@ -603,6 +774,7 @@ async def delete_tag(tag: str):
         raise HTTPException(status_code=404, detail="Тег не найден")
 
     await documents_collection.update_many({"tags": normalized}, {"$pull": {"tags": normalized}})
+    write_audit_log(request, "tag.delete", {"tag": normalized})
 
     return {"message": "Тег удалён", "tag": normalized}
 
