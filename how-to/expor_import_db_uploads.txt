@@ -16,7 +16,7 @@ use db_name - self explanatory
 to use command below exit the mongoshell (exit/ctrl+d)
 mongodump --db your_db_name --out dump/
 
-mongodump --db ocr_database --out dump/
+mongodump --db ocr_database --out dump/ (example)
 
 dump/
 └── your_db_name/

@@ -14,4 +14,3 @@ frontend.log
 backend/uploads
 test_env
 node_modules/
-dump/
