@@ -84,6 +84,10 @@
       О проекте
     </button>
 
+    <button on:click={() => push('/archive')}>
+      Архив
+    </button>
+
     <button class="primary" on:click={() => push('/assistant')}>
       Чат-помощник
     </button>
