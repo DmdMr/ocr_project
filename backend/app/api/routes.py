@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.db.database import documents_collection, tags_collection
 from backend.app.services.ocr_service import recognize_text
+from backend.app.utils.image_preprocessing import autocrop_whitespace
 
 router = APIRouter(prefix="/api")
 
@@ -166,6 +167,7 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         return {"message": "Файл уже существует", "document": normalize_document(existing)}
 
     filename, file_path = save_upload_file(file, file_bytes)
+    file_path = autocrop_whitespace(file_path)
     ocr_result = recognize_text(file_path)
 
     gallery_item = build_gallery_item(
@@ -234,6 +236,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
             continue
 
         filename, file_path = save_upload_file(file, file_bytes)
+        file_path = autocrop_whitespace(file_path)
         ocr_result = recognize_text(file_path)
 
         item = build_gallery_item(
