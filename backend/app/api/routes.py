@@ -2,7 +2,7 @@ import os
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from bson import ObjectId
@@ -41,6 +41,13 @@ def calculate_file_hash(file_bytes: bytes):
     return hashlib.md5(file_bytes).hexdigest()
 
 
+YEKATERINBURG_TZ = timezone(timedelta(hours=5))
+
+
+def now_yekaterinburg():
+    return datetime.now(YEKATERINBURG_TZ)
+
+
 def object_id_or_404(doc_id: str):
     try:
         return ObjectId(doc_id)
@@ -55,8 +62,8 @@ def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: st
         "file_hash": file_hash,
         "recognized_text": ocr_text,
         "boxes": boxes,
-        "created_at": datetime.utcnow(),
-        "image_version": datetime.utcnow().isoformat(),
+        "created_at": now_yekaterinburg(),
+        "image_version": now_yekaterinburg().isoformat(),
     }
 
 
@@ -67,7 +74,7 @@ def build_attachment_item(*, filename: str, path: str, original_name: str, conte
         "original_name": original_name,
         "content_type": content_type,
         "size": size,
-        "created_at": datetime.utcnow(),
+        "created_at": now_yekaterinburg(),
     }
 
 
@@ -82,7 +89,7 @@ def normalize_document(doc: dict):
                 "file_hash": doc.get("file_hash"),
                 "recognized_text": doc.get("recognized_text", ""),
                 "boxes": doc.get("boxes", []),
-                "created_at": doc.get("created_at", datetime.utcnow()),
+                "created_at": doc.get("created_at", now_yekaterinburg()),
                 "image_version": doc.get("image_version"),
             }
         ]
@@ -136,7 +143,7 @@ def get_request_actor(request: Request):
 def write_audit_log(request: Request, action: str, payload: dict):
     actor = get_request_actor(request)
     entry = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": now_yekaterinburg().isoformat(),
         "action": action,
         "actor": actor,
         "payload": payload,
@@ -176,8 +183,8 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         "recognized_text": ocr_result["text"],  
         "boxes": ocr_result["boxes"],         
         "file_hash": file_hash,
-        "created_at": datetime.utcnow(),
-        "image_version": datetime.utcnow().isoformat(),
+        "created_at": now_yekaterinburg(),
+        "image_version": now_yekaterinburg().isoformat(),
         "tags": [],
         "gallery_images": [gallery_item],
         "attachments": [],
@@ -469,7 +476,7 @@ async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequ
     with open(file_path, "rb") as updated_file:
         new_hash = calculate_file_hash(updated_file.read())
 
-    image_version = datetime.utcnow().isoformat()
+    image_version = now_yekaterinburg().isoformat()
     set_payload = {}
     if target_filename == document.get("filename"):
         set_payload["file_hash"] = new_hash
@@ -663,7 +670,7 @@ async def create_tag(http_request: Request, request: TagRequest):
     if existing_tag:
         raise HTTPException(status_code=400, detail="Тег уже существует")
 
-    new_tag = {"tag": tag, "created_at": datetime.utcnow()}
+    new_tag = {"tag": tag, "created_at": now_yekaterinburg()}
     await tags_collection.insert_one(new_tag)
     write_audit_log(http_request, "tag.create", {"tag": tag})
     return {"message": "Тег добавлен", "tag": new_tag}
