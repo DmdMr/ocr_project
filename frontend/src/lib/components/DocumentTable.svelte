@@ -31,6 +31,20 @@
   let skipBlurSave = false
   let activeInput: HTMLInputElement | null = null
 
+  function focusAndSelect(node: HTMLInputElement) {
+    requestAnimationFrame(() => {
+      node.focus()
+      node.select()
+    })
+    return {
+      destroy() {
+        if (activeInput === node) {
+          activeInput = null
+        }
+      }
+    }
+  }
+
   function openPreview(doc: Document) {
     activeDoc = doc
     editedText = doc.recognized_text
@@ -86,6 +100,10 @@
   }
 
   async function startFilenameEdit(doc: Document) {
+    if (isEditingCell(doc._id, "filename")) return
+    if (editingCell) {
+      await saveInlineEdit()
+    }
     editingCell = { docId: doc._id, kind: "filename" }
     editingValue = getFilenameWithoutExtension(doc.display_filename || doc.filename || "")
     skipBlurSave = false
@@ -95,6 +113,10 @@
   }
 
   async function startCustomFieldEdit(doc: Document, fieldName: string) {
+    if (isEditingCell(doc._id, "custom", fieldName)) return
+    if (editingCell) {
+      await saveInlineEdit()
+    }
     editingCell = { docId: doc._id, kind: "custom", fieldName }
     editingValue = customFieldRawValue(doc, fieldName)
     skipBlurSave = false
@@ -262,17 +284,28 @@
                 <img src={cardImageSrc(doc)} alt="" class="row-preview" />
               </button>
             </td>
-            <td class="editable-cell" class:saving={savingCellKey === `${doc._id}:filename`}>
+            <td
+              class="editable-cell"
+              class:saving={savingCellKey === `${doc._id}:filename`}
+              on:click|stopPropagation={() => startFilenameEdit(doc)}
+            >
               {#if isEditingCell(doc._id, "filename")}
                 <input
                   class="inline-input"
                   bind:value={editingValue}
                   bind:this={activeInput}
+                  use:focusAndSelect
+                  on:click|stopPropagation
                   on:keydown={handleInlineKeydown}
                   on:blur={handleInlineBlur}
                 />
               {:else}
-                <button class="filename-btn" on:click={() => startFilenameEdit(doc)} title={doc.display_filename || doc.filename}>
+                <button
+                  type="button"
+                  class="filename-btn"
+                  title={doc.display_filename || doc.filename}
+                  on:click|stopPropagation={() => startFilenameEdit(doc)}
+                >
                   {getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}
                 </button>
               {/if}
@@ -293,6 +326,7 @@
                 class="editable-cell"
                 class:saving={savingCellKey === `${doc._id}:custom:${field.name}`}
                 title={customFieldValue(doc, field.name)}
+                on:click|stopPropagation={() => startCustomFieldEdit(doc, field.name)}
               >
                 {#if isEditingCell(doc._id, "custom", field.name)}
                   <input
@@ -300,11 +334,17 @@
                     type={field.type === "number" ? "number" : "text"}
                     bind:value={editingValue}
                     bind:this={activeInput}
+                    use:focusAndSelect
+                    on:click|stopPropagation
                     on:keydown={handleInlineKeydown}
                     on:blur={handleInlineBlur}
                   />
                 {:else}
-                  <button class="cell-value-btn" on:click={() => startCustomFieldEdit(doc, field.name)}>
+                  <button
+                    type="button"
+                    class="cell-value-btn"
+                    on:click|stopPropagation={() => startCustomFieldEdit(doc, field.name)}
+                  >
                     {customFieldValue(doc, field.name)}
                   </button>
                 {/if}
@@ -404,6 +444,11 @@
   .filename-btn {
     font-weight: 600;
     color: var(--text);
+    width: 100%;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .filename-btn:hover {
@@ -412,6 +457,7 @@
 
   .editable-cell {
     position: relative;
+    cursor: text;
   }
 
   .editable-cell.saving::after {
@@ -436,6 +482,7 @@
   }
 
   .inline-input {
+    display: block;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
