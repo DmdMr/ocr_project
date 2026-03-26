@@ -1,20 +1,16 @@
 <script lang="ts">
     import { onMount } from "svelte"
-    import { getDocuments, getTags } from "../api"
-    import type { Document } from "../types"
+    import { getDocuments, getSettings, getTags } from "../api"
+    import type { CardCustomFieldSetting, Document } from "../types"
     import DocumentCard from "./DocumentCard.svelte"
-    import DocumentRow from "./DocumentRow.svelte"
-    import { updateDocument } from "../api"
+    import DocumentTable from "./DocumentTable.svelte"
     import TagManager from "./TagManager.svelte";
     import { 
-        UPLOADS_URL, 
-        API_URL,
         normalizeTag,
         setDocumentTags,
         deleteDocument
     
     } from "../api"
-    import LifeguardHelp from "./LifeguardHelp.svelte"
 
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
@@ -26,13 +22,28 @@
     let tags: string[] = []
     let activeTag: string | null = null
     let selectedIds: string[] = []
+    let customFieldSettings: CardCustomFieldSetting[] = []
+    let openFilterField: string | null = null
 
-    console.log(selectedIds);
-
-    function isSelected(id: string) {
-        return selectedIds.includes(id)
+    type TextFilter = {
+        mode: "text"
+        selectedValues: string[]
+        sort: "none" | "asc" | "desc"
     }
 
+    type NumberFilter = {
+        mode: "number"
+        sort: "none" | "asc" | "desc"
+        operator: "none" | "equals" | "greater_than" | "less_than" | "between"
+        value1: string
+        value2: string
+    }
+
+    type CustomFieldFilter = TextFilter | NumberFilter
+    let customFieldFilters: Record<string, CustomFieldFilter> = {}
+    let masonryColumns: Document[][] = []
+    let masonryFailed = false
+    let viewportWidth = 1280
 
     function toggleCardSelection(id: string) {
         if (selectedIds.includes(id)) {
@@ -40,7 +51,6 @@
         } else {
             selectedIds = [...selectedIds, id]
         }
-        console.log(selectedIds);
     }
 
     function clearSelection() {
@@ -93,9 +103,25 @@
 
     async function load() {
         documents = await getDocuments()
-        const response = await fetch(`${API_URL}/tags`)
-        const data = await response.json()
         tags = await getTags()
+        const settings = await getSettings()
+        customFieldSettings = settings.fields_for_cards ?? []
+        for (const field of customFieldSettings) {
+            if (customFieldFilters[field.name]) continue
+            customFieldFilters[field.name] = field.type === "number"
+                ? {
+                    mode: "number",
+                    sort: "none",
+                    operator: "none",
+                    value1: "",
+                    value2: ""
+                }
+                : {
+                    mode: "text",
+                    selectedValues: [],
+                    sort: "none"
+                }
+        }
     }
 
     function removeFromList(id: string) {
@@ -114,10 +140,201 @@
         tags = event.detail.tags
     }
 
+    function getFieldRawValue(doc: Document, fieldName: string) {
+        return doc.custom_fields?.[fieldName]
+    }
+
+    function getFieldTextValue(doc: Document, fieldName: string) {
+        const value = getFieldRawValue(doc, fieldName)
+        if (value === null || value === undefined || value === "") return "(пусто)"
+        return String(value)
+    }
+
+    function getFieldNumberValue(doc: Document, fieldName: string) {
+        const value = getFieldRawValue(doc, fieldName)
+        if (value === null || value === undefined || value === "") return null
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : null
+    }
+
+    function fieldUniqueTextValues(fieldName: string) {
+        const values = new Set<string>()
+        for (const doc of documents) {
+            values.add(getFieldTextValue(doc, fieldName))
+        }
+        return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+    }
+
+    function toggleFilterPanel(fieldName: string) {
+        openFilterField = openFilterField === fieldName ? null : fieldName
+    }
+
+    function setTextSort(fieldName: string, sort: "none" | "asc" | "desc") {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, sort }
+        }
+    }
+
+    function setNumberSort(fieldName: string, sort: "none" | "asc" | "desc") {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "number") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, sort }
+        }
+    }
+
+    function toggleTextValue(fieldName: string, value: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        const hasValue = current.selectedValues.includes(value)
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: {
+                ...current,
+                selectedValues: hasValue
+                    ? current.selectedValues.filter(item => item !== value)
+                    : [...current.selectedValues, value]
+            }
+        }
+    }
+
+    function selectAllTextValues(fieldName: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, selectedValues: fieldUniqueTextValues(fieldName) }
+        }
+    }
+
+    function clearTextValues(fieldName: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, selectedValues: [] }
+        }
+    }
+
+    function setNumberOperator(fieldName: string, operator: NumberFilter["operator"]) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "number") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, operator }
+        }
+    }
+
+    function setNumberValue(fieldName: string, key: "value1" | "value2", value: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "number") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, [key]: value }
+        }
+    }
+
+    function clearFieldFilter(fieldName: string) {
+        const field = customFieldSettings.find(item => item.name === fieldName)
+        if (!field) return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: field.type === "number"
+                ? { mode: "number", sort: "none", operator: "none", value1: "", value2: "" }
+                : { mode: "text", sort: "none", selectedValues: [] }
+        }
+    }
+
+    function isFieldFilterActive(fieldName: string) {
+        const filter = customFieldFilters[fieldName]
+        if (!filter) return false
+        if (filter.mode === "text") {
+            return filter.sort !== "none" || filter.selectedValues.length > 0
+        }
+        return filter.sort !== "none" || filter.operator !== "none" || Boolean(filter.value1 || filter.value2)
+    }
+
+    function matchesNumberFilter(value: number | null, filter: NumberFilter) {
+        if (filter.operator === "none") return true
+        const first = Number(filter.value1)
+        const second = Number(filter.value2)
+
+        if (value === null) return false
+        if (filter.operator === "equals") return Number.isFinite(first) ? value === first : true
+        if (filter.operator === "greater_than") return Number.isFinite(first) ? value > first : true
+        if (filter.operator === "less_than") return Number.isFinite(first) ? value < first : true
+        if (filter.operator === "between") {
+            if (!Number.isFinite(first) || !Number.isFinite(second)) return true
+            const min = Math.min(first, second)
+            const max = Math.max(first, second)
+            return value >= min && value <= max
+        }
+        return true
+    }
+
+    function getActiveCustomSort() {
+        for (const field of customFieldSettings) {
+            const filter = customFieldFilters[field.name]
+            if (filter && filter.sort !== "none") {
+                return { fieldName: field.name, mode: filter.mode, direction: filter.sort }
+            }
+        }
+        return null
+    }
+
+    function estimateCardHeight(doc: Document) {
+        const filename = (doc.display_filename || doc.filename || "").length
+        const tags = doc.tags?.length ?? 0
+        const tagRows = Math.ceil(tags / 3)
+        return 280 + Math.min(120, filename * 1.8) + tagRows * 18
+    }
+
+    function getResponsiveColumnCount() {
+        if (viewportWidth < 420) return 1
+        if (viewportWidth < 640) return 2
+        if (viewportWidth < 880) return 3
+        if (viewportWidth < 1180) return 4
+        return Math.max(1, Math.min(columnCount || 5, 6))
+    }
+
+    function buildMasonryColumns(items: Document[], columnsCount: number) {
+        const count = Math.max(1, columnsCount)
+        const columns: Document[][] = Array.from({ length: count }, () => [])
+        const heights: number[] = Array.from({ length: count }, () => 0)
+
+        for (const item of items) {
+            let targetIndex = 0
+            let minHeight = heights[0]
+            for (let index = 1; index < heights.length; index++) {
+                if (heights[index] < minHeight) {
+                    minHeight = heights[index]
+                    targetIndex = index
+                }
+            }
+            columns[targetIndex].push(item)
+            heights[targetIndex] += estimateCardHeight(item)
+        }
+
+        return columns
+    }
+
+    function handleResize() {
+        viewportWidth = window.innerWidth
+    }
 
 
 
-    onMount(load)
+
+    onMount(() => {
+        load()
+        handleResize()
+        window.addEventListener("resize", handleResize)
+        return () => window.removeEventListener("resize", handleResize)
+    })
 
     $: if (refreshKey) {
         load()
@@ -132,11 +349,43 @@
             doc.recognized_text.toLowerCase().includes(search.toLowerCase()) ||
             doc.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
         const matchesTag = !activeTag || doc.tags?.includes(activeTag)
-        return matchesText && matchesTag
+        if (!matchesText || !matchesTag) return false
+
+        for (const field of customFieldSettings) {
+            const filter = customFieldFilters[field.name]
+            if (!filter) continue
+            if (filter.mode === "text" && filter.selectedValues.length) {
+                const value = getFieldTextValue(doc, field.name)
+                if (!filter.selectedValues.includes(value)) return false
+            }
+            if (filter.mode === "number") {
+                const numberValue = getFieldNumberValue(doc, field.name)
+                if (!matchesNumberFilter(numberValue, filter)) return false
+            }
+        }
+
+        return true
     })
 
 
     $: sortedDocuments = [...filtered].sort((a, b) => {
+        const customSort = getActiveCustomSort()
+        if (customSort) {
+            const directionMultiplier = customSort.direction === "asc" ? 1 : -1
+            if (customSort.mode === "text") {
+                const aValue = getFieldTextValue(a, customSort.fieldName)
+                const bValue = getFieldTextValue(b, customSort.fieldName)
+                const compared = aValue.localeCompare(bValue, undefined, { sensitivity: "base" })
+                if (compared !== 0) return compared * directionMultiplier
+            } else {
+                const aValue = getFieldNumberValue(a, customSort.fieldName)
+                const bValue = getFieldNumberValue(b, customSort.fieldName)
+                const safeA = aValue ?? Number.NEGATIVE_INFINITY
+                const safeB = bValue ?? Number.NEGATIVE_INFINITY
+                if (safeA !== safeB) return (safeA - safeB) * directionMultiplier
+            }
+        }
+
         const dateA = new Date(a.created_at).getTime() 
         const dateB = new Date(b.created_at).getTime()
 
@@ -158,6 +407,20 @@
 
         return 0
     })
+
+    $: {
+        if (masonryFailed) {
+            masonryColumns = []
+        } else {
+            try {
+                masonryColumns = buildMasonryColumns(sortedDocuments, getResponsiveColumnCount())
+            } catch (error) {
+                console.error("Masonry layout fallback to grid", error)
+                masonryFailed = true
+                masonryColumns = []
+            }
+        }
+    }
 
 
 
@@ -183,6 +446,101 @@
         </select>
     </div>
 </div>
+
+{#if customFieldSettings.length}
+<div class="panel custom-filters-panel">
+    <div class="custom-filters-header">Фильтры по полям карточки</div>
+    <div class="custom-filter-buttons">
+        {#each customFieldSettings as field}
+            <div class="field-filter-item">
+                <button
+                    class="field-filter-trigger"
+                    class:active={isFieldFilterActive(field.name)}
+                    on:click={() => toggleFilterPanel(field.name)}
+                >
+                    {field.name}
+                    <span class="filter-icon">▾</span>
+                </button>
+
+                {#if openFilterField === field.name}
+                    <div class="field-filter-popup">
+                        {#if field.type === "text"}
+                            <div class="popup-row">
+                                <button class="secondary" on:click={() => setTextSort(field.name, "asc")}>A-Z</button>
+                                <button class="secondary" on:click={() => setTextSort(field.name, "desc")}>Z-A</button>
+                                <button class="secondary" on:click={() => setTextSort(field.name, "none")}>Без сорт.</button>
+                            </div>
+                            <div class="popup-row">
+                                <button class="secondary" on:click={() => selectAllTextValues(field.name)}>Выбрать все</button>
+                                <button class="secondary" on:click={() => clearTextValues(field.name)}>Очистить</button>
+                            </div>
+                            <div class="popup-values">
+                                {#each fieldUniqueTextValues(field.name) as value}
+                                    <label class="popup-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={customFieldFilters[field.name]?.mode === "text" && customFieldFilters[field.name].selectedValues.includes(value)}
+                                            on:change={() => toggleTextValue(field.name, value)}
+                                        />
+                                        <span>{value}</span>
+                                    </label>
+                                {/each}
+                            </div>
+                        {:else}
+                            <div class="popup-row">
+                                <button class="secondary" on:click={() => setNumberSort(field.name, "asc")}>0-9</button>
+                                <button class="secondary" on:click={() => setNumberSort(field.name, "desc")}>9-0</button>
+                                <button class="secondary" on:click={() => setNumberSort(field.name, "none")}>Без сорт.</button>
+                            </div>
+                            <div class="popup-row">
+                                <select
+                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].operator : "none"}
+                                    on:change={(event) => {
+                                        const target = event.target as HTMLSelectElement
+                                        setNumberOperator(field.name, target.value as NumberFilter["operator"])
+                                    }}
+                                >
+                                    <option value="none">Без фильтра</option>
+                                    <option value="equals">Равно</option>
+                                    <option value="greater_than">Больше</option>
+                                    <option value="less_than">Меньше</option>
+                                    <option value="between">Между</option>
+                                </select>
+                            </div>
+                            <div class="popup-row number-inputs">
+                                <input
+                                    type="number"
+                                    placeholder="Значение"
+                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value1 : ""}
+                                    on:input={(event) => {
+                                        const target = event.target as HTMLInputElement
+                                        setNumberValue(field.name, "value1", target.value)
+                                    }}
+                                />
+                                {#if customFieldFilters[field.name]?.mode === "number" && customFieldFilters[field.name].operator === "between"}
+                                    <input
+                                        type="number"
+                                        placeholder="И до"
+                                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value2 : ""}
+                                        on:input={(event) => {
+                                            const target = event.target as HTMLInputElement
+                                            setNumberValue(field.name, "value2", target.value)
+                                        }}
+                                    />
+                                {/if}
+                            </div>
+                        {/if}
+                        <div class="popup-row">
+                            <button class="secondary" on:click={() => clearFieldFilter(field.name)}>Сбросить</button>
+                            <button class="primary" on:click={() => openFilterField = null}>Готово</button>
+                        </div>
+                    </div>
+                {/if}
+            </div>
+        {/each}
+    </div>
+</div>
+{/if}
 
 
 
@@ -211,34 +569,48 @@
 
 
 {#if viewMode === "grid"}
-<div class="grid" style={`--column-count: ${columnCount};`}>
-    {#each sortedDocuments as doc (doc._id)}
-      <DocumentCard
-        {doc}
-        search={search}
-        //selected={isSelected(doc._id)}
-        selected={selectedIds.includes(doc._id)}
-        selectionActive={selectedIds.length > 0}
-        on:toggleSelect={() => toggleCardSelection(doc._id)}
-        on:deleted={(e) => removeFromList(e.detail.id)}
-        on:updated={(e) => replaceDocumentInList(e.detail.document)}
-      />
-    {/each}
-  </div>
+  {#if masonryFailed}
+    <div class="grid-fallback">
+      {#each sortedDocuments as doc (doc._id)}
+        <DocumentCard
+          {doc}
+          search={search}
+          selected={selectedIds.includes(doc._id)}
+          selectionActive={selectedIds.length > 0}
+          on:toggleSelect={() => toggleCardSelection(doc._id)}
+          on:deleted={(e) => removeFromList(e.detail.id)}
+          on:updated={(e) => replaceDocumentInList(e.detail.document)}
+        />
+      {/each}
+    </div>
+  {:else}
+    <div class="masonry-grid" style={`--masonry-columns: ${Math.max(1, masonryColumns.length)};`}>
+      {#each masonryColumns as column, index (index)}
+        <div class="masonry-column">
+          {#each column as doc (doc._id)}
+            <DocumentCard
+              {doc}
+              search={search}
+              selected={selectedIds.includes(doc._id)}
+              selectionActive={selectedIds.length > 0}
+              on:toggleSelect={() => toggleCardSelection(doc._id)}
+              on:deleted={(e) => removeFromList(e.detail.id)}
+              on:updated={(e) => replaceDocumentInList(e.detail.document)}
+            />
+          {/each}
+        </div>
+      {/each}
+    </div>
+  {/if}
 {:else}
-  <div class="list-view">
-    {#each sortedDocuments as doc (doc._id)}
-      <DocumentRow
-        {doc}
-        search={search}
-        selected={selectedIds.includes(doc._id)}
-        selectionActive={selectedIds.length > 0}
-        on:toggleSelect={() => toggleCardSelection(doc._id)}
-        on:deleted={(e) => removeFromList(e.detail.id)}
-        on:updated={(e) => replaceDocumentInList(e.detail.document)}
-      />
-    {/each}
-  </div>
+  <DocumentTable
+    documents={sortedDocuments}
+    {selectedIds}
+    {customFieldSettings}
+    on:toggleSelect={(e) => toggleCardSelection(e.detail.id)}
+    on:deleted={(e) => removeFromList(e.detail.id)}
+    on:updated={(e) => replaceDocumentInList(e.detail.document)}
+  />
 {/if}
 
 
@@ -266,6 +638,84 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.custom-filters-panel {
+    margin-bottom: 16px;
+    text-align: left;
+    padding: 12px;
+}
+
+.custom-filters-header {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.custom-filter-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.field-filter-item {
+    position: relative;
+}
+
+.field-filter-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.field-filter-trigger.active {
+    border-color: color-mix(in srgb, var(--primary), white 20%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 75%);
+}
+
+.filter-icon {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.field-filter-popup {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    min-width: 250px;
+    max-width: min(86vw, 320px);
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-soft);
+    display: grid;
+    gap: 8px;
+}
+
+.popup-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.popup-values {
+    display: grid;
+    gap: 4px;
+    max-height: 150px;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.popup-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+
+.number-inputs input {
+    width: 100%;
 }
 
 @media (max-width: 640px) {
@@ -315,34 +765,23 @@
 
 */
 
-.grid {
-  column-count: var(--column-count);
-  column-gap: 0.5em;
+.masonry-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--masonry-columns), minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
 }
 
-@media (min-width: 320px) {
-    .grid{
-        column-count: 2;
-    }    
+.masonry-column {
+    display: grid;
+    gap: 10px;
+    align-content: start;
 }
 
-
-@media (min-width: 480px) {
-    .grid{
-        column-count: 3;
-    }    
-}
-
-@media (min-width: 640px) {
-    .grid{
-        column-count: 4;
-    }    
-}
-
-@media (min-width: 1024px) {
-    .grid{
-        column-count: 5;
-    }    
+.grid-fallback {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 

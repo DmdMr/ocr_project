@@ -91,6 +91,10 @@
     <button class="primary" on:click={() => push('/assistant')}>
       Чат-помощник
     </button>
+
+    <button on:click={() => push('/settings')}>
+      Настройки полей
+    </button>
   </div>
 </div>
 
