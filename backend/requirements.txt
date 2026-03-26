@@ -6,6 +6,7 @@ easyocr
 pymongo
 pydantic
 python-dotenv
+SQLAlchemy>=2.0,<3.0
 motor
 pillow
 numpy

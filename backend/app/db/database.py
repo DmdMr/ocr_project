@@ -1,14 +1,30 @@
-from motor.motor_asyncio import AsyncIOMotorClient
+from pathlib import Path
+from typing import Generator
 
-MONGO_URL = "mongodb://localhost:27017"
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
-client = AsyncIOMotorClient(MONGO_URL)
-db = client["ocr_database"]
+BASE_DIR = Path(__file__).resolve().parents[3]
+SQLITE_DB_PATH = BASE_DIR / "backend" / "ocr.sqlite3"
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{SQLITE_DB_PATH}"
 
-documents_collection = db["documents"]
-tags_collection = db["tags"]
-app_settings_collection = db["app_settings"]
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 
+def get_db_session() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
+def init_db() -> None:
+    from backend.app.db import models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
