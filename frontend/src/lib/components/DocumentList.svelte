@@ -41,6 +41,9 @@
 
     type CustomFieldFilter = TextFilter | NumberFilter
     let customFieldFilters: Record<string, CustomFieldFilter> = {}
+    let masonryColumns: Document[][] = []
+    let masonryFailed = false
+    let viewportWidth = 1280
 
     function toggleCardSelection(id: string) {
         if (selectedIds.includes(id)) {
@@ -283,10 +286,55 @@
         return null
     }
 
+    function estimateCardHeight(doc: Document) {
+        const filename = (doc.display_filename || doc.filename || "").length
+        const tags = doc.tags?.length ?? 0
+        const tagRows = Math.ceil(tags / 3)
+        return 280 + Math.min(120, filename * 1.8) + tagRows * 18
+    }
+
+    function getResponsiveColumnCount() {
+        if (viewportWidth < 420) return 1
+        if (viewportWidth < 640) return 2
+        if (viewportWidth < 880) return 3
+        if (viewportWidth < 1180) return 4
+        return Math.max(1, Math.min(columnCount || 5, 6))
+    }
+
+    function buildMasonryColumns(items: Document[], columnsCount: number) {
+        const count = Math.max(1, columnsCount)
+        const columns: Document[][] = Array.from({ length: count }, () => [])
+        const heights: number[] = Array.from({ length: count }, () => 0)
+
+        for (const item of items) {
+            let targetIndex = 0
+            let minHeight = heights[0]
+            for (let index = 1; index < heights.length; index++) {
+                if (heights[index] < minHeight) {
+                    minHeight = heights[index]
+                    targetIndex = index
+                }
+            }
+            columns[targetIndex].push(item)
+            heights[targetIndex] += estimateCardHeight(item)
+        }
+
+        return columns
+    }
+
+    function handleResize() {
+        viewportWidth = window.innerWidth
+    }
 
 
 
-    onMount(load)
+
+    onMount(() => {
+        load()
+        handleResize()
+        window.addEventListener("resize", handleResize)
+        return () => window.removeEventListener("resize", handleResize)
+    })
 
     $: if (refreshKey) {
         load()
@@ -359,6 +407,20 @@
 
         return 0
     })
+
+    $: {
+        if (masonryFailed) {
+            masonryColumns = []
+        } else {
+            try {
+                masonryColumns = buildMasonryColumns(sortedDocuments, getResponsiveColumnCount())
+            } catch (error) {
+                console.error("Masonry layout fallback to grid", error)
+                masonryFailed = true
+                masonryColumns = []
+            }
+        }
+    }
 
 
 
@@ -507,20 +569,39 @@
 
 
 {#if viewMode === "grid"}
-<div class="grid" style={`--column-count: ${columnCount};`}>
-    {#each sortedDocuments as doc (doc._id)}
-      <DocumentCard
-        {doc}
-        search={search}
-        //selected={isSelected(doc._id)}
-        selected={selectedIds.includes(doc._id)}
-        selectionActive={selectedIds.length > 0}
-        on:toggleSelect={() => toggleCardSelection(doc._id)}
-        on:deleted={(e) => removeFromList(e.detail.id)}
-        on:updated={(e) => replaceDocumentInList(e.detail.document)}
-      />
-    {/each}
-  </div>
+  {#if masonryFailed}
+    <div class="grid-fallback">
+      {#each sortedDocuments as doc (doc._id)}
+        <DocumentCard
+          {doc}
+          search={search}
+          selected={selectedIds.includes(doc._id)}
+          selectionActive={selectedIds.length > 0}
+          on:toggleSelect={() => toggleCardSelection(doc._id)}
+          on:deleted={(e) => removeFromList(e.detail.id)}
+          on:updated={(e) => replaceDocumentInList(e.detail.document)}
+        />
+      {/each}
+    </div>
+  {:else}
+    <div class="masonry-grid" style={`--masonry-columns: ${Math.max(1, masonryColumns.length)};`}>
+      {#each masonryColumns as column, index (index)}
+        <div class="masonry-column">
+          {#each column as doc (doc._id)}
+            <DocumentCard
+              {doc}
+              search={search}
+              selected={selectedIds.includes(doc._id)}
+              selectionActive={selectedIds.length > 0}
+              on:toggleSelect={() => toggleCardSelection(doc._id)}
+              on:deleted={(e) => removeFromList(e.detail.id)}
+              on:updated={(e) => replaceDocumentInList(e.detail.document)}
+            />
+          {/each}
+        </div>
+      {/each}
+    </div>
+  {/if}
 {:else}
   <DocumentTable
     documents={sortedDocuments}
@@ -684,34 +765,23 @@
 
 */
 
-.grid {
-  column-count: var(--column-count);
-  column-gap: 0.5em;
+.masonry-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--masonry-columns), minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
 }
 
-@media (min-width: 320px) {
-    .grid{
-        column-count: 2;
-    }    
+.masonry-column {
+    display: grid;
+    gap: 10px;
+    align-content: start;
 }
 
-
-@media (min-width: 480px) {
-    .grid{
-        column-count: 3;
-    }    
-}
-
-@media (min-width: 640px) {
-    .grid{
-        column-count: 4;
-    }    
-}
-
-@media (min-width: 1024px) {
-    .grid{
-        column-count: 5;
-    }    
+.grid-fallback {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 
