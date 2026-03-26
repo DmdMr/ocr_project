@@ -9,7 +9,7 @@ from bson import ObjectId
 
 
 from backend.app.services.ocr_service import recognize_text
-from backend.app.db.database import documents_collection
+from backend.app.db.database import app_settings_collection, documents_collection
 
 from typing import List, Optional
 
@@ -17,7 +17,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
-from backend.app.db.database import documents_collection, tags_collection
+from backend.app.db.database import app_settings_collection, documents_collection, tags_collection
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
@@ -48,6 +48,34 @@ YEKATERINBURG_TZ = timezone(timedelta(hours=5))
 
 def now_yekaterinburg():
     return datetime.now(YEKATERINBURG_TZ)
+
+
+SETTINGS_DOCUMENT_ID = "main"
+ALLOWED_CUSTOM_FIELD_TYPES = {"text", "number"}
+
+
+def normalize_custom_field_name(name: str):
+    return (name or "").strip().lower()
+
+
+def default_value_for_field_type(field_type: str):
+    return None
+
+
+async def get_or_create_settings():
+    settings_doc = await app_settings_collection.find_one({"_id": SETTINGS_DOCUMENT_ID})
+    if settings_doc:
+        if not isinstance(settings_doc.get("fields_for_cards"), list):
+            await app_settings_collection.update_one(
+                {"_id": SETTINGS_DOCUMENT_ID},
+                {"$set": {"fields_for_cards": []}},
+            )
+            settings_doc["fields_for_cards"] = []
+        return settings_doc
+
+    settings_doc = {"_id": SETTINGS_DOCUMENT_ID, "fields_for_cards": []}
+    await app_settings_collection.insert_one(settings_doc)
+    return settings_doc
 
 
 def object_id_or_404(doc_id: str):
@@ -101,6 +129,8 @@ def normalize_document(doc: dict):
         ]
     if doc.get("attachments") is None:
         doc["attachments"] = []
+    if not isinstance(doc.get("custom_fields"), dict):
+        doc["custom_fields"] = {}
     return doc
 
 
@@ -183,6 +213,14 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         boxes=ocr_result["boxes"],
     )
 
+    settings_doc = await get_or_create_settings()
+    fields_for_cards = settings_doc.get("fields_for_cards") or []
+    custom_fields = {
+        normalize_custom_field_name(field.get("name", "")): default_value_for_field_type(field.get("type", "text"))
+        for field in fields_for_cards
+        if normalize_custom_field_name(field.get("name", ""))
+    }
+
     document_data = {
         "filename": filename,
         "display_filename": file.filename.strip() or file.filename,
@@ -197,6 +235,7 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         "archived_at": None,
         "gallery_images": [gallery_item],
         "attachments": [],
+        "custom_fields": custom_fields,
     }
 
 
@@ -408,6 +447,69 @@ class DocumentUpdate(BaseModel):
 class DocumentIdsRequest(BaseModel):
     ids: List[str] = Field(default_factory=list)
 
+
+class CustomFieldDefinition(BaseModel):
+    name: str
+    type: str
+
+
+class DocumentCustomFieldsUpdate(BaseModel):
+    custom_fields: dict = Field(default_factory=dict)
+
+
+@router.get("/settings")
+async def get_settings():
+    settings_doc = await get_or_create_settings()
+    return {"fields_for_cards": settings_doc.get("fields_for_cards", [])}
+
+
+@router.post("/settings/fields")
+async def create_settings_field(request: Request, payload: CustomFieldDefinition):
+    field_name = normalize_custom_field_name(payload.name)
+    field_type = (payload.type or "").strip().lower()
+
+    if not field_name:
+        raise HTTPException(status_code=400, detail="Имя поля обязательно")
+    if field_type not in ALLOWED_CUSTOM_FIELD_TYPES:
+        raise HTTPException(status_code=400, detail="Неподдерживаемый тип поля")
+
+    settings_doc = await get_or_create_settings()
+    fields = settings_doc.get("fields_for_cards") or []
+    if any(normalize_custom_field_name(item.get("name", "")) == field_name for item in fields):
+        raise HTTPException(status_code=400, detail="Поле с таким именем уже существует")
+
+    field_data = {"name": field_name, "type": field_type, "created_at": now_yekaterinburg()}
+    await app_settings_collection.update_one(
+        {"_id": SETTINGS_DOCUMENT_ID},
+        {"$push": {"fields_for_cards": field_data}},
+    )
+    await documents_collection.update_many(
+        {"custom_fields." + field_name: {"$exists": False}},
+        {"$set": {"custom_fields." + field_name: default_value_for_field_type(field_type)}},
+    )
+    write_audit_log(request, "settings.field.create", {"field_name": field_name, "field_type": field_type})
+    return {"message": "Поле добавлено", "field": field_data}
+
+
+@router.delete("/settings/fields/{name}")
+async def delete_settings_field(request: Request, name: str):
+    field_name = normalize_custom_field_name(name)
+    if not field_name:
+        raise HTTPException(status_code=400, detail="Имя поля обязательно")
+
+    settings_doc = await get_or_create_settings()
+    fields = settings_doc.get("fields_for_cards") or []
+    field_exists = any(normalize_custom_field_name(item.get("name", "")) == field_name for item in fields)
+    if not field_exists:
+        raise HTTPException(status_code=404, detail="Поле не найдено")
+
+    await app_settings_collection.update_one(
+        {"_id": SETTINGS_DOCUMENT_ID},
+        {"$pull": {"fields_for_cards": {"name": field_name}}},
+    )
+    write_audit_log(request, "settings.field.delete", {"field_name": field_name})
+    return {"message": "Поле удалено", "field_name": field_name}
+
 @router.put("/documents/{doc_id}")
 async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
     object_id = object_id_or_404(doc_id)
@@ -434,6 +536,45 @@ async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
         {"document_id": doc_id, "updated_fields": sorted(update_data.keys())},
     )
 
+    return normalize_document(updated_doc)
+
+
+@router.patch("/documents/{doc_id}/fields")
+async def update_document_custom_fields(request: Request, doc_id: str, payload: DocumentCustomFieldsUpdate):
+    object_id = object_id_or_404(doc_id)
+    existing_doc = await documents_collection.find_one({"_id": object_id})
+    if not existing_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    settings_doc = await get_or_create_settings()
+    fields_for_cards = settings_doc.get("fields_for_cards") or []
+    allowed_fields = {normalize_custom_field_name(field.get("name", "")): field.get("type", "text") for field in fields_for_cards}
+
+    current_custom_fields = existing_doc.get("custom_fields") if isinstance(existing_doc.get("custom_fields"), dict) else {}
+    merged_fields = dict(current_custom_fields)
+
+    for field_name, field_type in allowed_fields.items():
+        if field_name and field_name not in merged_fields:
+            merged_fields[field_name] = default_value_for_field_type(field_type)
+
+    for key, value in (payload.custom_fields or {}).items():
+        normalized_key = normalize_custom_field_name(key)
+        if not normalized_key or normalized_key not in allowed_fields:
+            continue
+        merged_fields[normalized_key] = value
+
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"custom_fields": merged_fields}},
+    )
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    write_audit_log(
+        request,
+        "document.custom_fields.update",
+        {"document_id": doc_id, "field_names": sorted(list((payload.custom_fields or {}).keys()))},
+    )
     return normalize_document(updated_doc)
 
 
