@@ -747,6 +747,40 @@
                 
             </div>
 
+            <div class="custom-fields-panel">
+                <div class="attachments-header">
+                    <h4>Пользовательские поля</h4>
+                    <button class="primary" on:click={saveCustomFields} disabled={customFieldsSaving}>
+                        {customFieldsSaving ? "Сохранение..." : "Сохранить поля"}
+                    </button>
+                </div>
+                {#if customFieldsError}
+                    <p class="attachment-error">{customFieldsError}</p>
+                {/if}
+                {#if customFieldSettings.length}
+                    <div class="custom-fields-grid">
+                        {#each customFieldSettings as field}
+                            <label class="custom-field">
+                                <span>{field.name}</span>
+                                <input
+                                    type={field.type === "number" ? "number" : "text"}
+                                    value={customFieldDraft[field.name] ?? ""}
+                                    on:input={(event) => {
+                                        const target = event.target as HTMLInputElement
+                                        customFieldDraft = {
+                                            ...customFieldDraft,
+                                            [field.name]: normalizeFieldValue(field.type, target.value)
+                                        }
+                                    }}
+                                />
+                            </label>
+                        {/each}
+                    </div>
+                {:else}
+                    <p class="attachment-empty">Пользовательские поля не настроены.</p>
+                {/if}
+            </div>
+
             <div class="gallery-toolbar">
                 <label class="gallery-upload-btn" class:disabled={galleryUploading}>
                     {galleryUploading ? "Добавление изображений..." : "Добавить изображения"}
@@ -771,6 +805,8 @@
                     />
                 </label>
             </div>
+
+            
 
 
             <div class="attachments-panel">
@@ -821,39 +857,9 @@
             </div>
             {/if}
 
-            <div class="custom-fields-panel">
-                <div class="attachments-header">
-                    <h4>Пользовательские поля</h4>
-                    <button class="primary" on:click={saveCustomFields} disabled={customFieldsSaving}>
-                        {customFieldsSaving ? "Сохранение..." : "Сохранить поля"}
-                    </button>
-                </div>
-                {#if customFieldsError}
-                    <p class="attachment-error">{customFieldsError}</p>
-                {/if}
-                {#if customFieldSettings.length}
-                    <div class="custom-fields-grid">
-                        {#each customFieldSettings as field}
-                            <label class="custom-field">
-                                <span>{field.name}</span>
-                                <input
-                                    type={field.type === "number" ? "number" : "text"}
-                                    value={customFieldDraft[field.name] ?? ""}
-                                    on:input={(event) => {
-                                        const target = event.target as HTMLInputElement
-                                        customFieldDraft = {
-                                            ...customFieldDraft,
-                                            [field.name]: normalizeFieldValue(field.type, target.value)
-                                        }
-                                    }}
-                                />
-                            </label>
-                        {/each}
-                    </div>
-                {:else}
-                    <p class="attachment-empty">Пользовательские поля не настроены.</p>
-                {/if}
-            </div>
+            
+
+            
 
             
             {#if !isMobile}
@@ -1087,6 +1093,10 @@
     background: var(--surface);
 }
 
+.custom-fields-grid input {
+    width: auto;
+}
+
 .filename-actions {
     display: flex;
     gap: 8px;
@@ -1228,13 +1238,13 @@
 
 .custom-fields-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
 }
 
 .custom-field {
     display: grid;
-    gap: 4px;
+    gap: 6px;
 }
 
 .custom-field span {
