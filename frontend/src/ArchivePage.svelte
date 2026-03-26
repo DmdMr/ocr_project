@@ -3,6 +3,7 @@
   import { push } from "svelte-spa-router"
   import type { Document } from "./lib/types"
   import {
+    UPLOADS_URL,
     getArchivedDocuments,
     restoreArchivedDocument,
     permanentlyDeleteArchivedDocument,
@@ -80,14 +81,14 @@
   <p>Карточки хранятся в архиве до 30 дней, затем удаляются автоматически.</p>
 </div>
 
-{#if selectedIds.length > 0}
-  <div class="panel actions">
-    <span>Выбрано: {selectedIds.length}</span>
-    <button on:click={restoreSelected}>Восстановить выбранные</button>
-    <button class="danger" on:click={deleteSelectedPermanently}>Удалить выбранные навсегда</button>
-    <button on:click={clearSelection}>Отмена</button>
+<div class="panel actions-bar">
+  <span>Выбрано: {selectedIds.length}</span>
+  <div class="bulk-actions">
+    <button class="secondary" on:click={restoreSelected} disabled={!selectedIds.length}>Восстановить выбранные</button>
+    <button class="danger" on:click={deleteSelectedPermanently} disabled={!selectedIds.length}>Удалить выбранные</button>
+    <button class="secondary" on:click={clearSelection} disabled={!selectedIds.length}>Снять выбор</button>
   </div>
-{/if}
+</div>
 
 {#if loading}
   <div class="panel">Загрузка архива...</div>
@@ -96,18 +97,28 @@
 {:else}
   <div class="archive-list">
     {#each archivedDocs as doc (doc._id)}
-      <div class="panel archive-item">
-        <label>
+      <div class="document-card archive-card">
+        <div class="archive-left">
           <input
             type="checkbox"
             checked={selectedIds.includes(doc._id)}
             on:change={() => toggleSelection(doc._id)}
           />
-          {displayName(doc)}
-        </label>
-        <small>Архивировано: {doc.archived_at ? new Date(doc.archived_at).toLocaleString() : "—"}</small>
-        <div class="item-actions">
-          <button on:click={() => restoreOne(doc._id)}>Восстановить</button>
+          <img
+            src={`${UPLOADS_URL}/${doc.filename}?v=${encodeURIComponent(doc.image_version ?? doc.created_at ?? "")}`}
+            alt={displayName(doc)}
+            class="card-image"
+            loading="lazy"
+          />
+        </div>
+
+        <div class="card-content">
+          <div class="card-title">{displayName(doc)}</div>
+          <div class="card-meta">Архивировано: {doc.archived_at ? new Date(doc.archived_at).toLocaleString() : "—"}</div>
+        </div>
+
+        <div class="card-actions">
+          <button class="secondary" on:click={() => restoreOne(doc._id)}>Восстановить</button>
           <button class="danger" on:click={() => deleteOnePermanently(doc._id)}>Удалить навсегда</button>
         </div>
       </div>
@@ -116,8 +127,71 @@
 {/if}
 
 <style>
-  .nav-panel, .archive-panel, .actions { margin-bottom: 12px; }
-  .archive-list { display: grid; gap: 10px; }
-  .archive-item { display: flex; flex-direction: column; gap: 8px; }
-  .item-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav-panel,
+  .archive-panel,
+  .actions-bar {
+    margin-bottom: 12px;
+    padding: 14px;
+  }
+
+  .actions-bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    text-align: left;
+  }
+
+  .bulk-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .archive-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .archive-card {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    text-align: left;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .archive-card:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong);
+    box-shadow: 0 6px 18px rgba(28, 39, 56, 0.12);
+  }
+
+  .archive-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 700px) {
+    .archive-card {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .card-actions {
+      justify-content: flex-start;
+    }
+  }
 </style>
