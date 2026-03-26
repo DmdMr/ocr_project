@@ -1,9 +1,7 @@
 <script lang="ts">
     import Upload from "./lib/components/Upload.svelte"
     import DocumentList from "./lib/components/DocumentList.svelte"
-    import Settings from "./lib/components/Settings.svelte";
     import { onMount } from "svelte"
-    import LifeguardHelp from "./lib/components/LifeguardHelp.svelte"
     import DocumentCard from "./lib/components/DocumentCard.svelte";
     import { push } from 'svelte-spa-router'
 

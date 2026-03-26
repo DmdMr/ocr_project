@@ -2,6 +2,7 @@
     import { createEventDispatcher, onMount } from "svelte"
     import { getDocuments, getSettings, getTags } from "../api"
     import type { CardCustomFieldSetting, Document } from "../types"
+    //import SettingsPage from "../SettingsPage.svelte";
     import DocumentCard from "./DocumentCard.svelte"
     import DocumentTable from "./DocumentTable.svelte"
     import TagManager from "./TagManager.svelte";
@@ -474,6 +475,9 @@
 <div class="panel custom-filters-panel">
     <div class="custom-filters-header">Фильтры по полям карточки</div>
     <div class="custom-filter-buttons">
+        <button on:click={() => push('/settings')}>
+            Настройки полей
+        </button>
         {#each customFieldSettings as field}
             <div class="field-filter-item">
                 <button
