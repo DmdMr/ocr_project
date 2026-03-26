@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte"
-    import type { AttachmentFile, Document, GalleryImage } from "../types"
+    import type { AttachmentFile, CardCustomFieldSetting, Document, GalleryImage } from "../types"
     import { tagHue } from "../tagColors"
     import CardTagPicker from "./CardTagPicker.svelte"
     import {
@@ -8,9 +8,11 @@
         deleteDocumentImage,
         deleteDocumentAttachment,
         editDocumentImage,
+        getSettings,
         getTags,
         setDocumentTags,
         uploadDocumentAttachments,
+        updateDocumentCustomFields,
         type ImageEditPayload
     } from "../api"
 
@@ -39,6 +41,10 @@
     let tagsError = ""
     let attachmentUploadError = ""
     let attachmentsUploading = false
+    let customFieldSettings: CardCustomFieldSetting[] = []
+    let customFieldDraft: Record<string, string | number | null> = {}
+    let customFieldsSaving = false
+    let customFieldsError = ""
 
     let imageEl: HTMLImageElement | null = null
     let imageStageEl: HTMLDivElement | null = null
@@ -555,8 +561,52 @@
         }
     }
 
+    async function loadCustomFieldSettings() {
+        try {
+            const settings = await getSettings()
+            customFieldSettings = settings.fields_for_cards ?? []
+        } catch (error) {
+            console.error("Не удалось загрузить настройки пользовательских полей", error)
+        }
+    }
+
+    $: {
+        const nextDraft: Record<string, string | number | null> = { ...(doc.custom_fields ?? {}) }
+        for (const field of customFieldSettings) {
+            if (field?.name && !(field.name in nextDraft)) {
+                nextDraft[field.name] = null
+            }
+        }
+        customFieldDraft = nextDraft
+    }
+
+    function normalizeFieldValue(type: "text" | "number", value: string) {
+        if (type === "number") {
+            if (!value.trim()) return null
+            const parsed = Number(value)
+            return Number.isFinite(parsed) ? parsed : null
+        }
+        return value
+    }
+
+    async function saveCustomFields() {
+        if (customFieldsSaving) return
+        customFieldsSaving = true
+        customFieldsError = ""
+        try {
+            const updated = await updateDocumentCustomFields(doc._id, customFieldDraft)
+            doc = updated
+            dispatch("documentUpdated", { document: updated })
+        } catch (error) {
+            customFieldsError = error instanceof Error ? error.message : "Не удалось сохранить поля"
+        } finally {
+            customFieldsSaving = false
+        }
+    }
+
     onMount(() => {
         loadTags()
+        loadCustomFieldSettings()
         window.addEventListener("keydown", handleKey)
         return () => window.removeEventListener("keydown", handleKey)
     })
@@ -770,6 +820,40 @@
                 {/if}
             </div>
             {/if}
+
+            <div class="custom-fields-panel">
+                <div class="attachments-header">
+                    <h4>Пользовательские поля</h4>
+                    <button class="primary" on:click={saveCustomFields} disabled={customFieldsSaving}>
+                        {customFieldsSaving ? "Сохранение..." : "Сохранить поля"}
+                    </button>
+                </div>
+                {#if customFieldsError}
+                    <p class="attachment-error">{customFieldsError}</p>
+                {/if}
+                {#if customFieldSettings.length}
+                    <div class="custom-fields-grid">
+                        {#each customFieldSettings as field}
+                            <label class="custom-field">
+                                <span>{field.name}</span>
+                                <input
+                                    type={field.type === "number" ? "number" : "text"}
+                                    value={customFieldDraft[field.name] ?? ""}
+                                    on:input={(event) => {
+                                        const target = event.target as HTMLInputElement
+                                        customFieldDraft = {
+                                            ...customFieldDraft,
+                                            [field.name]: normalizeFieldValue(field.type, target.value)
+                                        }
+                                    }}
+                                />
+                            </label>
+                        {/each}
+                    </div>
+                {:else}
+                    <p class="attachment-empty">Пользовательские поля не настроены.</p>
+                {/if}
+            </div>
 
             
             {#if !isMobile}
@@ -1131,6 +1215,31 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--surface), transparent 6%);
+}
+
+.custom-fields-panel {
+    display: grid;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--surface), transparent 6%);
+}
+
+.custom-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.custom-field {
+    display: grid;
+    gap: 4px;
+}
+
+.custom-field span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
 }
 
 .attachments-header {

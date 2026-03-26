@@ -29,4 +29,11 @@ export interface Document {
     image_version?: string
     gallery_images?: GalleryImage[]
     attachments?: AttachmentFile[]
+    custom_fields?: Record<string, string | number | null>
+}
+
+export interface CardCustomFieldSetting {
+    name: string
+    type: "text" | "number"
+    created_at?: string
 }
