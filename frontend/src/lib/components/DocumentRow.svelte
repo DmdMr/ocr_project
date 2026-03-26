@@ -1,376 +1,364 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte"
-    import type { Document } from "../types"
-    import CardPreview from "./CardPreview.svelte"
-    import { tagHue } from "../tagColors"
-    import {
-        deleteDocument,
-        updateDocument,
-        uploadImagesToDocument,
-        UPLOADS_URL
-    } from "../api"
+  import { createEventDispatcher, tick } from "svelte"
+  import type { CardCustomFieldSetting, Document } from "../types"
 
-    let showPreview = false
+  export let doc: Document
+  export let selected = false
+  export let customFieldSettings: CardCustomFieldSetting[] = []
+  export let onSaveFilename: (doc: Document, displayFilename: string) => Promise<Document>
+  export let onSaveCustomField: (doc: Document, fieldName: string, value: string) => Promise<Document>
+  export let cardImageSrc: (doc: Document) => string
 
-    export let doc: Document
-    export let search = ""
-    export let selected = false
-    export let selectionActive = false
+  type DocumentRowEvents = {
+    toggleSelect: { id: string }
+    openPreview: { id: string }
+    updated: { document: Document }
+  }
 
-    let editing = false
-    let editedText = doc.recognized_text
-    let galleryUploading = false
+  const dispatch = createEventDispatcher<DocumentRowEvents>()
 
-    function escapeRegExp(value: string) {
-        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    }
+  let editingFieldKey: string | null = null
+  let draftValue = ""
+  let skipBlurSave = false
+  let savingFieldKey = ""
+  let activeInput: HTMLInputElement | null = null
 
-    function highlightedFilename(filename: string, searchText: string) {
-        if (!searchText.trim()) return filename
+  function focusAndSelect(node: HTMLInputElement) {
+    requestAnimationFrame(() => {
+      node.focus()
+      node.select()
+    })
 
-        const escaped = escapeRegExp(searchText.trim())
-        const regex = new RegExp(`(${escaped})`, "gi")
-
-        return filename.replace(regex, '<mark class="filename-highlight">$1</mark>')
-    }
-
-    type DocumentRowEvents = {
-        deleted: { id: string }
-        tagClick: { tag: string }
-        updated: { document: Document }
-        toggleSelect: undefined
-        toggleSelection: { id: string }
-    }
-
-    const dispatch = createEventDispatcher<DocumentRowEvents>()
-
-    function openPreview() {
-        if (selectionActive) {
-            dispatch("toggleSelection", { id: doc._id })
-            return
+    return {
+      destroy() {
+        if (activeInput === node) {
+          activeInput = null
         }
+      }
+    }
+  }
 
-        showPreview = true
+  function fieldType(fieldName: string) {
+    return customFieldSettings.find((field) => field.name === fieldName)?.type ?? "text"
+  }
+
+  function customFieldValue(fieldName: string) {
+    const value = doc.custom_fields?.[fieldName]
+    if (value === null || value === undefined || value === "") return "—"
+    return String(value)
+  }
+
+  function customFieldRawValue(fieldName: string) {
+    const value = doc.custom_fields?.[fieldName]
+    if (value === null || value === undefined) return ""
+    return String(value)
+  }
+
+  function getFilenameWithoutExtension(name: string) {
+    if (!name) return ""
+
+    const lastDot = name.lastIndexOf(".")
+    if (lastDot <= 0) return name
+
+    return name.slice(0, lastDot)
+  }
+
+  async function startFilenameEdit(event?: Event) {
+    event?.stopPropagation()
+    if (editingFieldKey === "filename") return
+
+    if (editingFieldKey) {
+      await saveInlineEdit()
     }
 
-    function handleRowClick() {
-        if (selectionActive) {
-            dispatch("toggleSelect")
-            return
+    editingFieldKey = "filename"
+    draftValue = getFilenameWithoutExtension(doc.display_filename || doc.filename || "")
+    skipBlurSave = false
+    await tick()
+    activeInput?.focus()
+    activeInput?.select()
+  }
+
+  async function startCustomFieldEdit(fieldName: string, event?: Event) {
+    event?.stopPropagation()
+    const nextKey = `custom:${fieldName}`
+    if (editingFieldKey === nextKey) return
+
+    if (editingFieldKey) {
+      await saveInlineEdit()
+    }
+
+    editingFieldKey = nextKey
+    draftValue = customFieldRawValue(fieldName)
+    skipBlurSave = false
+    await tick()
+    activeInput?.focus()
+    activeInput?.select()
+  }
+
+  function cancelInlineEdit() {
+    skipBlurSave = true
+    editingFieldKey = null
+    draftValue = ""
+  }
+
+  async function saveInlineEdit() {
+    if (!editingFieldKey) return
+
+    const targetKey = editingFieldKey
+    editingFieldKey = null
+
+    try {
+      savingFieldKey = targetKey
+      if (targetKey === "filename") {
+        const currentValue = getFilenameWithoutExtension(doc.display_filename || doc.filename || "")
+        if (draftValue !== currentValue) {
+          const updated = await onSaveFilename(doc, draftValue)
+          dispatch("updated", { document: updated })
         }
-
-        showPreview = true
-    }
-
-    function handleCheckboxClick(event: MouseEvent) {
-        event.stopPropagation()
-        dispatch("toggleSelect")
-    }
-
-    function handleRowKeydown(event: KeyboardEvent) {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            openPreview()
+      } else if (targetKey.startsWith("custom:")) {
+        const fieldName = targetKey.replace("custom:", "")
+        const currentValue = customFieldRawValue(fieldName)
+        if (draftValue !== currentValue) {
+          const updated = await onSaveCustomField(doc, fieldName, draftValue)
+          dispatch("updated", { document: updated })
         }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось сохранить значение"
+      alert(message)
+    } finally {
+      draftValue = ""
+      savingFieldKey = ""
+    }
+  }
+
+  async function handleInlineBlur() {
+    if (skipBlurSave) {
+      skipBlurSave = false
+      return
     }
 
-    function applyDocumentUpdate(updated: Document) {
-        doc = updated
-        editedText = updated.recognized_text
-        dispatch("updated", { document: updated })
+    await saveInlineEdit()
+  }
+
+  async function handleInlineKeydown(event: KeyboardEvent) {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      await saveInlineEdit()
+      return
     }
 
-    function cardImageSrc(currentDoc: Document) {
-        return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
+    if (event.key === "Escape") {
+      event.preventDefault()
+      cancelInlineEdit()
     }
+  }
 
-    async function save() {
-        const updated = await updateDocument(doc._id, {
-            recognized_text: editedText
-        })
-
-        applyDocumentUpdate(updated)
-        editing = false
-    }
-
-    async function saveFilename(event: CustomEvent<{ display_filename: string }>) {
-        const updated = await updateDocument(doc._id, {
-            display_filename: event.detail.display_filename
-        })
-
-        applyDocumentUpdate(updated)
-    }
-
-    async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
-        const files = event.detail.files
-        if (!files.length) return
-
-        galleryUploading = true
-
-        try {
-            const result = await uploadImagesToDocument(doc._id, files)
-
-            if (!result.document) {
-                throw new Error("Сервер не вернул обновленные данные карточки")
-            }
-
-            applyDocumentUpdate(result.document)
-
-            const addedCount = Number(result.added_count ?? 0)
-            if (addedCount > 0) {
-                alert(`Добавлено ${addedCount} изображений ${addedCount > 1 ? "s" : ""}`)
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Не удалось добавить изображения в карточку"
-            alert(message)
-            console.error("Не удалось загрузить изображения в галерею", error)
-        } finally {
-            galleryUploading = false
-        }
-    }
-
-    function handleDocumentUpdated(event: CustomEvent<{ document: Document }>) {
-        applyDocumentUpdate(event.detail.document)
-    }
-
-    async function remove() {
-        await deleteDocument(doc._id)
-        dispatch("deleted", { id: doc._id })
-    }
-
-    function handleTagClick(event: CustomEvent<{ tag: string }>) {
-        dispatch("tagClick", { tag: event.detail.tag })
-    }
-
-    function selectTagFromCard(tag: string) {
-        dispatch("tagClick", { tag })
-    }
-
-    function getFilenameWithoutExtension(name: string) {
-        if (!name) return ""
-
-        const lastDot = name.lastIndexOf(".")
-        if (lastDot <= 0) return name
-
-        return name.slice(0, lastDot)
-    }
+  function isEditingCell(kind: "filename" | "custom", fieldName?: string) {
+    if (kind === "filename") return editingFieldKey === "filename"
+    return editingFieldKey === `custom:${fieldName ?? ""}`
+  }
 </script>
 
-<div
-    class="row-card"
-    class:selected-row={selected}
-    role="button"
-    tabindex="0"
-    aria-pressed={selectionActive ? selected : undefined}
-    on:click={openPreview}
-    on:keydown={handleRowKeydown}
->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="row-media" on:click={handleRowClick}>
-        <img
-            class="row-thumb"
-            src={cardImageSrc(doc)}
-            alt=""
-            on:click={() => showPreview = true}
-        />
+<tr class:selected-row={selected}>
+  <td class="cell-center">
+    <input
+      type="checkbox"
+      checked={selected}
+      on:click|stopPropagation
+      on:change={() => dispatch("toggleSelect", { id: doc._id })}
+    />
+  </td>
 
-        <button
-            class="select-checkbox"
-            class:visible={selected}
-            aria-label="Выбрать карточку"
-            on:click={handleCheckboxClick}
-        >
-            {#if selected}{/if}
-        </button>
-    </div>
+  <td>
+    <button class="preview-btn" on:click={() => dispatch("openPreview", { id: doc._id })}>
+      <img src={cardImageSrc(doc)} alt="" class="row-preview" />
+    </button>
+  </td>
 
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="row-main" on:click={handleRowClick}>
-        <div class="row-filename">
-            {@html highlightedFilename(
-                getFilenameWithoutExtension(doc.display_filename || doc.filename || ""),
-                search
-            )}
-        </div>
-
-        <div class="row-tags">
-            {#if doc.tags?.length}
-                {#each doc.tags as tag}
-                    <button
-                        class="row-tag tag-colored"
-                        style={`--tag-hue: ${tagHue(tag)}`}
-                        on:click|stopPropagation={() => selectTagFromCard(tag)}
-                    >
-                        {tag}
-                    </button>
-                {/each}
-            {/if}
-        </div>
-    </div>
-
-    {#if showPreview}
-        <CardPreview
-            {doc}
-            bind:editedText
-            {editing}
-            on:close={() => showPreview = false}
-            on:save={save}
-            on:saveFilename={saveFilename}
-            on:delete={remove}
-            on:editToggle={() => editing = !editing}
-            on:tagClick={handleTagClick}
-            on:documentUpdated={handleDocumentUpdated}
-            on:addImages={uploadToCard}
-            {galleryUploading}
-        />
+  <td
+    class="editable-cell"
+    class:saving={savingFieldKey === "filename"}
+    on:click|stopPropagation={startFilenameEdit}
+  >
+    {#if isEditingCell("filename")}
+      <input
+        class="inline-input"
+        bind:value={draftValue}
+        bind:this={activeInput}
+        use:focusAndSelect
+        on:click|stopPropagation
+        on:keydown={handleInlineKeydown}
+        on:blur={handleInlineBlur}
+      />
+    {:else}
+      <button
+        type="button"
+        class="filename-btn"
+        title={doc.display_filename || doc.filename}
+        on:click|stopPropagation={startFilenameEdit}
+      >
+        {getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}
+      </button>
     {/if}
-</div>
+  </td>
 
+  <td>
+    <div class="row-tags">
+      {#if doc.tags?.length}
+        {#each doc.tags as tag}
+          <span class="tag-colored table-tag">{tag}</span>
+        {/each}
+      {:else}
+        <span class="muted">—</span>
+      {/if}
+    </div>
+  </td>
+
+  {#each customFieldSettings as field}
+    <td
+      class="editable-cell"
+      class:saving={savingFieldKey === `custom:${field.name}`}
+      title={customFieldValue(field.name)}
+      on:click|stopPropagation={(event) => startCustomFieldEdit(field.name, event)}
+    >
+      {#if isEditingCell("custom", field.name)}
+        <input
+          class="inline-input"
+          type={fieldType(field.name) === "number" ? "number" : "text"}
+          bind:value={draftValue}
+          bind:this={activeInput}
+          use:focusAndSelect
+          on:click|stopPropagation
+          on:keydown={handleInlineKeydown}
+          on:blur={handleInlineBlur}
+        />
+      {:else}
+        <button
+          type="button"
+          class="cell-value-btn"
+          on:click|stopPropagation={(event) => startCustomFieldEdit(field.name, event)}
+        >
+          {customFieldValue(field.name)}
+        </button>
+      {/if}
+    </td>
+  {/each}
+</tr>
 
 <style>
+  tr:hover {
+    background: color-mix(in srgb, var(--surface), var(--bg-accent) 25%);
+  }
 
-.row-card {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    padding: 12px 14px;
-    margin-bottom: 12px;
+  tr.selected-row {
+    background: color-mix(in srgb, var(--surface), var(--primary) 10%);
+  }
 
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface-strong);
-    box-shadow: var(--shadow-soft);
-    backdrop-filter: blur(16px) saturate(1.15);
-    -webkit-backdrop-filter: blur(16px) saturate(1.15);
-    transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-}
-
-.row-card.selected-row {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--surface-strong), var(--accent) 6%);
-    box-shadow:
-        0 0 0 3px color-mix(in srgb, var(--accent), transparent 65%),
-        var(--shadow-soft);
-}
-
-.row-media {
-    position: relative;
-    border-radius: 12px;
+  td {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 10px;
+    vertical-align: middle;
+    white-space: nowrap;
     overflow: hidden;
-    cursor: pointer;
-}
+    text-overflow: ellipsis;
+  }
 
-.row-thumb {
-    width: 56px;
-    height: 56px;
+  .cell-center {
+    text-align: center;
+  }
+
+  .preview-btn,
+  .filename-btn,
+  .cell-value-btn {
+    all: unset;
+    cursor: pointer;
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  .row-preview {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
     object-fit: cover;
-    border-radius: 12px;
-    flex-shrink: 0;
-    margin: 0;
-    cursor: pointer;
-}
+    border: 1px solid var(--border);
+    display: block;
+  }
 
-.row-main {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    min-width: 0;
-    width: 100%;
-    cursor: pointer;
-}
-
-.row-filename {
-    flex: left;
-    min-width: 0;
-    font-size: 1rem;
+  .filename-btn {
     font-weight: 600;
     color: var(--text);
-    line-height: 1.3;
-    word-break: break-word;
-}
+    width: 100%;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-.row-tags {
+  .filename-btn:hover {
+    text-decoration: underline;
+  }
+
+  .editable-cell {
+    position: relative;
+    cursor: text;
+  }
+
+  .editable-cell.saving::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: var(--primary);
+    opacity: 0.7;
+  }
+
+  .cell-value-btn {
+    width: 100%;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inline-input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 6px 8px;
+    font: inherit;
+  }
+
+  .row-tags {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: nowrap;
     overflow: hidden;
-    flex-shrink: 1;
-    min-width: 0;
-}
+  }
 
-.row-tag {
-    min-height: 30px;
-    padding: 4px 10px;
+  .table-tag {
+    display: inline-flex;
+    padding: 2px 8px;
     border-radius: 999px;
-    font-size: 0.82rem;
-    flex-shrink: 0;
+    font-size: 0.78rem;
+    max-width: 100%;
     white-space: nowrap;
-}
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-.select-checkbox {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    width: 24px;
-    height: 24px;
-    border-radius: 8px;
-    z-index: 3;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.row-card:hover .select-checkbox,
-.row-card.selected-row .select-checkbox,
-.select-checkbox.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-:global(.filename-highlight) {
-    background: #7CFC98;
-    color: #0f172a;
-    padding: 0 2px;
-    border-radius: 4px;
-}
-
-@media (max-width: 768px) {
-    .row-card {
-        gap: 10px;
-        padding: 10px 12px;
-    }
-
-    .row-thumb {
-        width: 48px;
-        height: 48px;
-        border-radius: 10px;
-    }
-
-    .row-main {
-        gap: 10px;
-    }
-
-    .row-filename {
-        font-size: 0.95rem;
-    }
-
-    .row-tags {
-        overflow-x: auto;
-        overflow-y: hidden;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .row-tags::-webkit-scrollbar {
-        display: none;
-    }
-}
-
-
+  .muted {
+    color: var(--text-muted);
+  }
 </style>
