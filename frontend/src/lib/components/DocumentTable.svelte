@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte"
+  import { createEventDispatcher, tick } from "svelte"
   import type { CardCustomFieldSetting, Document } from "../types"
   import CardPreview from "./CardPreview.svelte"
   import { tagHue } from "../tagColors"
   import {
     deleteDocument,
     updateDocument,
+    updateDocumentCustomFields,
     uploadImagesToDocument,
     UPLOADS_URL
   } from "../api"
@@ -24,6 +25,11 @@
   let editing = false
   let editedText = ""
   let galleryUploading = false
+  let editingCell: { docId: string; kind: "filename" | "custom"; fieldName?: string } | null = null
+  let editingValue = ""
+  let savingCellKey = ""
+  let skipBlurSave = false
+  let activeInput: HTMLInputElement | null = null
 
   function openPreview(doc: Document) {
     activeDoc = doc
@@ -47,6 +53,12 @@
     return String(value)
   }
 
+  function customFieldRawValue(doc: Document, fieldName: string) {
+    const value = doc.custom_fields?.[fieldName]
+    if (value === null || value === undefined) return ""
+    return String(value)
+  }
+
   function tagList(doc: Document) {
     return doc.tags ?? []
   }
@@ -63,6 +75,106 @@
     if (activeDoc && activeDoc._id === updated._id) {
       activeDoc = updated
       editedText = updated.recognized_text
+    }
+  }
+
+  function isEditingCell(docId: string, kind: "filename" | "custom", fieldName?: string) {
+    if (!editingCell) return false
+    if (editingCell.docId !== docId || editingCell.kind !== kind) return false
+    if (kind === "custom") return editingCell.fieldName === fieldName
+    return true
+  }
+
+  async function startFilenameEdit(doc: Document) {
+    editingCell = { docId: doc._id, kind: "filename" }
+    editingValue = getFilenameWithoutExtension(doc.display_filename || doc.filename || "")
+    skipBlurSave = false
+    await tick()
+    activeInput?.focus()
+    activeInput?.select()
+  }
+
+  async function startCustomFieldEdit(doc: Document, fieldName: string) {
+    editingCell = { docId: doc._id, kind: "custom", fieldName }
+    editingValue = customFieldRawValue(doc, fieldName)
+    skipBlurSave = false
+    await tick()
+    activeInput?.focus()
+    activeInput?.select()
+  }
+
+  function cancelInlineEdit() {
+    skipBlurSave = true
+    editingCell = null
+    editingValue = ""
+  }
+
+  function fieldType(fieldName: string) {
+    return customFieldSettings.find((field) => field.name === fieldName)?.type ?? "text"
+  }
+
+  async function saveInlineEdit() {
+    if (!editingCell) return
+    const targetCell = editingCell
+    const currentDoc = documents.find((item) => item._id === targetCell.docId)
+    editingCell = null
+    if (!currentDoc) return
+
+    try {
+      savingCellKey = targetCell.kind === "filename"
+        ? `${targetCell.docId}:filename`
+        : `${targetCell.docId}:custom:${targetCell.fieldName ?? ""}`
+      if (targetCell.kind === "filename") {
+        const currentValue = getFilenameWithoutExtension(currentDoc.display_filename || currentDoc.filename || "")
+        if (editingValue === currentValue) return
+        const updated = await updateDocument(currentDoc._id, { display_filename: editingValue })
+        applyDocumentUpdate(updated)
+        return
+      }
+
+      const fieldName = targetCell.fieldName ?? ""
+      if (!fieldName) return
+      const type = fieldType(fieldName)
+      const previousRaw = customFieldRawValue(currentDoc, fieldName)
+      if (editingValue === previousRaw) return
+
+      let nextValue: string | number | null = editingValue
+      if (editingValue === "") {
+        nextValue = null
+      } else if (type === "number") {
+        const parsed = Number(editingValue)
+        nextValue = Number.isFinite(parsed) ? parsed : null
+      }
+
+      const updated = await updateDocumentCustomFields(currentDoc._id, { [fieldName]: nextValue })
+      applyDocumentUpdate(updated)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось сохранить значение"
+      alert(message)
+    } finally {
+      editingValue = ""
+      savingCellKey = ""
+    }
+  }
+
+  async function handleInlineBlur() {
+    if (skipBlurSave) {
+      skipBlurSave = false
+      return
+    }
+    await saveInlineEdit()
+  }
+
+  async function handleInlineKeydown(event: KeyboardEvent) {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      await saveInlineEdit()
+      return
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault()
+      cancelInlineEdit()
     }
   }
 
@@ -150,10 +262,20 @@
                 <img src={cardImageSrc(doc)} alt="" class="row-preview" />
               </button>
             </td>
-            <td>
-              <button class="filename-btn" on:click={() => openPreview(doc)} title={doc.display_filename || doc.filename}>
-                {getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}
-              </button>
+            <td class="editable-cell" class:saving={savingCellKey === `${doc._id}:filename`}>
+              {#if isEditingCell(doc._id, "filename")}
+                <input
+                  class="inline-input"
+                  bind:value={editingValue}
+                  bind:this={activeInput}
+                  on:keydown={handleInlineKeydown}
+                  on:blur={handleInlineBlur}
+                />
+              {:else}
+                <button class="filename-btn" on:click={() => startFilenameEdit(doc)} title={doc.display_filename || doc.filename}>
+                  {getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}
+                </button>
+              {/if}
             </td>
             <td>
               <div class="row-tags">
@@ -167,7 +289,26 @@
               </div>
             </td>
             {#each customFieldSettings as field}
-              <td title={customFieldValue(doc, field.name)}>{customFieldValue(doc, field.name)}</td>
+              <td
+                class="editable-cell"
+                class:saving={savingCellKey === `${doc._id}:custom:${field.name}`}
+                title={customFieldValue(doc, field.name)}
+              >
+                {#if isEditingCell(doc._id, "custom", field.name)}
+                  <input
+                    class="inline-input"
+                    type={field.type === "number" ? "number" : "text"}
+                    bind:value={editingValue}
+                    bind:this={activeInput}
+                    on:keydown={handleInlineKeydown}
+                    on:blur={handleInlineBlur}
+                  />
+                {:else}
+                  <button class="cell-value-btn" on:click={() => startCustomFieldEdit(doc, field.name)}>
+                    {customFieldValue(doc, field.name)}
+                  </button>
+                {/if}
+              </td>
             {/each}
           </tr>
         {/each}
@@ -243,7 +384,8 @@
   }
 
   .preview-btn,
-  .filename-btn {
+  .filename-btn,
+  .cell-value-btn {
     all: unset;
     cursor: pointer;
     display: inline-block;
@@ -266,6 +408,43 @@
 
   .filename-btn:hover {
     text-decoration: underline;
+  }
+
+  .editable-cell {
+    position: relative;
+  }
+
+  .editable-cell.saving::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: var(--primary);
+    opacity: 0.7;
+  }
+
+  .cell-value-btn {
+    width: 100%;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inline-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 6px 8px;
+    font: inherit;
   }
 
   .row-tags {
