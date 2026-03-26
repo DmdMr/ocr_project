@@ -3,7 +3,7 @@
     import { getDocuments, getSettings, getTags } from "../api"
     import type { CardCustomFieldSetting, Document } from "../types"
     import DocumentCard from "./DocumentCard.svelte"
-    import DocumentRow from "./DocumentRow.svelte"
+    import DocumentTable from "./DocumentTable.svelte"
     import TagManager from "./TagManager.svelte";
     import { 
         normalizeTag,
@@ -11,7 +11,6 @@
         deleteDocument
     
     } from "../api"
-    import LifeguardHelp from "./LifeguardHelp.svelte"
 
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
@@ -43,20 +42,12 @@
     type CustomFieldFilter = TextFilter | NumberFilter
     let customFieldFilters: Record<string, CustomFieldFilter> = {}
 
-    console.log(selectedIds);
-
-    function isSelected(id: string) {
-        return selectedIds.includes(id)
-    }
-
-
     function toggleCardSelection(id: string) {
         if (selectedIds.includes(id)) {
             selectedIds = selectedIds.filter(item => item !== id)
         } else {
             selectedIds = [...selectedIds, id]
         }
-        console.log(selectedIds);
     }
 
     function clearSelection() {
@@ -531,19 +522,14 @@
     {/each}
   </div>
 {:else}
-  <div class="list-view">
-    {#each sortedDocuments as doc (doc._id)}
-      <DocumentRow
-        {doc}
-        search={search}
-        selected={selectedIds.includes(doc._id)}
-        selectionActive={selectedIds.length > 0}
-        on:toggleSelect={() => toggleCardSelection(doc._id)}
-        on:deleted={(e) => removeFromList(e.detail.id)}
-        on:updated={(e) => replaceDocumentInList(e.detail.document)}
-      />
-    {/each}
-  </div>
+  <DocumentTable
+    documents={sortedDocuments}
+    {selectedIds}
+    {customFieldSettings}
+    on:toggleSelect={(e) => toggleCardSelection(e.detail.id)}
+    on:deleted={(e) => removeFromList(e.detail.id)}
+    on:updated={(e) => replaceDocumentInList(e.detail.document)}
+  />
 {/if}
 
 
