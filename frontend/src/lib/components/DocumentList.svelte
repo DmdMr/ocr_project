@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from "svelte"
+    import { createEventDispatcher, onMount } from "svelte"
     import { getDocuments, getSettings, getTags } from "../api"
     import type { CardCustomFieldSetting, Document } from "../types"
     import DocumentCard from "./DocumentCard.svelte"
@@ -15,6 +15,7 @@
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
     export let columnCount = 5
+    const dispatch = createEventDispatcher<{ viewModeChange: { mode: "grid" | "list" } }>()
 
     let documents: Document[] = []
     let search = ""
@@ -51,6 +52,11 @@
         } else {
             selectedIds = [...selectedIds, id]
         }
+    }
+
+    function setViewMode(mode: "grid" | "list") {
+        viewMode = mode
+        dispatch("viewModeChange", { mode })
     }
 
     function clearSelection() {
@@ -444,8 +450,120 @@
             <option value="name_asc">Имя (A–Z)</option>
             <option value="name_desc">Имя (Z–A)</option>
         </select>
+
+        <div class="view-toggle" role="group" aria-label="Режим отображения">
+            <button
+                class="secondary"
+                class:active={viewMode === "grid"}
+                on:click={() => setViewMode("grid")}
+            >
+                Сетка
+            </button>
+            <button
+                class="secondary"
+                class:active={viewMode === "list"}
+                on:click={() => setViewMode("list")}
+            >
+                Таблица
+            </button>
+        </div>
     </div>
 </div>
+
+{#if customFieldSettings.length}
+<div class="panel custom-filters-panel">
+    <div class="custom-filters-header">Фильтры по полям карточки</div>
+    <div class="custom-filter-buttons">
+        {#each customFieldSettings as field}
+            <div class="field-filter-item">
+                <button
+                    class="field-filter-trigger"
+                    class:active={isFieldFilterActive(field.name)}
+                    on:click={() => toggleFilterPanel(field.name)}
+                >
+                    {field.name}
+                    <span class="filter-icon">▾</span>
+                </button>
+
+                {#if openFilterField === field.name}
+                    <div class="field-filter-popup">
+                        {#if field.type === "text"}
+                            <div class="popup-row">
+                                <button class="secondary" on:click={() => setTextSort(field.name, "asc")}>A-Z</button>
+                                <button class="secondary" on:click={() => setTextSort(field.name, "desc")}>Z-A</button>
+                                <button class="secondary" on:click={() => setTextSort(field.name, "none")}>Без сорт.</button>
+                            </div>
+                            <div class="popup-row">
+                                <button class="secondary" on:click={() => selectAllTextValues(field.name)}>Выбрать все</button>
+                                <button class="secondary" on:click={() => clearTextValues(field.name)}>Очистить</button>
+                            </div>
+                            <div class="popup-values">
+                                {#each fieldUniqueTextValues(field.name) as value}
+                                    <label class="popup-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={customFieldFilters[field.name]?.mode === "text" && customFieldFilters[field.name].selectedValues.includes(value)}
+                                            on:change={() => toggleTextValue(field.name, value)}
+                                        />
+                                        <span>{value}</span>
+                                    </label>
+                                {/each}
+                            </div>
+                        {:else}
+                            <div class="popup-row">
+                                <button class="secondary" on:click={() => setNumberSort(field.name, "asc")}>0-9</button>
+                                <button class="secondary" on:click={() => setNumberSort(field.name, "desc")}>9-0</button>
+                                <button class="secondary" on:click={() => setNumberSort(field.name, "none")}>Без сорт.</button>
+                            </div>
+                            <div class="popup-row">
+                                <select
+                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].operator : "none"}
+                                    on:change={(event) => {
+                                        const target = event.target as HTMLSelectElement
+                                        setNumberOperator(field.name, target.value as NumberFilter["operator"])
+                                    }}
+                                >
+                                    <option value="none">Без фильтра</option>
+                                    <option value="equals">Равно</option>
+                                    <option value="greater_than">Больше</option>
+                                    <option value="less_than">Меньше</option>
+                                    <option value="between">Между</option>
+                                </select>
+                            </div>
+                            <div class="popup-row number-inputs">
+                                <input
+                                    type="number"
+                                    placeholder="Значение"
+                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value1 : ""}
+                                    on:input={(event) => {
+                                        const target = event.target as HTMLInputElement
+                                        setNumberValue(field.name, "value1", target.value)
+                                    }}
+                                />
+                                {#if customFieldFilters[field.name]?.mode === "number" && customFieldFilters[field.name].operator === "between"}
+                                    <input
+                                        type="number"
+                                        placeholder="И до"
+                                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value2 : ""}
+                                        on:input={(event) => {
+                                            const target = event.target as HTMLInputElement
+                                            setNumberValue(field.name, "value2", target.value)
+                                        }}
+                                    />
+                                {/if}
+                            </div>
+                        {/if}
+                        <div class="popup-row">
+                            <button class="secondary" on:click={() => clearFieldFilter(field.name)}>Сбросить</button>
+                            <button class="primary" on:click={() => openFilterField = null}>Готово</button>
+                        </div>
+                    </div>
+                {/if}
+            </div>
+        {/each}
+    </div>
+</div>
+{/if}
 
 {#if customFieldSettings.length}
 <div class="panel custom-filters-panel">
@@ -638,6 +756,18 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.view-toggle {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.view-toggle button.active {
+    border-color: color-mix(in srgb, var(--primary), white 20%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 75%);
+    background: color-mix(in srgb, var(--surface), var(--primary) 10%);
 }
 
 .custom-filters-panel {

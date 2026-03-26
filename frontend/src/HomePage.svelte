@@ -121,7 +121,14 @@
 
 <Upload on:uploaded={handleUpload} />
 
-<DocumentList {refreshKey} {viewMode} {columnCount} />
+<DocumentList
+    {refreshKey}
+    {viewMode}
+    {columnCount}
+    on:viewModeChange={(event) => {
+        viewMode = event.detail.mode
+    }}
+/>
 
 
 <!--
