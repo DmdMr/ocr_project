@@ -91,6 +91,10 @@
     <button class="primary" on:click={() => push('/assistant')}>
       Чат-помощник
     </button>
+
+    <button on:click={() => push('/settings')}>
+      Настройки полей
+    </button>
   </div>
 </div>
 
@@ -117,7 +121,14 @@
 
 <Upload on:uploaded={handleUpload} />
 
-<DocumentList {refreshKey} {viewMode} {columnCount} />
+<DocumentList
+    {refreshKey}
+    {viewMode}
+    {columnCount}
+    on:viewModeChange={(event) => {
+        viewMode = event.detail.mode
+    }}
+/>
 
 
 <!--

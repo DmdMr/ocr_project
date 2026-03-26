@@ -104,6 +104,16 @@
         return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
     }
 
+    function cardImageCount(currentDoc: Document) {
+        const galleryCount = currentDoc.gallery_images?.length ?? 0
+        return galleryCount > 0 ? galleryCount : 1
+    }
+
+    function visibleIndicatorDots(totalImages: number) {
+        const safeCount = Math.max(0, totalImages)
+        return Math.min(5, safeCount)
+    }
+
     async function save() {
         const updated = await updateDocument(doc._id, {
             recognized_text: editedText
@@ -198,6 +208,16 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="card-media" on:click={handleCardClick}>
         <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
+        {#if cardImageCount(doc) >= 2}
+            <div class="image-count-indicator" aria-label={`Изображений: ${cardImageCount(doc)}`}>
+                {#each Array(visibleIndicatorDots(cardImageCount(doc))) as _, idx (idx)}
+                    <span class="indicator-dot"></span>
+                {/each}
+                {#if cardImageCount(doc) > 5}
+                    <span class="indicator-more">+{cardImageCount(doc) - 5}</span>
+                {/if}
+            </div>
+        {/if}
 
 
         
@@ -291,6 +311,49 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
+}
+
+.image-count-indicator {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, #0f172a, transparent 32%);
+    backdrop-filter: blur(3px);
+    pointer-events: none;
+}
+
+.indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: color-mix(in srgb, #ffffff, var(--surface) 20%);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.indicator-more {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+
+@media (max-width: 640px) {
+    .image-count-indicator {
+        bottom: 8px;
+        gap: 4px;
+        padding: 3px 7px;
+    }
+
+    .indicator-dot {
+        width: 5px;
+        height: 5px;
+    }
 }
 
 

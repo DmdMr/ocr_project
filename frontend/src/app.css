@@ -261,6 +261,16 @@ button.danger:hover {
   border-color: var(--danger-hover);
 }
 
+button.secondary {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+button.secondary:hover {
+  background-color: color-mix(in srgb, var(--surface), var(--bg-accent) 35%);
+}
+
 .card,
 .panel,
 .surface {
@@ -268,6 +278,37 @@ button.danger:hover {
   border-radius: var(--radius-lg);
   background-color: var(--surface-strong);
   box-shadow: var(--shadow-soft);
+}
+
+.document-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.card-image {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.card-content {
+  min-width: 0;
+}
+
+.card-title {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.card-meta {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 @media (max-width: 640px) {

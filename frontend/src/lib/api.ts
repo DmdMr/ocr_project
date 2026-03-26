@@ -17,6 +17,10 @@ export const UPLOADS_URL = "/uploads"
 
 console.log(UPLOADS_URL);
 
+export interface AppSettingsResponse {
+    fields_for_cards: Array<{ name: string; type: "text" | "number"; created_at?: string }>
+}
+
 export async function uploadImage(file: File) {
     const formData = new FormData()
     formData.append("file", file)
@@ -148,6 +152,56 @@ export async function updateDocument(id: string, data: any) {
     }
 
     return response.json()
+}
+
+export async function getSettings() {
+    const response = await fetch(`${API_URL}/settings`)
+    const data: AppSettingsResponse = await response.json().catch(() => ({ fields_for_cards: [] }))
+    if (!response.ok) {
+        throw new Error("Failed to fetch settings")
+    }
+    return data
+}
+
+export async function createCardField(name: string, type: "text" | "number") {
+    const response = await fetch(`${API_URL}/settings/fields`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name, type })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to create field")
+    }
+    return data
+}
+
+export async function deleteCardField(name: string) {
+    const response = await fetch(`${API_URL}/settings/fields/${encodeURIComponent(name)}`, {
+        method: "DELETE"
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to delete field")
+    }
+    return data
+}
+
+export async function updateDocumentCustomFields(id: string, customFields: Record<string, string | number | null>) {
+    const response = await fetch(`${API_URL}/documents/${id}/fields`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ custom_fields: customFields })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to update custom fields")
+    }
+    return data
 }
 
 
