@@ -1,6 +1,7 @@
 {
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "@tauri-apps/cli": "^2.0.0"
   },
   "name": "ocr_project",
   "version": "1.0.0",
@@ -36,7 +37,10 @@
     "backend:mac": "./venv/bin/python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000",
     "backend:win": "venv\\Scripts\\python.exe -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000",
     "dev:mac": "concurrently -n FRONTEND,BACKEND -c blue,green \"npm run frontend\" \"npm run backend:mac\"",
-    "dev:win": "concurrently -n FRONTEND,BACKEND -c blue,green \"npm run frontend\" \"npm run backend:win\""
+    "dev:win": "concurrently -n FRONTEND,BACKEND -c blue,green \"npm run frontend\" \"npm run backend:win\"",
+    "frontend:tauri": "cd frontend && npm run dev -- --host 127.0.0.1 --port 5173",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "repository": {
     "type": "git",

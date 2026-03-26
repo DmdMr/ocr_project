@@ -2,8 +2,10 @@ import { defineConfig } from "vite"
 import { svelte } from "@sveltejs/vite-plugin-svelte"
 
 const backendTarget = process.env.VITE_BACKEND_URL || "http://127.0.0.1:8000"
+const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM
 
 export default defineConfig({
+  base: isTauriBuild ? "./" : "/",
   plugins: [svelte()],
   server: {
     host: true,
@@ -22,6 +24,5 @@ export default defineConfig({
     },
   },
 })
-
 
 

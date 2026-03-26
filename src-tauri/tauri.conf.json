@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "OCR Project",
+  "version": "0.1.0",
+  "identifier": "com.ocrproject.desktop",
+  "build": {
+    "beforeDevCommand": "cd .. && npm run frontend:tauri",
+    "beforeBuildCommand": "cd ../frontend && npm run build",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "OCR Project",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "visible": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  }
+}

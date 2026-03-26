@@ -6,6 +6,7 @@ pydantic>=2.12,<3.0
 python-dotenv>=1.2,<2.0
 
 # Database
+SQLAlchemy>=2.0,<3.0
 motor>=3.7,<4.0
 pymongo>=4.16,<5.0
 

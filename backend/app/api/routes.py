@@ -4,20 +4,30 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
 from bson import ObjectId
-
-
-from backend.app.services.ocr_service import recognize_text
-from backend.app.db.database import app_settings_collection, documents_collection
-
+from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+
+from backend.app.db.crud import (
+    build_settings_payload,
+    create_settings_field as create_settings_field_sqlite,
+    create_tag as create_tag_sqlite,
+    delete_settings_field as delete_settings_field_sqlite,
+    delete_tag as delete_tag_sqlite,
+    get_tag_by_name,
+    list_tags as list_tags_sqlite,
+    merge_custom_fields_for_document,
+    merge_custom_fields_for_documents,
+    remove_tag_from_shadow_documents,
+    set_document_custom_fields,
+)
+from backend.app.db.database import get_db_session
+from backend.app.db.mongo import documents_collection
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
-from backend.app.db.database import app_settings_collection, documents_collection, tags_collection
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
@@ -50,7 +60,6 @@ def now_yekaterinburg():
     return datetime.now(YEKATERINBURG_TZ)
 
 
-SETTINGS_DOCUMENT_ID = "main"
 ALLOWED_CUSTOM_FIELD_TYPES = {"text", "number"}
 
 
@@ -62,20 +71,8 @@ def default_value_for_field_type(field_type: str):
     return None
 
 
-async def get_or_create_settings():
-    settings_doc = await app_settings_collection.find_one({"_id": SETTINGS_DOCUMENT_ID})
-    if settings_doc:
-        if not isinstance(settings_doc.get("fields_for_cards"), list):
-            await app_settings_collection.update_one(
-                {"_id": SETTINGS_DOCUMENT_ID},
-                {"$set": {"fields_for_cards": []}},
-            )
-            settings_doc["fields_for_cards"] = []
-        return settings_doc
-
-    settings_doc = {"_id": SETTINGS_DOCUMENT_ID, "fields_for_cards": []}
-    await app_settings_collection.insert_one(settings_doc)
-    return settings_doc
+def get_or_create_settings(db: Session):
+    return build_settings_payload(db)
 
 
 def object_id_or_404(doc_id: str):
@@ -189,7 +186,7 @@ def write_audit_log(request: Request, action: str, payload: dict):
 
 
 @router.post("/upload")
-async def upload_image(request: Request, file: UploadFile = File(...)):
+async def upload_image(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db_session)):
 
     if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
         raise HTTPException(status_code=400, detail="Разрешены только PNG и JPG")
@@ -213,7 +210,7 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         boxes=ocr_result["boxes"],
     )
 
-    settings_doc = await get_or_create_settings()
+    settings_doc = get_or_create_settings(db)
     fields_for_cards = settings_doc.get("fields_for_cards") or []
     custom_fields = {
         normalize_custom_field_name(field.get("name", "")): default_value_for_field_type(field.get("type", "text"))
@@ -412,14 +409,14 @@ async def upload_attachments_to_document(request: Request, doc_id: str, files: L
 
 
 @router.get("/documents")
-async def get_documents():
+async def get_documents(db: Session = Depends(get_db_session)):
     await cleanup_expired_archived_documents(documents_collection, UPLOAD_DIR, retention_days=30)
     documents = []
     query = {"$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]}
     async for doc in documents_collection.find(query).sort("created_at", -1):
         normalized = normalize_document(doc)
         documents.append(normalized)
-    return documents
+    return merge_custom_fields_for_documents(db, documents)
 
 class CropRequest(BaseModel):
     x_percent: float = Field(0, ge=0, le=100)
@@ -432,11 +429,6 @@ class ImageEditRequest(BaseModel):
     rotate_degrees: int = 0
     crop: Optional[CropRequest] = None
     image_filename: Optional[str] = None
-
-
-
-from typing import Optional, List
-
 
 class DocumentUpdate(BaseModel):
     recognized_text: Optional[str] = None
@@ -458,13 +450,13 @@ class DocumentCustomFieldsUpdate(BaseModel):
 
 
 @router.get("/settings")
-async def get_settings():
-    settings_doc = await get_or_create_settings()
+async def get_settings(db: Session = Depends(get_db_session)):
+    settings_doc = get_or_create_settings(db)
     return {"fields_for_cards": settings_doc.get("fields_for_cards", [])}
 
 
 @router.post("/settings/fields")
-async def create_settings_field(request: Request, payload: CustomFieldDefinition):
+async def create_settings_field(request: Request, payload: CustomFieldDefinition, db: Session = Depends(get_db_session)):
     field_name = normalize_custom_field_name(payload.name)
     field_type = (payload.type or "").strip().lower()
 
@@ -473,40 +465,30 @@ async def create_settings_field(request: Request, payload: CustomFieldDefinition
     if field_type not in ALLOWED_CUSTOM_FIELD_TYPES:
         raise HTTPException(status_code=400, detail="Неподдерживаемый тип поля")
 
-    settings_doc = await get_or_create_settings()
+    settings_doc = get_or_create_settings(db)
     fields = settings_doc.get("fields_for_cards") or []
     if any(normalize_custom_field_name(item.get("name", "")) == field_name for item in fields):
         raise HTTPException(status_code=400, detail="Поле с таким именем уже существует")
 
-    field_data = {"name": field_name, "type": field_type, "created_at": now_yekaterinburg()}
-    await app_settings_collection.update_one(
-        {"_id": SETTINGS_DOCUMENT_ID},
-        {"$push": {"fields_for_cards": field_data}},
-    )
-    await documents_collection.update_many(
-        {"custom_fields." + field_name: {"$exists": False}},
-        {"$set": {"custom_fields." + field_name: default_value_for_field_type(field_type)}},
-    )
+    created = create_settings_field_sqlite(db, name=field_name, field_type=field_type)
+    field_data = {"name": created.name, "type": created.field_type, "created_at": created.created_at}
     write_audit_log(request, "settings.field.create", {"field_name": field_name, "field_type": field_type})
     return {"message": "Поле добавлено", "field": field_data}
 
 
 @router.delete("/settings/fields/{name}")
-async def delete_settings_field(request: Request, name: str):
+async def delete_settings_field(request: Request, name: str, db: Session = Depends(get_db_session)):
     field_name = normalize_custom_field_name(name)
     if not field_name:
         raise HTTPException(status_code=400, detail="Имя поля обязательно")
 
-    settings_doc = await get_or_create_settings()
+    settings_doc = get_or_create_settings(db)
     fields = settings_doc.get("fields_for_cards") or []
     field_exists = any(normalize_custom_field_name(item.get("name", "")) == field_name for item in fields)
     if not field_exists:
         raise HTTPException(status_code=404, detail="Поле не найдено")
 
-    await app_settings_collection.update_one(
-        {"_id": SETTINGS_DOCUMENT_ID},
-        {"$pull": {"fields_for_cards": {"name": field_name}}},
-    )
+    delete_settings_field_sqlite(db, name=field_name)
     write_audit_log(request, "settings.field.delete", {"field_name": field_name})
     return {"message": "Поле удалено", "field_name": field_name}
 
@@ -540,13 +522,18 @@ async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
 
 
 @router.patch("/documents/{doc_id}/fields")
-async def update_document_custom_fields(request: Request, doc_id: str, payload: DocumentCustomFieldsUpdate):
+async def update_document_custom_fields(
+    request: Request,
+    doc_id: str,
+    payload: DocumentCustomFieldsUpdate,
+    db: Session = Depends(get_db_session),
+):
     object_id = object_id_or_404(doc_id)
     existing_doc = await documents_collection.find_one({"_id": object_id})
     if not existing_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
 
-    settings_doc = await get_or_create_settings()
+    settings_doc = get_or_create_settings(db)
     fields_for_cards = settings_doc.get("fields_for_cards") or []
     allowed_fields = {normalize_custom_field_name(field.get("name", "")): field.get("type", "text") for field in fields_for_cards}
 
@@ -563,19 +550,28 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
             continue
         merged_fields[normalized_key] = value
 
-    await documents_collection.update_one(
-        {"_id": object_id},
-        {"$set": {"custom_fields": merged_fields}},
+    merged_fields = set_document_custom_fields(
+        db,
+        source_document_id=doc_id,
+        fallback_filename=existing_doc.get("filename") or existing_doc.get("display_filename") or doc_id,
+        fallback_path=existing_doc.get("path") or "",
+        values=merged_fields,
     )
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
+    updated_doc = normalize_document(updated_doc)
+    updated_doc["custom_fields"] = merge_custom_fields_for_document(
+        db,
+        source_document_id=doc_id,
+        existing_custom_fields=updated_doc.get("custom_fields"),
+    )
     write_audit_log(
         request,
         "document.custom_fields.update",
         {"document_id": doc_id, "field_names": sorted(list((payload.custom_fields or {}).keys()))},
     )
-    return normalize_document(updated_doc)
+    return updated_doc
 
 
 
@@ -866,7 +862,7 @@ async def permanently_delete_archived_documents_bulk(request: Request, payload: 
 
 
 @router.get("/search")
-async def search_documents(q: str):
+async def search_documents(q: str, db: Session = Depends(get_db_session)):
     results = []
     async for doc in documents_collection.find(
         {
@@ -880,7 +876,7 @@ async def search_documents(q: str):
         }
     ):
         results.append(normalize_document(doc))
-    return results
+    return merge_custom_fields_for_documents(db, results)
 
 
 
@@ -890,31 +886,30 @@ class TagRequest(BaseModel):
     tag: str
 
 @router.post("/tags")
-async def create_tag(http_request: Request, request: TagRequest):
+async def create_tag(http_request: Request, request: TagRequest, db: Session = Depends(get_db_session)):
     tag = request.tag.strip().lower()
 
-    existing_tag = await tags_collection.find_one({"tag": tag})
+    existing_tag = get_tag_by_name(db, tag)
     if existing_tag:
         raise HTTPException(status_code=400, detail="Тег уже существует")
 
-    new_tag = {"tag": tag, "created_at": now_yekaterinburg()}
-    await tags_collection.insert_one(new_tag)
+    created = create_tag_sqlite(db, name=tag)
+    new_tag = {"tag": created.name, "created_at": created.created_at}
     write_audit_log(http_request, "tag.create", {"tag": tag})
     return {"message": "Тег добавлен", "tag": new_tag}
 
 @router.delete("/tags/{tag}")
-async def delete_tag(request: Request, tag: str):
+async def delete_tag(request: Request, tag: str, db: Session = Depends(get_db_session)):
     normalized = tag.strip().lower()
 
     if not normalized:
         raise HTTPException(status_code=400, detail="Тег обязателен")
 
-    result = await tags_collection.delete_one({"tag": normalized})
-
-    if result.deleted_count == 0:
+    if not delete_tag_sqlite(db, name=normalized):
         raise HTTPException(status_code=404, detail="Тег не найден")
 
     await documents_collection.update_many({"tags": normalized}, {"$pull": {"tags": normalized}})
+    remove_tag_from_shadow_documents(db, tag_name=normalized)
     write_audit_log(request, "tag.delete", {"tag": normalized})
 
     return {"message": "Тег удалён", "tag": normalized}
@@ -923,8 +918,6 @@ async def delete_tag(request: Request, tag: str):
 
 
 @router.get("/tags")
-async def get_tags():
-    tags = []
-    async for tag in tags_collection.find().sort([("created_at", -1), ("_id", -1)]):
-        tags.append(tag["tag"])
+async def get_tags(db: Session = Depends(get_db_session)):
+    tags = [tag.name for tag in list_tags_sqlite(db)]
     return {"tags": tags}

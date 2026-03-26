@@ -106,3 +106,15 @@ Frontend будет доступен на `http://localhost:5173`.
 ### 4) Как останавливать
 - В каждом окне нажмите `Ctrl + C`.
 - Либо используйте `stop-local.bat`.
+## Tauri desktop shell (Svelte + FastAPI)
+
+Интеграция Tauri добавлена без переписывания frontend/backend.
+
+### Команды
+- `npm run tauri:dev` — запускает Tauri в dev-режиме (окно использует текущий Vite dev server).
+- `npm run tauri:build` — собирает desktop-приложение (frontend сначала собирается в `frontend/dist`).
+
+### Важно
+- Tauri теперь умеет **автоматически запускать FastAPI backend** при старте desktop-приложения.
+- Если backend уже запущен на `127.0.0.1:8000`, Tauri не поднимает второй процесс.
+- Команду backend можно переопределить через `OCR_BACKEND_CMD` (подробнее в `src-tauri/README.md`).

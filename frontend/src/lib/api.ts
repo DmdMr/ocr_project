@@ -1,21 +1,8 @@
-// api.ts
-//const BACKEND_HOST = window.location.hostname; // automatically matches localhost or LAN IP
-//const API_URL = `http://${BACKEND_HOST}:8000/api`;
-//console.log(BACKEND_HOST);
+const isTauriRuntime = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
+const backendBaseUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined) || "http://127.0.0.1:8000"
 
-//const API_URL = "http://192.168.31.162:8000/api"; // your Mac’s LAN IP
-
-export const API_URL = "/api"; // Use your LAN IP
-
-//export const API_URL = `http://${window.location.hostname}:8000/api`
-
-console.log(API_URL);
-
-//export const UPLOADS_URL = "http://localhost:8000/uploads";
-
-export const UPLOADS_URL = "/uploads"
-
-console.log(UPLOADS_URL);
+export const API_URL = isTauriRuntime ? `${backendBaseUrl}/api` : "/api"
+export const UPLOADS_URL = isTauriRuntime ? `${backendBaseUrl}/uploads` : "/uploads"
 
 export interface AppSettingsResponse {
     fields_for_cards: Array<{ name: string; type: "text" | "number"; created_at?: string }>

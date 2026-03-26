@@ -1,8 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from backend.app.api.routes import router
+from backend.app.db.database import init_db
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    init_db()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,10 +22,4 @@ app.add_middleware(
 )
 
 app.include_router(router)
-
-from fastapi.staticfiles import StaticFiles
-
 app.mount("/uploads", StaticFiles(directory="backend/uploads"), name="uploads")
-
-
-
