@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte"
+  import { createEventDispatcher, onMount } from "svelte"
   import type { CardCustomFieldSetting, Document } from "../types"
   import CardPreview from "./CardPreview.svelte"
   import { tagHue } from "../tagColors"
@@ -13,17 +13,47 @@
   export let documents: Document[] = []
   export let selectedIds: string[] = []
   export let customFieldSettings: CardCustomFieldSetting[] = []
+  type TextFilter = {
+    mode: "text"
+    selectedValues: string[]
+    sort: "none" | "asc" | "desc"
+  }
+
+  type NumberFilter = {
+    mode: "number"
+    sort: "none" | "asc" | "desc"
+    operator: "none" | "equals" | "greater_than" | "less_than" | "between"
+    value1: string
+    value2: string
+  }
+
+  type CustomFieldFilter = TextFilter | NumberFilter
+  export let customFieldFilters: Record<string, CustomFieldFilter> = {}
+  export let openFilterField: string | null = null
+  export let fieldUniqueTextValues: (fieldName: string) => string[] = () => []
+  export let isFieldFilterActive: (fieldName: string) => boolean = () => false
 
   const dispatch = createEventDispatcher<{
     toggleSelect: { id: string }
     deleted: { id: string }
     updated: { document: Document }
+    toggleFilterPanel: { fieldName: string }
+    setTextSort: { fieldName: string; sort: "none" | "asc" | "desc" }
+    setNumberSort: { fieldName: string; sort: "none" | "asc" | "desc" }
+    toggleTextValue: { fieldName: string; value: string }
+    selectAllTextValues: { fieldName: string }
+    clearTextValues: { fieldName: string }
+    setNumberOperator: { fieldName: string; operator: NumberFilter["operator"] }
+    setNumberValue: { fieldName: string; key: "value1" | "value2"; value: string }
+    clearFieldFilter: { fieldName: string }
+    closeFilterPanel: void
   }>()
 
   let activeDoc: Document | null = null
   let editing = false
   let editedText = ""
   let galleryUploading = false
+  let tableShellElement: HTMLDivElement | null = null
 
   function openPreview(doc: Document) {
     activeDoc = doc
@@ -110,9 +140,22 @@
     dispatch("deleted", { id })
     closePreview()
   }
+
+  function handleOutsideClick(event: MouseEvent) {
+    if (!openFilterField || !tableShellElement) return
+    const target = event.target as Node
+    if (!tableShellElement.contains(target)) {
+      dispatch("closeFilterPanel")
+    }
+  }
+
+  onMount(() => {
+    document.addEventListener("mousedown", handleOutsideClick)
+    return () => document.removeEventListener("mousedown", handleOutsideClick)
+  })
 </script>
 
-<div class="table-shell panel">
+<div class="table-shell panel" bind:this={tableShellElement}>
   <div class="table-scroll">
     <table class="documents-table">
       <colgroup>
@@ -131,7 +174,91 @@
           <th>Файл</th>
           <th>Теги</th>
           {#each customFieldSettings as field}
-            <th>{field.name}</th>
+            <th class="field-header-cell">
+              <button
+                class="field-header-trigger"
+                class:active={isFieldFilterActive(field.name)}
+                on:click={() => dispatch("toggleFilterPanel", { fieldName: field.name })}
+              >
+                <span>{field.name}</span>
+                <span class="filter-icon">▾</span>
+              </button>
+
+              {#if openFilterField === field.name}
+                <div class="field-filter-popup">
+                  {#if customFieldFilters[field.name]?.mode === "text"}
+                    <div class="popup-row">
+                      <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: field.name, sort: "asc" })}>A-Z</button>
+                      <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: field.name, sort: "desc" })}>Z-A</button>
+                      <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: field.name, sort: "none" })}>Без сорт.</button>
+                    </div>
+                    <div class="popup-row">
+                      <button class="secondary" on:click={() => dispatch("selectAllTextValues", { fieldName: field.name })}>Выбрать все</button>
+                      <button class="secondary" on:click={() => dispatch("clearTextValues", { fieldName: field.name })}>Очистить</button>
+                    </div>
+                    <div class="popup-values">
+                      {#each fieldUniqueTextValues(field.name) as value}
+                        <label class="popup-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={customFieldFilters[field.name]?.mode === "text" && customFieldFilters[field.name].selectedValues.includes(value)}
+                            on:change={() => dispatch("toggleTextValue", { fieldName: field.name, value })}
+                          />
+                          <span>{value}</span>
+                        </label>
+                      {/each}
+                    </div>
+                  {:else}
+                    <div class="popup-row">
+                      <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: field.name, sort: "asc" })}>0-9</button>
+                      <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: field.name, sort: "desc" })}>9-0</button>
+                      <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: field.name, sort: "none" })}>Без сорт.</button>
+                    </div>
+                    <div class="popup-row">
+                      <select
+                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].operator : "none"}
+                        on:change={(event) => {
+                          const target = event.target as HTMLSelectElement
+                          dispatch("setNumberOperator", { fieldName: field.name, operator: target.value as NumberFilter["operator"] })
+                        }}
+                      >
+                        <option value="none">Без фильтра</option>
+                        <option value="equals">Равно</option>
+                        <option value="greater_than">Больше</option>
+                        <option value="less_than">Меньше</option>
+                        <option value="between">Между</option>
+                      </select>
+                    </div>
+                    <div class="popup-row number-inputs">
+                      <input
+                        type="number"
+                        placeholder="Значение"
+                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value1 : ""}
+                        on:input={(event) => {
+                          const target = event.target as HTMLInputElement
+                          dispatch("setNumberValue", { fieldName: field.name, key: "value1", value: target.value })
+                        }}
+                      />
+                      {#if customFieldFilters[field.name]?.mode === "number" && customFieldFilters[field.name].operator === "between"}
+                        <input
+                          type="number"
+                          placeholder="И до"
+                          value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value2 : ""}
+                          on:input={(event) => {
+                            const target = event.target as HTMLInputElement
+                            dispatch("setNumberValue", { fieldName: field.name, key: "value2", value: target.value })
+                          }}
+                        />
+                      {/if}
+                    </div>
+                  {/if}
+                  <div class="popup-row">
+                    <button class="secondary" on:click={() => dispatch("clearFieldFilter", { fieldName: field.name })}>Сбросить</button>
+                    <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+                  </div>
+                </div>
+              {/if}
+            </th>
           {/each}
         </tr>
       </thead>
@@ -228,6 +355,82 @@
     z-index: 1;
     font-weight: 700;
     color: var(--text-muted);
+  }
+
+  .documents-table th.field-header-cell {
+    position: sticky;
+    overflow: visible;
+    z-index: 6;
+  }
+
+  .field-header-trigger {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: inherit;
+    font-weight: 700;
+  }
+
+  .field-header-trigger:hover {
+    color: var(--text);
+  }
+
+  .field-header-trigger.active {
+    color: var(--primary);
+  }
+
+  .filter-icon {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .field-header-trigger.active .filter-icon {
+    color: var(--primary);
+  }
+
+  .field-filter-popup {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 25;
+    min-width: 250px;
+    max-width: min(86vw, 320px);
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-soft);
+    display: grid;
+    gap: 8px;
+  }
+
+  .popup-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .popup-values {
+    display: grid;
+    gap: 4px;
+    max-height: 170px;
+    overflow: auto;
+    padding-right: 2px;
+  }
+
+  .popup-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .number-inputs input {
+    width: 100%;
   }
 
   .documents-table tbody tr:hover {

@@ -21,9 +21,10 @@ export interface AppSettingsResponse {
     fields_for_cards: Array<{ name: string; type: "text" | "number"; created_at?: string }>
 }
 
-export async function uploadImage(file: File) {
+export async function uploadImage(file: File, performOcr = true) {
     const formData = new FormData()
     formData.append("file", file)
+    formData.append("perform_ocr", String(performOcr))
 
     const res = await fetch(`${API_URL}/upload`, {
         method: "POST",

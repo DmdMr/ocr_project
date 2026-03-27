@@ -437,15 +437,15 @@
 
 
 <div class="search-manager panel">
-    <div class="controls-row">
+    <div class="controls-row compact-toolbar">
         <input
             type="text"
-            class="my-input"
+            class="my-input compact-search"
             placeholder="Поиск документов"
             bind:value={search}
         />
 
-        <select bind:value={sortOrder} class="sort-select">
+        <select bind:value={sortOrder} class="sort-select compact-sort">
             <option value="date_desc">Сначала новые</option>
             <option value="date_asc">Сначала старые</option> 
             <option value="name_asc">Имя (A–Z)</option>
@@ -470,107 +470,6 @@
         </div>
     </div>
 </div>
-
-{#if customFieldSettings.length}
-<div class="panel custom-filters-panel">
-    <div class="custom-filters-header">Фильтры по полям карточки</div>
-    <div class="custom-filter-buttons">
-        <button on:click={() => push('/settings')}>
-            Настройки полей
-        </button>
-        {#each customFieldSettings as field}
-            <div class="field-filter-item">
-                <button
-                    class="field-filter-trigger"
-                    class:active={isFieldFilterActive(field.name)}
-                    on:click={() => toggleFilterPanel(field.name)}
-                >
-                    {field.name}
-                    <span class="filter-icon">▾</span>
-                </button>
-
-                {#if openFilterField === field.name}
-                    <div class="field-filter-popup">
-                        {#if field.type === "text"}
-                            <div class="popup-row">
-                                <button class="secondary" on:click={() => setTextSort(field.name, "asc")}>A-Z</button>
-                                <button class="secondary" on:click={() => setTextSort(field.name, "desc")}>Z-A</button>
-                                <button class="secondary" on:click={() => setTextSort(field.name, "none")}>Без сорт.</button>
-                            </div>
-                            <div class="popup-row">
-                                <button class="secondary" on:click={() => selectAllTextValues(field.name)}>Выбрать все</button>
-                                <button class="secondary" on:click={() => clearTextValues(field.name)}>Очистить</button>
-                            </div>
-                            <div class="popup-values">
-                                {#each fieldUniqueTextValues(field.name) as value}
-                                    <label class="popup-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            checked={customFieldFilters[field.name]?.mode === "text" && customFieldFilters[field.name].selectedValues.includes(value)}
-                                            on:change={() => toggleTextValue(field.name, value)}
-                                        />
-                                        <span>{value}</span>
-                                    </label>
-                                {/each}
-                            </div>
-                        {:else}
-                            <div class="popup-row">
-                                <button class="secondary" on:click={() => setNumberSort(field.name, "asc")}>0-9</button>
-                                <button class="secondary" on:click={() => setNumberSort(field.name, "desc")}>9-0</button>
-                                <button class="secondary" on:click={() => setNumberSort(field.name, "none")}>Без сорт.</button>
-                            </div>
-                            <div class="popup-row">
-                                <select
-                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].operator : "none"}
-                                    on:change={(event) => {
-                                        const target = event.target as HTMLSelectElement
-                                        setNumberOperator(field.name, target.value as NumberFilter["operator"])
-                                    }}
-                                >
-                                    <option value="none">Без фильтра</option>
-                                    <option value="equals">Равно</option>
-                                    <option value="greater_than">Больше</option>
-                                    <option value="less_than">Меньше</option>
-                                    <option value="between">Между</option>
-                                </select>
-                            </div>
-                            <div class="popup-row number-inputs">
-                                <input
-                                    type="number"
-                                    placeholder="Значение"
-                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value1 : ""}
-                                    on:input={(event) => {
-                                        const target = event.target as HTMLInputElement
-                                        setNumberValue(field.name, "value1", target.value)
-                                    }}
-                                />
-                                {#if customFieldFilters[field.name]?.mode === "number" && customFieldFilters[field.name].operator === "between"}
-                                    <input
-                                        type="number"
-                                        placeholder="И до"
-                                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value2 : ""}
-                                        on:input={(event) => {
-                                            const target = event.target as HTMLInputElement
-                                            setNumberValue(field.name, "value2", target.value)
-                                        }}
-                                    />
-                                {/if}
-                            </div>
-                        {/if}
-                        <div class="popup-row">
-                            <button class="secondary" on:click={() => clearFieldFilter(field.name)}>Сбросить</button>
-                            <button class="primary" on:click={() => openFilterField = null}>Готово</button>
-                        </div>
-                    </div>
-                {/if}
-            </div>
-        {/each}
-    </div>
-</div>
-{/if}
-
-
-
 
 <TagManager
     initialTags={tags}
@@ -635,7 +534,21 @@
     documents={sortedDocuments}
     {selectedIds}
     {customFieldSettings}
+    {customFieldFilters}
+    {openFilterField}
+    {fieldUniqueTextValues}
+    {isFieldFilterActive}
     on:toggleSelect={(e) => toggleCardSelection(e.detail.id)}
+    on:toggleFilterPanel={(e) => toggleFilterPanel(e.detail.fieldName)}
+    on:setTextSort={(e) => setTextSort(e.detail.fieldName, e.detail.sort)}
+    on:setNumberSort={(e) => setNumberSort(e.detail.fieldName, e.detail.sort)}
+    on:toggleTextValue={(e) => toggleTextValue(e.detail.fieldName, e.detail.value)}
+    on:selectAllTextValues={(e) => selectAllTextValues(e.detail.fieldName)}
+    on:clearTextValues={(e) => clearTextValues(e.detail.fieldName)}
+    on:setNumberOperator={(e) => setNumberOperator(e.detail.fieldName, e.detail.operator)}
+    on:setNumberValue={(e) => setNumberValue(e.detail.fieldName, e.detail.key, e.detail.value)}
+    on:clearFieldFilter={(e) => clearFieldFilter(e.detail.fieldName)}
+    on:closeFilterPanel={() => openFilterField = null}
     on:deleted={(e) => removeFromList(e.detail.id)}
     on:updated={(e) => replaceDocumentInList(e.detail.document)}
   />
@@ -646,7 +559,7 @@
 <style>
 
 .search-manager {
-    padding: 14px;
+    padding: 10px 12px;
     margin-bottom: 16px;
     text-align: left;
 }
@@ -664,98 +577,38 @@
     display: flex;
     justify-content: left;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+}
+
+.compact-toolbar {
+    gap: 6px;
+}
+
+.compact-search {
+    min-width: min(340px, 100%);
+    flex: 1 1 260px;
+}
+
+.compact-sort {
+    max-width: 220px;
 }
 
 .view-toggle {
     display: inline-flex;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
+}
+
+.view-toggle button {
+    padding-inline: 0.7rem;
+    min-height: 30px;
 }
 
 .view-toggle button.active {
     border-color: color-mix(in srgb, var(--primary), white 20%);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 75%);
     background: color-mix(in srgb, var(--surface), var(--primary) 10%);
-}
-
-.custom-filters-panel {
-    margin-bottom: 16px;
-    text-align: left;
-    padding: 12px;
-}
-
-.custom-filters-header {
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.custom-filter-buttons {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.field-filter-item {
-    position: relative;
-}
-
-.field-filter-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.field-filter-trigger.active {
-    border-color: color-mix(in srgb, var(--primary), white 20%);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 75%);
-}
-
-.filter-icon {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.field-filter-popup {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 20;
-    min-width: 250px;
-    max-width: min(86vw, 320px);
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface-elevated);
-    box-shadow: var(--shadow-soft);
-    display: grid;
-    gap: 8px;
-}
-
-.popup-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.popup-values {
-    display: grid;
-    gap: 4px;
-    max-height: 150px;
-    overflow: auto;
-    padding-right: 2px;
-}
-
-.popup-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.9rem;
-}
-
-.number-inputs input {
-    width: 100%;
 }
 
 @media (max-width: 640px) {
