@@ -357,9 +357,10 @@
     color: var(--text-muted);
   }
 
-  .field-header-cell {
+  .documents-table th.field-header-cell {
     position: sticky;
     overflow: visible;
+    z-index: 6;
   }
 
   .field-header-trigger {
