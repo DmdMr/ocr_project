@@ -32,6 +32,12 @@
   export let openFilterField: string | null = null
   export let fieldUniqueTextValues: (fieldName: string) => string[] = () => []
   export let isFieldFilterActive: (fieldName: string) => boolean = () => false
+  export let filenameFilterText = ""
+  export let filenameSort: "none" | "asc" | "desc" = "none"
+  export let createdAtSort: "none" | "newest" | "oldest" = "none"
+  export let createdAtRange: "all" | "today" | "last_7_days" | "this_month" = "all"
+  export let isFilenameFilterActive: () => boolean = () => false
+  export let isCreatedAtFilterActive: () => boolean = () => false
 
   const dispatch = createEventDispatcher<{
     toggleSelect: { id: string }
@@ -46,6 +52,12 @@
     setNumberOperator: { fieldName: string; operator: NumberFilter["operator"] }
     setNumberValue: { fieldName: string; key: "value1" | "value2"; value: string }
     clearFieldFilter: { fieldName: string }
+    setFilenameFilterText: { value: string }
+    setFilenameSort: { sort: "none" | "asc" | "desc" }
+    clearFilenameFilter: void
+    setCreatedAtSort: { sort: "none" | "newest" | "oldest" }
+    setCreatedAtRange: { range: "all" | "today" | "last_7_days" | "this_month" }
+    clearCreatedAtFilter: void
     closeFilterPanel: void
   }>()
 
@@ -54,6 +66,8 @@
   let editedText = ""
   let galleryUploading = false
   let tableShellElement: HTMLDivElement | null = null
+  let columnWidths: Record<string, number> = {}
+  const columnWidthStorageKey = "documentTableColumnWidths"
 
   function openPreview(doc: Document) {
     activeDoc = doc
@@ -86,6 +100,96 @@
     const lastDot = name.lastIndexOf(".")
     if (lastDot <= 0) return name
     return name.slice(0, lastDot)
+  }
+
+  function formatCreatedAt(value: string) {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return "—"
+    return date.toLocaleString("ru-RU", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+  }
+
+  function widthColumnIdForField(fieldName: string) {
+    return `custom:${fieldName}`
+  }
+
+  function getColumnMinWidth(columnId: string) {
+    if (columnId === "select") return 44
+    if (columnId === "preview") return 72
+    if (columnId === "filename") return 220
+    if (columnId === "created_at") return 150
+    if (columnId === "tags") return 160
+    return 140
+  }
+
+  function getColumnDefaultWidth(columnId: string) {
+    if (columnId === "select") return 44
+    if (columnId === "preview") return 72
+    if (columnId === "filename") return 250
+    if (columnId === "created_at") return 180
+    if (columnId === "tags") return 200
+    return 160
+  }
+
+  function getColumnWidth(columnId: string) {
+    const current = columnWidths[columnId]
+    const fallback = getColumnDefaultWidth(columnId)
+    return Math.max(getColumnMinWidth(columnId), current ?? fallback)
+  }
+
+  function initializeColumnWidths() {
+    const next: Record<string, number> = { ...columnWidths }
+    let hasChanges = false
+    const baseIds = ["select", "preview", "filename", "created_at", "tags"]
+    for (const id of baseIds) {
+      if (!next[id]) {
+        next[id] = getColumnDefaultWidth(id)
+        hasChanges = true
+      }
+    }
+    for (const field of customFieldSettings) {
+      const id = widthColumnIdForField(field.name)
+      if (!next[id]) {
+        next[id] = getColumnDefaultWidth(id)
+        hasChanges = true
+      }
+    }
+    if (hasChanges) {
+      columnWidths = next
+    }
+  }
+
+  function persistColumnWidths() {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(columnWidthStorageKey, JSON.stringify(columnWidths))
+  }
+
+  function startResize(event: MouseEvent, columnId: string) {
+    event.preventDefault()
+    event.stopPropagation()
+    const startX = event.clientX
+    const startWidth = getColumnWidth(columnId)
+    const minWidth = getColumnMinWidth(columnId)
+
+    function handleMouseMove(moveEvent: MouseEvent) {
+      const deltaX = moveEvent.clientX - startX
+      const nextWidth = Math.max(minWidth, Math.round(startWidth + deltaX))
+      columnWidths = { ...columnWidths, [columnId]: nextWidth }
+    }
+
+    function handleMouseUp() {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+      persistColumnWidths()
+    }
+
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
   }
 
   function applyDocumentUpdate(updated: Document) {
@@ -150,29 +254,132 @@
   }
 
   onMount(() => {
+    const savedRaw = window.localStorage.getItem(columnWidthStorageKey)
+    if (savedRaw) {
+      try {
+        const parsed = JSON.parse(savedRaw) as Record<string, number>
+        columnWidths = parsed
+      } catch (error) {
+        console.warn("Failed to parse table column widths", error)
+      }
+    }
+    initializeColumnWidths()
     document.addEventListener("mousedown", handleOutsideClick)
     return () => document.removeEventListener("mousedown", handleOutsideClick)
   })
+
+  $: initializeColumnWidths()
 </script>
 
 <div class="table-shell panel" bind:this={tableShellElement}>
   <div class="table-scroll">
     <table class="documents-table">
       <colgroup>
-        <col style="width: 44px" />
-        <col style="width: 72px" />
-        <col style="width: 240px" />
-        <col style="width: 200px" />
+        <col style={`width: ${getColumnWidth("select")}px; min-width: ${getColumnMinWidth("select")}px;`} />
+        <col style={`width: ${getColumnWidth("preview")}px; min-width: ${getColumnMinWidth("preview")}px;`} />
+        <col style={`width: ${getColumnWidth("filename")}px; min-width: ${getColumnMinWidth("filename")}px;`} />
+        <col style={`width: ${getColumnWidth("created_at")}px; min-width: ${getColumnMinWidth("created_at")}px;`} />
+        <col style={`width: ${getColumnWidth("tags")}px; min-width: ${getColumnMinWidth("tags")}px;`} />
         {#each customFieldSettings as _}
-          <col style="width: 160px" />
+          <col style={`width: ${getColumnWidth(widthColumnIdForField(_.name))}px; min-width: ${getColumnMinWidth(widthColumnIdForField(_.name))}px;`} />
         {/each}
       </colgroup>
       <thead>
         <tr>
           <th>✓</th>
-          <th>Превью</th>
-          <th>Файл</th>
-          <th>Теги</th>
+          <th>
+            Превью
+            <button
+              type="button"
+              class="column-resizer"
+              aria-label="Изменить ширину колонки превью"
+              on:mousedown={(event) => startResize(event, "preview")}
+            ></button>
+          </th>
+          <th class="field-header-cell">
+            <button
+              class="field-header-trigger"
+              class:active={isFilenameFilterActive()}
+              on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:filename" })}
+            >
+              <span>Файл</span>
+              <span class="filter-icon">▾</span>
+            </button>
+            <button
+              type="button"
+              class="column-resizer"
+              aria-label="Изменить ширину колонки файл"
+              on:mousedown={(event) => startResize(event, "filename")}
+            ></button>
+            {#if openFilterField === "system:filename"}
+              <div class="field-filter-popup">
+                <div class="popup-row">
+                  <button class="secondary" class:active={filenameSort === "asc"} on:click={() => dispatch("setFilenameSort", { sort: "asc" })}>A-Z</button>
+                  <button class="secondary" class:active={filenameSort === "desc"} on:click={() => dispatch("setFilenameSort", { sort: "desc" })}>Z-A</button>
+                  <button class="secondary" class:active={filenameSort === "none"} on:click={() => dispatch("setFilenameSort", { sort: "none" })}>Без сорт.</button>
+                </div>
+                <div class="popup-row">
+                  <input
+                    type="text"
+                    placeholder="Фильтр по имени файла"
+                    value={filenameFilterText}
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement
+                      dispatch("setFilenameFilterText", { value: target.value })
+                    }}
+                  />
+                </div>
+                <div class="popup-row">
+                  <button class="secondary" on:click={() => dispatch("clearFilenameFilter")}>Сбросить</button>
+                  <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+                </div>
+              </div>
+            {/if}
+          </th>
+          <th class="field-header-cell">
+            <button
+              class="field-header-trigger"
+              class:active={isCreatedAtFilterActive()}
+              on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:created_at" })}
+            >
+              <span>Создан</span>
+              <span class="filter-icon">▾</span>
+            </button>
+            <button
+              type="button"
+              class="column-resizer"
+              aria-label="Изменить ширину колонки дата создания"
+              on:mousedown={(event) => startResize(event, "created_at")}
+            ></button>
+            {#if openFilterField === "system:created_at"}
+              <div class="field-filter-popup">
+                <div class="popup-row">
+                  <button class="secondary" class:active={createdAtSort === "newest"} on:click={() => dispatch("setCreatedAtSort", { sort: "newest" })}>Сначала новые</button>
+                  <button class="secondary" class:active={createdAtSort === "oldest"} on:click={() => dispatch("setCreatedAtSort", { sort: "oldest" })}>Сначала старые</button>
+                  <button class="secondary" class:active={createdAtSort === "none"} on:click={() => dispatch("setCreatedAtSort", { sort: "none" })}>Без сорт.</button>
+                </div>
+                <div class="popup-row">
+                  <button class="secondary" class:active={createdAtRange === "today"} on:click={() => dispatch("setCreatedAtRange", { range: "today" })}>Сегодня</button>
+                  <button class="secondary" class:active={createdAtRange === "last_7_days"} on:click={() => dispatch("setCreatedAtRange", { range: "last_7_days" })}>7 дней</button>
+                  <button class="secondary" class:active={createdAtRange === "this_month"} on:click={() => dispatch("setCreatedAtRange", { range: "this_month" })}>Этот месяц</button>
+                  <button class="secondary" class:active={createdAtRange === "all"} on:click={() => dispatch("setCreatedAtRange", { range: "all" })}>Все</button>
+                </div>
+                <div class="popup-row">
+                  <button class="secondary" on:click={() => dispatch("clearCreatedAtFilter")}>Сбросить</button>
+                  <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+                </div>
+              </div>
+            {/if}
+          </th>
+          <th>
+            Теги
+            <button
+              type="button"
+              class="column-resizer"
+              aria-label="Изменить ширину колонки теги"
+              on:mousedown={(event) => startResize(event, "tags")}
+            ></button>
+          </th>
           {#each customFieldSettings as field}
             <th class="field-header-cell">
               <button
@@ -183,6 +390,12 @@
                 <span>{field.name}</span>
                 <span class="filter-icon">▾</span>
               </button>
+              <button
+                type="button"
+                class="column-resizer"
+                aria-label={`Изменить ширину колонки ${field.name}`}
+                on:mousedown={(event) => startResize(event, widthColumnIdForField(field.name))}
+              ></button>
 
               {#if openFilterField === field.name}
                 <div class="field-filter-popup">
@@ -282,6 +495,7 @@
                 {getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}
               </button>
             </td>
+            <td title={formatCreatedAt(doc.created_at)}>{formatCreatedAt(doc.created_at)}</td>
             <td>
               <div class="row-tags">
                 {#if tagList(doc).length}
@@ -341,7 +555,7 @@
   .documents-table th,
   .documents-table td {
     border-bottom: 1px solid var(--border);
-    padding: 8px 10px;
+    padding: 7px 9px;
     vertical-align: middle;
     white-space: nowrap;
     overflow: hidden;
@@ -355,6 +569,120 @@
     z-index: 1;
     font-weight: 700;
     color: var(--text-muted);
+    overflow: visible;
+    padding-right: 14px;
+  }
+
+  .documents-table th.field-header-cell {
+    position: sticky;
+    overflow: visible;
+    z-index: 6;
+  }
+
+  .field-header-trigger {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: inherit;
+    font-weight: 700;
+  }
+
+  .field-header-trigger:hover {
+    color: var(--text);
+  }
+
+  .field-header-trigger.active {
+    color: var(--primary);
+  }
+
+  .filter-icon {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .field-header-trigger.active .filter-icon {
+    color: var(--primary);
+  }
+
+  .field-filter-popup {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 25;
+    min-width: 220px;
+    max-width: min(86vw, 320px);
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-soft);
+    display: grid;
+    gap: 6px;
+  }
+
+  .popup-row {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  .field-filter-popup :global(button),
+  .field-filter-popup :global(select),
+  .field-filter-popup :global(input) {
+    min-height: 28px;
+    padding: 0.32rem 0.56rem;
+    font-size: 0.84rem;
+  }
+
+  .popup-values {
+    display: grid;
+    gap: 4px;
+    max-height: 170px;
+    overflow: auto;
+    padding-right: 2px;
+  }
+
+  .popup-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .number-inputs input {
+    width: 100%;
+  }
+
+  .column-resizer {
+    all: unset;
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 10px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 30;
+  }
+
+  .column-resizer::after {
+    content: "";
+    position: absolute;
+    top: 18%;
+    bottom: 18%;
+    right: 4px;
+    width: 2px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--border-strong), transparent 35%);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .documents-table th:hover .column-resizer::after {
+    opacity: 1;
   }
 
   .documents-table th.field-header-cell {

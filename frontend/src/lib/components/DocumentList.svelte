@@ -26,6 +26,10 @@
     let selectedIds: string[] = []
     let customFieldSettings: CardCustomFieldSetting[] = []
     let openFilterField: string | null = null
+    let filenameFilterText = ""
+    let filenameSort: "none" | "asc" | "desc" = "none"
+    let createdAtSort: "none" | "newest" | "oldest" = "none"
+    let createdAtRange: "all" | "today" | "last_7_days" | "this_month" = "all"
 
     type TextFilter = {
         mode: "text"
@@ -174,6 +178,75 @@
 
     function toggleFilterPanel(fieldName: string) {
         openFilterField = openFilterField === fieldName ? null : fieldName
+    }
+
+    function setFilenameFilterText(value: string) {
+        filenameFilterText = value
+    }
+
+    function setFilenameSort(sort: "none" | "asc" | "desc") {
+        filenameSort = sort
+    }
+
+    function clearFilenameFilter() {
+        filenameFilterText = ""
+        filenameSort = "none"
+    }
+
+    function setCreatedAtSort(sort: "none" | "newest" | "oldest") {
+        createdAtSort = sort
+    }
+
+    function setCreatedAtRange(range: "all" | "today" | "last_7_days" | "this_month") {
+        createdAtRange = range
+    }
+
+    function clearCreatedAtFilter() {
+        createdAtSort = "none"
+        createdAtRange = "all"
+    }
+
+    function isSameLocalDay(date: Date, reference: Date) {
+        return (
+            date.getFullYear() === reference.getFullYear() &&
+            date.getMonth() === reference.getMonth() &&
+            date.getDate() === reference.getDate()
+        )
+    }
+
+    function matchesCreatedAtRange(createdAt: string) {
+        if (createdAtRange === "all") return true
+        const created = new Date(createdAt)
+        if (Number.isNaN(created.getTime())) return false
+
+        const now = new Date()
+        if (createdAtRange === "today") {
+            return isSameLocalDay(created, now)
+        }
+
+        if (createdAtRange === "last_7_days") {
+            const threshold = new Date(now)
+            threshold.setDate(threshold.getDate() - 6)
+            threshold.setHours(0, 0, 0, 0)
+            return created.getTime() >= threshold.getTime()
+        }
+
+        if (createdAtRange === "this_month") {
+            return (
+                created.getFullYear() === now.getFullYear() &&
+                created.getMonth() === now.getMonth()
+            )
+        }
+
+        return true
+    }
+
+    function isFilenameFilterActive() {
+        return filenameSort !== "none" || filenameFilterText.trim().length > 0
+    }
+
+    function isCreatedAtFilterActive() {
+        return createdAtSort !== "none" || createdAtRange !== "all"
     }
 
     function setTextSort(fieldName: string, sort: "none" | "asc" | "desc") {
@@ -350,13 +423,16 @@
  
     $: filtered = documents.filter(doc => {
         const displayName = doc.display_filename ?? doc.filename
+        const filenameValue = (displayName || doc.filename || "").toLowerCase()
         const matchesText =
             displayName.toLowerCase().includes(search.toLowerCase()) ||
             doc.filename.toLowerCase().includes(search.toLowerCase()) ||
             doc.recognized_text.toLowerCase().includes(search.toLowerCase()) ||
             doc.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
         const matchesTag = !activeTag || doc.tags?.includes(activeTag)
-        if (!matchesText || !matchesTag) return false
+        const matchesFilenameText = !filenameFilterText.trim() || filenameValue.includes(filenameFilterText.trim().toLowerCase())
+        const matchesDateRange = matchesCreatedAtRange(doc.created_at)
+        if (!matchesText || !matchesTag || !matchesFilenameText || !matchesDateRange) return false
 
         for (const field of customFieldSettings) {
             const filter = customFieldFilters[field.name]
@@ -376,6 +452,21 @@
 
 
     $: sortedDocuments = [...filtered].sort((a, b) => {
+        if (filenameSort !== "none") {
+            const aName = (a.display_filename || a.filename || "")
+            const bName = (b.display_filename || b.filename || "")
+            const compared = aName.localeCompare(bName, undefined, { sensitivity: "base" })
+            if (compared !== 0) return filenameSort === "asc" ? compared : -compared
+        }
+
+        if (createdAtSort !== "none") {
+            const dateA = new Date(a.created_at).getTime()
+            const dateB = new Date(b.created_at).getTime()
+            if (dateA !== dateB) {
+                return createdAtSort === "newest" ? dateB - dateA : dateA - dateB
+            }
+        }
+
         const customSort = getActiveCustomSort()
         if (customSort) {
             const directionMultiplier = customSort.direction === "asc" ? 1 : -1
@@ -538,8 +629,20 @@
     {openFilterField}
     {fieldUniqueTextValues}
     {isFieldFilterActive}
+    {filenameFilterText}
+    {filenameSort}
+    {createdAtSort}
+    {createdAtRange}
+    {isFilenameFilterActive}
+    {isCreatedAtFilterActive}
     on:toggleSelect={(e) => toggleCardSelection(e.detail.id)}
     on:toggleFilterPanel={(e) => toggleFilterPanel(e.detail.fieldName)}
+    on:setFilenameFilterText={(e) => setFilenameFilterText(e.detail.value)}
+    on:setFilenameSort={(e) => setFilenameSort(e.detail.sort)}
+    on:clearFilenameFilter={clearFilenameFilter}
+    on:setCreatedAtSort={(e) => setCreatedAtSort(e.detail.sort)}
+    on:setCreatedAtRange={(e) => setCreatedAtRange(e.detail.range)}
+    on:clearCreatedAtFilter={clearCreatedAtFilter}
     on:setTextSort={(e) => setTextSort(e.detail.fieldName, e.detail.sort)}
     on:setNumberSort={(e) => setNumberSort(e.detail.fieldName, e.detail.sort)}
     on:toggleTextValue={(e) => toggleTextValue(e.detail.fieldName, e.detail.value)}
