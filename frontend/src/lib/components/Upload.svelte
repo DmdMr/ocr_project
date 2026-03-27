@@ -4,18 +4,10 @@
 
     export let galleryUploading = false
 
-    function uploadGalleryFiles(event: Event) {
-        const input = event.target as HTMLInputElement
-        const files = Array.from(input.files ?? [])
-        if (!files.length) return
-
-        dispatch("addImages", { files })
-        input.value = ""
-    }
-
     const dispatch = createEventDispatcher()
 
     type UploadStatus = "pending" | "uploading" | "processing" | "done" | "error"
+    type UploadMode = "with_ocr" | "without_ocr"
 
     interface UploadItem {
         file: File
@@ -27,6 +19,8 @@
     let items: UploadItem[] = []
     let message = ""
     let uploading = false
+    let fileInput: HTMLInputElement | null = null
+    let selectedUploadMode: UploadMode = "with_ocr"
 
     function setFiles(fileList: FileList | null) {
         if (!fileList) return
@@ -41,20 +35,18 @@
         }))
     }
 
-    function statusLabel(status: UploadStatus) {
-        if (status === "pending") return "ожидание"
-        if (status === "uploading") return "загрузка"
-        if (status === "processing") return "обработка"
-        if (status === "done") return "готово"
-        return "ошибка"
+    function openFilePicker(mode: UploadMode) {
+        if (uploading) return
+        selectedUploadMode = mode
+        fileInput?.click()
     }
 
-    function handleChange(event: Event) {
-        const input = event.target as HTMLInputElement
-        setFiles(input.files)
+    function modeLabel(mode: UploadMode) {
+        return mode === "with_ocr" ? "с распознаванием" : "без распознавания"
     }
 
-    async function handleUpload() {
+    async function handleUpload(files: FileList | null, mode: UploadMode) {
+        setFiles(files)
         if (!items.length) return
 
         uploading = true
@@ -66,7 +58,7 @@
                 item.progress = 30
                 items = [...items]
 
-                await uploadImage(item.file)
+                await uploadImage(item.file, mode === "with_ocr")
 
                 item.status = "processing"
                 item.progress = 70
@@ -86,14 +78,22 @@
         }
 
         uploading = false
-        message = "Загрузка завершена"
+        message = `Загрузка ${modeLabel(mode)} завершена`
         dispatch("uploaded")
     }
 
-    function handleDrop(event: DragEvent) {
+    async function handleFileSelection(event: Event) {
+        const input = event.target as HTMLInputElement
+        const files = input.files
+        await handleUpload(files, selectedUploadMode)
+        input.value = ""
+    }
+
+    async function handleDrop(event: DragEvent) {
         event.preventDefault()
         if (!event.dataTransfer) return
-        setFiles(event.dataTransfer.files)
+        selectedUploadMode = "with_ocr"
+        await handleUpload(event.dataTransfer.files, "with_ocr")
     }
 
     function handleDragOver(event: DragEvent) {
@@ -110,21 +110,21 @@
     on:drop={handleDrop}
     on:dragover={handleDragOver}
 >
-    <label class="file-btn upload-btn">
-        Выбор
-        <input
-            type="file"
-            accept="image/*"
-            multiple
-            on:change={handleChange}
-            hidden
-        />
-    </label>
+    <input
+        bind:this={fileInput}
+        type="file"
+        accept="image/*"
+        multiple
+        on:change={handleFileSelection}
+        hidden
+    />
 
-    
+    <button class="upload-btn" on:click={() => openFilePicker("with_ocr")} disabled={uploading}>
+        {uploading && selectedUploadMode === "with_ocr" ? "Загрузка..." : "Загрузить с распознаванием"}
+    </button>
 
-    <button class="upload-btn" on:click={handleUpload} disabled={uploading}>
-        {uploading ? "Загрузка..." : "Загрузить"}
+    <button class="secondary" on:click={() => openFilePicker("without_ocr")} disabled={uploading}>
+        {uploading && selectedUploadMode === "without_ocr" ? "Загрузка..." : "Загрузить без распознавания"}
     </button>
 </div>
 
@@ -193,17 +193,6 @@
 .upload:hover {
     border-color: color-mix(in srgb, var(--primary), var(--border-strong) 50%);
 }
-
-.file-btn {
-    padding: 10px;
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    border: 1px solid var(--border-strong);
-    cursor: pointer;
-    transition: 0.2s ease;
-    font-weight: 600;
-}
-
 
 .upload-btn:disabled {
     opacity: 0.6;
