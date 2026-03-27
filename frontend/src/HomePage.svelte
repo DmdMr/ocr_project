@@ -1,11 +1,9 @@
 <script lang="ts">
     import Upload from "./lib/components/Upload.svelte"
     import DocumentList from "./lib/components/DocumentList.svelte"
+    import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
     import { onMount } from "svelte"
-    import DocumentCard from "./lib/components/DocumentCard.svelte";
     import { push } from 'svelte-spa-router'
-
-    
 
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
@@ -13,10 +11,10 @@
     let language: "en" | "ru" = "en"
     let viewMode: "grid" | "list" = "grid"
     let viewModeLoaded = false
-    let isHelpOpen = false
-    let showPreview = false
     let columnCount = 5
     let columnsLoaded = false
+    let sidebarOpen = true
+    let sidebarStateLoaded = false
 
 
     onMount(() => {
@@ -33,6 +31,10 @@
 
     function handleUpload() {
         refreshKey += 1
+    }
+
+    function toggleSidebar() {
+        sidebarOpen = !sidebarOpen
     }
 
 
@@ -65,6 +67,11 @@
         if (saved === "grid" || saved === "list") {
             viewMode = saved
         }
+        const savedSidebar = localStorage.getItem("workspaceSidebarOpen")
+        if (savedSidebar === "true" || savedSidebar === "false") {
+            sidebarOpen = savedSidebar === "true"
+        }
+        sidebarStateLoaded = true
         viewModeLoaded = true
     })
 
@@ -73,26 +80,46 @@
         localStorage.setItem("viewMode", viewMode)
     }
 
+    $: if (sidebarStateLoaded) {
+        localStorage.setItem("workspaceSidebarOpen", String(sidebarOpen))
+    }
+
 </script>
 
+<div class="workspace-shell">
+  <button
+    class="sidebar-toggle"
+    class:collapsed={!sidebarOpen}
+    type="button"
+    aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+    title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+    on:click={toggleSidebar}
+  >
+    ☰
+  </button>
 
-<div class="panel about-manager">
-  <div class="quick-actions">
-    <button on:click={() => push('/about')}>
-      О проекте
-    </button>
+  <div class="workspace-layout">
+    <aside class="workspace-sidebar panel" class:collapsed={!sidebarOpen} aria-hidden={!sidebarOpen}>
+      <WorkspaceSidebar
+        on:navigateAbout={() => push('/about')}
+        on:navigateArchive={() => push('/archive')}
+        on:navigateAssistant={() => push('/assistant')}
+        on:navigateSettings={() => push('/settings')}
+      />
+    </aside>
 
-    <button on:click={() => push('/archive')}>
-      Архив
-    </button>
+    <div class="workspace-main">
+      <Upload on:uploaded={handleUpload} />
 
-    <button class="primary" on:click={() => push('/assistant')}>
-      Чат-помощник
-    </button>
-
-    <button on:click={() => push('/settings')}>
-      Настройки полей
-    </button>
+      <DocumentList
+        {refreshKey}
+        {viewMode}
+        {columnCount}
+        on:viewModeChange={(event) => {
+            viewMode = event.detail.mode
+        }}
+      />
+    </div>
   </div>
 </div>
 
@@ -117,18 +144,6 @@
 -->
 
 
-<Upload on:uploaded={handleUpload} />
-
-<DocumentList
-    {refreshKey}
-    {viewMode}
-    {columnCount}
-    on:viewModeChange={(event) => {
-        viewMode = event.detail.mode
-    }}
-/>
-
-
 <!--
 <LifeguardHelp bind:viewMode bind:columnCount />
 
@@ -136,33 +151,80 @@
 -->
 
 <style>
-.about-manager {
-    padding: 14px;
-    margin-bottom: 16px;
-    text-align: left;
+.workspace-shell {
+    display: grid;
+    gap: 10px;
 }
 
-@media (max-width: 640px) {
-    .about-manager {
-        padding: 8px;
-        margin-bottom: 12px;
-        text-align: center;
-    }
+.sidebar-toggle {
+    justify-self: start;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface), transparent 10%);
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
 }
 
-.quick-actions {
+.sidebar-toggle:hover {
+    background: color-mix(in srgb, var(--surface), var(--bg-accent) 45%);
+    color: var(--text);
+}
+
+.sidebar-toggle:active {
+    transform: translateY(1px);
+}
+
+.sidebar-toggle.collapsed {
+    color: var(--text);
+}
+
+.workspace-layout {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 16px;
+    align-items: start;
+}
+
+.workspace-sidebar {
+    width: 240px;
+    flex: 0 0 240px;
+    position: sticky;
+    top: 1rem;
+    padding: 12px;
+    overflow: hidden;
+    transition: width 160ms ease, flex-basis 160ms ease, padding 160ms ease, opacity 140ms ease, transform 160ms ease, border-width 140ms ease;
+}
+
+.workspace-sidebar.collapsed {
+    width: 0;
+    flex-basis: 0;
+    padding: 0;
+    border-width: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    pointer-events: none;
+}
+
+.workspace-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    transition: max-width 160ms ease;
 }
 
 @media (max-width: 640px) {
-    .quick-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        text-align: center;
+    .workspace-shell {
+        gap: 8px;
+    }
+
+    .workspace-layout {
+        gap: 10px;
+    }
+
+    .workspace-sidebar {
+        position: static;
     }
 }
-
-
 </style>
