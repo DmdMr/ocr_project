@@ -1,11 +1,9 @@
 <script lang="ts">
     import Upload from "./lib/components/Upload.svelte"
     import DocumentList from "./lib/components/DocumentList.svelte"
+    import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
     import { onMount } from "svelte"
-    import DocumentCard from "./lib/components/DocumentCard.svelte";
     import { push } from 'svelte-spa-router'
-
-    
 
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
@@ -13,8 +11,6 @@
     let language: "en" | "ru" = "en"
     let viewMode: "grid" | "list" = "grid"
     let viewModeLoaded = false
-    let isHelpOpen = false
-    let showPreview = false
     let columnCount = 5
     let columnsLoaded = false
 
@@ -75,24 +71,27 @@
 
 </script>
 
+<div class="workspace-layout">
+  <aside class="workspace-sidebar panel">
+    <WorkspaceSidebar
+      on:navigateAbout={() => push('/about')}
+      on:navigateArchive={() => push('/archive')}
+      on:navigateAssistant={() => push('/assistant')}
+      on:navigateSettings={() => push('/settings')}
+    />
+  </aside>
 
-<div class="panel about-manager">
-  <div class="quick-actions">
-    <button on:click={() => push('/about')}>
-      О проекте
-    </button>
+  <div class="workspace-main">
+    <Upload on:uploaded={handleUpload} />
 
-    <button on:click={() => push('/archive')}>
-      Архив
-    </button>
-
-    <button class="primary" on:click={() => push('/assistant')}>
-      Чат-помощник
-    </button>
-
-    <button on:click={() => push('/settings')}>
-      Настройки полей
-    </button>
+    <DocumentList
+      {refreshKey}
+      {viewMode}
+      {columnCount}
+      on:viewModeChange={(event) => {
+          viewMode = event.detail.mode
+      }}
+    />
   </div>
 </div>
 
@@ -117,18 +116,6 @@
 -->
 
 
-<Upload on:uploaded={handleUpload} />
-
-<DocumentList
-    {refreshKey}
-    {viewMode}
-    {columnCount}
-    on:viewModeChange={(event) => {
-        viewMode = event.detail.mode
-    }}
-/>
-
-
 <!--
 <LifeguardHelp bind:viewMode bind:columnCount />
 
@@ -136,33 +123,31 @@
 -->
 
 <style>
-.about-manager {
-    padding: 14px;
-    margin-bottom: 16px;
-    text-align: left;
+.workspace-layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.workspace-sidebar {
+    position: sticky;
+    top: 1rem;
+    padding: 12px;
+}
+
+.workspace-main {
+    min-width: 0;
 }
 
 @media (max-width: 640px) {
-    .about-manager {
-        padding: 8px;
-        margin-bottom: 12px;
-        text-align: center;
+    .workspace-layout {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .workspace-sidebar {
+        position: static;
     }
 }
-
-.quick-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-@media (max-width: 640px) {
-    .quick-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        text-align: center;
-    }
-}
-
-
 </style>
