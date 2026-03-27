@@ -13,6 +13,8 @@
     let viewModeLoaded = false
     let columnCount = 5
     let columnsLoaded = false
+    let sidebarOpen = true
+    let sidebarStateLoaded = false
 
 
     onMount(() => {
@@ -29,6 +31,10 @@
 
     function handleUpload() {
         refreshKey += 1
+    }
+
+    function toggleSidebar() {
+        sidebarOpen = !sidebarOpen
     }
 
 
@@ -61,6 +67,11 @@
         if (saved === "grid" || saved === "list") {
             viewMode = saved
         }
+        const savedSidebar = localStorage.getItem("workspaceSidebarOpen")
+        if (savedSidebar === "true" || savedSidebar === "false") {
+            sidebarOpen = savedSidebar === "true"
+        }
+        sidebarStateLoaded = true
         viewModeLoaded = true
     })
 
@@ -69,29 +80,46 @@
         localStorage.setItem("viewMode", viewMode)
     }
 
+    $: if (sidebarStateLoaded) {
+        localStorage.setItem("workspaceSidebarOpen", String(sidebarOpen))
+    }
+
 </script>
 
-<div class="workspace-layout">
-  <aside class="workspace-sidebar panel">
-    <WorkspaceSidebar
-      on:navigateAbout={() => push('/about')}
-      on:navigateArchive={() => push('/archive')}
-      on:navigateAssistant={() => push('/assistant')}
-      on:navigateSettings={() => push('/settings')}
-    />
-  </aside>
+<div class="workspace-shell">
+  <button
+    class="sidebar-toggle"
+    class:collapsed={!sidebarOpen}
+    type="button"
+    aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+    title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+    on:click={toggleSidebar}
+  >
+    ☰
+  </button>
 
-  <div class="workspace-main">
-    <Upload on:uploaded={handleUpload} />
+  <div class="workspace-layout">
+    <aside class="workspace-sidebar panel" class:collapsed={!sidebarOpen} aria-hidden={!sidebarOpen}>
+      <WorkspaceSidebar
+        on:navigateAbout={() => push('/about')}
+        on:navigateArchive={() => push('/archive')}
+        on:navigateAssistant={() => push('/assistant')}
+        on:navigateSettings={() => push('/settings')}
+      />
+    </aside>
 
-    <DocumentList
-      {refreshKey}
-      {viewMode}
-      {columnCount}
-      on:viewModeChange={(event) => {
-          viewMode = event.detail.mode
-      }}
-    />
+    <div class="workspace-main">
+      <Upload on:uploaded={handleUpload} />
+
+      <DocumentList
+        {refreshKey}
+        {viewMode}
+        {columnCount}
+        on:viewModeChange={(event) => {
+            viewMode = event.detail.mode
+        }}
+      />
+    </div>
   </div>
 </div>
 
@@ -123,27 +151,76 @@
 -->
 
 <style>
-.workspace-layout {
+.workspace-shell {
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 10px;
+}
+
+.sidebar-toggle {
+    justify-self: start;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface), transparent 10%);
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.sidebar-toggle:hover {
+    background: color-mix(in srgb, var(--surface), var(--bg-accent) 45%);
+    color: var(--text);
+}
+
+.sidebar-toggle:active {
+    transform: translateY(1px);
+}
+
+.sidebar-toggle.collapsed {
+    color: var(--text);
+}
+
+.workspace-layout {
+    display: flex;
     gap: 16px;
     align-items: start;
 }
 
 .workspace-sidebar {
+    width: 240px;
+    flex: 0 0 240px;
     position: sticky;
     top: 1rem;
     padding: 12px;
+    overflow: hidden;
+    transition: width 160ms ease, flex-basis 160ms ease, padding 160ms ease, opacity 140ms ease, transform 160ms ease, border-width 140ms ease;
+}
+
+.workspace-sidebar.collapsed {
+    width: 0;
+    flex-basis: 0;
+    padding: 0;
+    border-width: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    pointer-events: none;
 }
 
 .workspace-main {
+    flex: 1 1 auto;
     min-width: 0;
+    transition: max-width 160ms ease;
 }
 
 @media (max-width: 640px) {
+    .workspace-shell {
+        gap: 8px;
+    }
+
     .workspace-layout {
-        grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 10px;
     }
 
     .workspace-sidebar {
