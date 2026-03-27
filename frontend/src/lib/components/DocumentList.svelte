@@ -437,15 +437,15 @@
 
 
 <div class="search-manager panel">
-    <div class="controls-row">
+    <div class="controls-row compact-toolbar">
         <input
             type="text"
-            class="my-input"
+            class="my-input compact-search"
             placeholder="Поиск документов"
             bind:value={search}
         />
 
-        <select bind:value={sortOrder} class="sort-select">
+        <select bind:value={sortOrder} class="sort-select compact-sort">
             <option value="date_desc">Сначала новые</option>
             <option value="date_asc">Сначала старые</option> 
             <option value="name_asc">Имя (A–Z)</option>
@@ -475,9 +475,6 @@
 <div class="panel custom-filters-panel">
     <div class="custom-filters-header">Фильтры по полям карточки</div>
     <div class="custom-filter-buttons">
-        <button on:click={() => push('/settings')}>
-            Настройки полей
-        </button>
         {#each customFieldSettings as field}
             <div class="field-filter-item">
                 <button
@@ -646,7 +643,7 @@
 <style>
 
 .search-manager {
-    padding: 14px;
+    padding: 10px 12px;
     margin-bottom: 16px;
     text-align: left;
 }
@@ -664,14 +661,32 @@
     display: flex;
     justify-content: left;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+}
+
+.compact-toolbar {
+    gap: 6px;
+}
+
+.compact-search {
+    min-width: min(340px, 100%);
+    flex: 1 1 260px;
+}
+
+.compact-sort {
+    max-width: 220px;
 }
 
 .view-toggle {
     display: inline-flex;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
+}
+
+.view-toggle button {
+    padding-inline: 0.7rem;
+    min-height: 30px;
 }
 
 .view-toggle button.active {
