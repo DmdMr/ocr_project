@@ -13,6 +13,7 @@
   export let documents: Document[] = []
   export let selectedIds: string[] = []
   export let customFieldSettings: CardCustomFieldSetting[] = []
+
   type TextFilter = {
     mode: "text"
     selectedValues: string[]
@@ -28,14 +29,35 @@
   }
 
   type CustomFieldFilter = TextFilter | NumberFilter
+
+  type SortDirection = "none" | "asc" | "desc"
+  type CreatedAtSort = "none" | "newest" | "oldest"
+  type CreatedAtRange = "all" | "today" | "last_7_days" | "this_month"
+
+  type TableColumnKind = "select" | "preview" | "filename" | "created_at" | "tags" | "custom"
+
+  type TableColumnDef = {
+    id: string
+    kind: TableColumnKind
+    label: string
+    isSystem: boolean
+    movable: boolean
+    resizable: boolean
+    deletable: boolean
+    minWidth: number
+    defaultWidth: number
+    fieldName?: string
+    filterFieldName?: string
+  }
+
   export let customFieldFilters: Record<string, CustomFieldFilter> = {}
   export let openFilterField: string | null = null
   export let fieldUniqueTextValues: (fieldName: string) => string[] = () => []
   export let isFieldFilterActive: (fieldName: string) => boolean = () => false
   export let filenameFilterText = ""
-  export let filenameSort: "none" | "asc" | "desc" = "none"
-  export let createdAtSort: "none" | "newest" | "oldest" = "none"
-  export let createdAtRange: "all" | "today" | "last_7_days" | "this_month" = "all"
+  export let filenameSort: SortDirection = "none"
+  export let createdAtSort: CreatedAtSort = "none"
+  export let createdAtRange: CreatedAtRange = "all"
   export let isFilenameFilterActive: () => boolean = () => false
   export let isCreatedAtFilterActive: () => boolean = () => false
 
@@ -44,9 +66,10 @@
     deleted: { id: string }
     updated: { document: Document }
     addProperty: void
+    deleteProperty: { fieldName: string }
     toggleFilterPanel: { fieldName: string }
-    setTextSort: { fieldName: string; sort: "none" | "asc" | "desc" }
-    setNumberSort: { fieldName: string; sort: "none" | "asc" | "desc" }
+    setTextSort: { fieldName: string; sort: SortDirection }
+    setNumberSort: { fieldName: string; sort: SortDirection }
     toggleTextValue: { fieldName: string; value: string }
     selectAllTextValues: { fieldName: string }
     clearTextValues: { fieldName: string }
@@ -54,21 +77,217 @@
     setNumberValue: { fieldName: string; key: "value1" | "value2"; value: string }
     clearFieldFilter: { fieldName: string }
     setFilenameFilterText: { value: string }
-    setFilenameSort: { sort: "none" | "asc" | "desc" }
+    setFilenameSort: { sort: SortDirection }
     clearFilenameFilter: void
-    setCreatedAtSort: { sort: "none" | "newest" | "oldest" }
-    setCreatedAtRange: { range: "all" | "today" | "last_7_days" | "this_month" }
+    setCreatedAtSort: { sort: CreatedAtSort }
+    setCreatedAtRange: { range: CreatedAtRange }
     clearCreatedAtFilter: void
     closeFilterPanel: void
   }>()
+
+  const columnPreferencesStorageKey = "documentTableColumnPreferences:v2"
+
+  const systemColumns: TableColumnDef[] = [
+    { id: "select", kind: "select", label: "✓", isSystem: true, movable: false, resizable: false, deletable: false, minWidth: 44, defaultWidth: 44 },
+    { id: "preview", kind: "preview", label: "Превью", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 72, defaultWidth: 72 },
+    { id: "filename", kind: "filename", label: "Файл", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 220, defaultWidth: 250, filterFieldName: "system:filename" },
+    { id: "created_at", kind: "created_at", label: "Создан", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 150, defaultWidth: 180, filterFieldName: "system:created_at" },
+    { id: "tags", kind: "tags", label: "Теги", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 160, defaultWidth: 200 }
+  ]
 
   let activeDoc: Document | null = null
   let editing = false
   let editedText = ""
   let galleryUploading = false
   let tableShellElement: HTMLDivElement | null = null
+
   let columnWidths: Record<string, number> = {}
-  const columnWidthStorageKey = "documentTableColumnWidths"
+  let customFieldOrder: string[] = []
+
+  let dragFieldName: string | null = null
+  let dragOverFieldName: string | null = null
+  let dragOverPosition: "before" | "after" = "after"
+
+  let cleanupResizeListeners: (() => void) | null = null
+
+  function widthColumnIdForField(fieldName: string) {
+    return `custom:${fieldName}`
+  }
+
+  function customColumnFromField(field: CardCustomFieldSetting): TableColumnDef {
+    return {
+      id: widthColumnIdForField(field.name),
+      kind: "custom",
+      label: field.name,
+      isSystem: false,
+      movable: true,
+      resizable: true,
+      deletable: true,
+      minWidth: 140,
+      defaultWidth: 160,
+      fieldName: field.name,
+      filterFieldName: field.name
+    }
+  }
+
+  function getColumnWidth(column: TableColumnDef) {
+    const current = columnWidths[column.id]
+    return Math.max(column.minWidth, current ?? column.defaultWidth)
+  }
+
+  function persistColumnPreferences() {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(
+      columnPreferencesStorageKey,
+      JSON.stringify({ widths: columnWidths, customFieldOrder })
+    )
+  }
+
+  function initializeColumnState() {
+    const fieldNames = customFieldSettings.map(field => field.name)
+
+    const existingOrder = customFieldOrder.filter(name => fieldNames.includes(name))
+    const missingNames = fieldNames.filter(name => !existingOrder.includes(name))
+    const nextOrder = [...existingOrder, ...missingNames]
+    if (nextOrder.join("\u0000") !== customFieldOrder.join("\u0000")) {
+      customFieldOrder = nextOrder
+    }
+
+    const allowedColumnIds = new Set<string>([
+      ...systemColumns.map(column => column.id),
+      ...fieldNames.map(name => widthColumnIdForField(name))
+    ])
+
+    const nextWidths: Record<string, number> = {}
+    for (const column of systemColumns) {
+      const width = columnWidths[column.id]
+      nextWidths[column.id] = Math.max(column.minWidth, width ?? column.defaultWidth)
+    }
+
+    for (const fieldName of fieldNames) {
+      const id = widthColumnIdForField(fieldName)
+      const width = columnWidths[id]
+      nextWidths[id] = Math.max(140, width ?? 160)
+    }
+
+    if (Object.keys(columnWidths).some(id => !allowedColumnIds.has(id))) {
+      columnWidths = nextWidths
+      persistColumnPreferences()
+      return
+    }
+
+    const widthKeysChanged = Object.keys(nextWidths).some(id => nextWidths[id] !== columnWidths[id])
+    if (widthKeysChanged || Object.keys(nextWidths).length !== Object.keys(columnWidths).length) {
+      columnWidths = nextWidths
+    }
+  }
+
+  function customFieldByName(fieldName: string) {
+    return customFieldSettings.find(field => field.name === fieldName)
+  }
+
+  function moveCustomField(sourceName: string, targetName: string, position: "before" | "after") {
+    if (sourceName === targetName) return
+
+    const current = [...customFieldOrder]
+    const sourceIndex = current.indexOf(sourceName)
+    const targetIndex = current.indexOf(targetName)
+    if (sourceIndex < 0 || targetIndex < 0) return
+
+    current.splice(sourceIndex, 1)
+    const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+    const insertIndex = position === "before" ? adjustedTargetIndex : adjustedTargetIndex + 1
+    current.splice(insertIndex, 0, sourceName)
+
+    customFieldOrder = current
+    persistColumnPreferences()
+  }
+
+  function startResize(event: PointerEvent, column: TableColumnDef) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (cleanupResizeListeners) {
+      cleanupResizeListeners()
+      cleanupResizeListeners = null
+    }
+
+    const handle = event.currentTarget as HTMLElement | null
+    const startX = event.clientX
+    const startWidth = getColumnWidth(column)
+
+    handle?.setPointerCapture?.(event.pointerId)
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const nextWidth = Math.max(column.minWidth, Math.round(startWidth + deltaX))
+      columnWidths = { ...columnWidths, [column.id]: nextWidth }
+    }
+
+    const onPointerUp = () => {
+      cleanup()
+      persistColumnPreferences()
+    }
+
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("pointerup", onPointerUp)
+      window.removeEventListener("pointercancel", onPointerUp)
+    }
+
+    cleanupResizeListeners = cleanup
+
+    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("pointerup", onPointerUp)
+    window.addEventListener("pointercancel", onPointerUp)
+  }
+
+  function handleHeaderDragStart(event: DragEvent, fieldName: string) {
+    dragFieldName = fieldName
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move"
+      event.dataTransfer.setData("text/plain", fieldName)
+    }
+  }
+
+  function handleHeaderDragOver(event: DragEvent, targetFieldName: string) {
+    if (!dragFieldName || dragFieldName === targetFieldName) return
+
+    event.preventDefault()
+
+    const target = event.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    const midpoint = rect.left + rect.width / 2
+    dragOverPosition = event.clientX < midpoint ? "before" : "after"
+    dragOverFieldName = targetFieldName
+  }
+
+  function clearDragState() {
+    dragFieldName = null
+    dragOverFieldName = null
+    dragOverPosition = "after"
+  }
+
+  function handleHeaderDrop(event: DragEvent, targetFieldName: string) {
+    event.preventDefault()
+    if (!dragFieldName) {
+      clearDragState()
+      return
+    }
+
+    moveCustomField(dragFieldName, targetFieldName, dragOverPosition)
+    clearDragState()
+  }
+
+  function handleDeleteProperty(fieldName: string) {
+    const field = customFieldByName(fieldName)
+    if (!field) return
+
+    const confirmed = window.confirm(`Удалить свойство «${field.name}»? Это удалит значения поля из всех карточек.`)
+    if (!confirmed) return
+
+    dispatch("deleteProperty", { fieldName })
+  }
 
   function openPreview(doc: Document) {
     activeDoc = doc
@@ -113,84 +332,6 @@
       hour: "2-digit",
       minute: "2-digit"
     })
-  }
-
-  function widthColumnIdForField(fieldName: string) {
-    return `custom:${fieldName}`
-  }
-
-  function getColumnMinWidth(columnId: string) {
-    if (columnId === "select") return 44
-    if (columnId === "preview") return 72
-    if (columnId === "filename") return 220
-    if (columnId === "created_at") return 150
-    if (columnId === "tags") return 160
-    return 140
-  }
-
-  function getColumnDefaultWidth(columnId: string) {
-    if (columnId === "select") return 44
-    if (columnId === "preview") return 72
-    if (columnId === "filename") return 250
-    if (columnId === "created_at") return 180
-    if (columnId === "tags") return 200
-    return 160
-  }
-
-  function getColumnWidth(columnId: string) {
-    const current = columnWidths[columnId]
-    const fallback = getColumnDefaultWidth(columnId)
-    return Math.max(getColumnMinWidth(columnId), current ?? fallback)
-  }
-
-  function initializeColumnWidths() {
-    const next: Record<string, number> = { ...columnWidths }
-    let hasChanges = false
-    const baseIds = ["select", "preview", "filename", "created_at", "tags"]
-    for (const id of baseIds) {
-      if (!next[id]) {
-        next[id] = getColumnDefaultWidth(id)
-        hasChanges = true
-      }
-    }
-    for (const field of customFieldSettings) {
-      const id = widthColumnIdForField(field.name)
-      if (!next[id]) {
-        next[id] = getColumnDefaultWidth(id)
-        hasChanges = true
-      }
-    }
-    if (hasChanges) {
-      columnWidths = next
-    }
-  }
-
-  function persistColumnWidths() {
-    if (typeof window === "undefined") return
-    window.localStorage.setItem(columnWidthStorageKey, JSON.stringify(columnWidths))
-  }
-
-  function startResize(event: MouseEvent, columnId: string) {
-    event.preventDefault()
-    event.stopPropagation()
-    const startX = event.clientX
-    const startWidth = getColumnWidth(columnId)
-    const minWidth = getColumnMinWidth(columnId)
-
-    function handleMouseMove(moveEvent: MouseEvent) {
-      const deltaX = moveEvent.clientX - startX
-      const nextWidth = Math.max(minWidth, Math.round(startWidth + deltaX))
-      columnWidths = { ...columnWidths, [columnId]: nextWidth }
-    }
-
-    function handleMouseUp() {
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("mouseup", handleMouseUp)
-      persistColumnWidths()
-    }
-
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("mouseup", handleMouseUp)
   }
 
   function applyDocumentUpdate(updated: Document) {
@@ -254,226 +395,257 @@
     }
   }
 
+  $: orderedCustomColumns = customFieldOrder
+    .map(name => customFieldByName(name))
+    .filter((field): field is CardCustomFieldSetting => Boolean(field))
+    .map(customColumnFromField)
+
+  $: visibleColumns = [...systemColumns, ...orderedCustomColumns]
+
   onMount(() => {
-    const savedRaw = window.localStorage.getItem(columnWidthStorageKey)
+    const savedRaw = window.localStorage.getItem(columnPreferencesStorageKey)
     if (savedRaw) {
       try {
-        const parsed = JSON.parse(savedRaw) as Record<string, number>
-        columnWidths = parsed
+        const parsed = JSON.parse(savedRaw) as {
+          widths?: Record<string, number>
+          customFieldOrder?: string[]
+        }
+        columnWidths = parsed.widths ?? {}
+        customFieldOrder = parsed.customFieldOrder ?? []
       } catch (error) {
-        console.warn("Failed to parse table column widths", error)
+        console.warn("Failed to parse table column preferences", error)
       }
     }
-    initializeColumnWidths()
+
+    initializeColumnState()
     document.addEventListener("mousedown", handleOutsideClick)
-    return () => document.removeEventListener("mousedown", handleOutsideClick)
+
+    return () => {
+      if (cleanupResizeListeners) {
+        cleanupResizeListeners()
+        cleanupResizeListeners = null
+      }
+      document.removeEventListener("mousedown", handleOutsideClick)
+    }
   })
 
-  $: initializeColumnWidths()
+  $: initializeColumnState()
+  $: persistColumnPreferences()
 </script>
 
 <div class="table-shell panel" bind:this={tableShellElement}>
   <div class="table-scroll">
     <table class="documents-table">
       <colgroup>
-        <col style={`width: ${getColumnWidth("select")}px; min-width: ${getColumnMinWidth("select")}px;`} />
-        <col style={`width: ${getColumnWidth("preview")}px; min-width: ${getColumnMinWidth("preview")}px;`} />
-        <col style={`width: ${getColumnWidth("filename")}px; min-width: ${getColumnMinWidth("filename")}px;`} />
-        <col style={`width: ${getColumnWidth("created_at")}px; min-width: ${getColumnMinWidth("created_at")}px;`} />
-        <col style={`width: ${getColumnWidth("tags")}px; min-width: ${getColumnMinWidth("tags")}px;`} />
-        {#each customFieldSettings as _}
-          <col style={`width: ${getColumnWidth(widthColumnIdForField(_.name))}px; min-width: ${getColumnMinWidth(widthColumnIdForField(_.name))}px;`} />
+        {#each visibleColumns as column (column.id)}
+          <col style={`width: ${getColumnWidth(column)}px; min-width: ${column.minWidth}px;`} />
         {/each}
         <col style="width: 44px; min-width: 44px;" />
       </colgroup>
       <thead>
         <tr>
-          <th>✓</th>
-          <th>
-            Превью
-            <button
-              type="button"
-              class="column-resizer"
-              aria-label="Изменить ширину колонки превью"
-              on:mousedown={(event) => startResize(event, "preview")}
-            ></button>
-          </th>
-          <th class="field-header-cell">
-            <button
-              class="field-header-trigger"
-              class:active={isFilenameFilterActive()}
-              on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:filename" })}
-            >
-              <span>Файл</span>
-              <span class="filter-icon">▾</span>
-            </button>
-            <button
-              type="button"
-              class="column-resizer"
-              aria-label="Изменить ширину колонки файл"
-              on:mousedown={(event) => startResize(event, "filename")}
-            ></button>
-            {#if openFilterField === "system:filename"}
-              <div class="field-filter-popup">
-                <div class="popup-row">
-                  <button class="secondary" class:active={filenameSort === "asc"} on:click={() => dispatch("setFilenameSort", { sort: "asc" })}>A-Z</button>
-                  <button class="secondary" class:active={filenameSort === "desc"} on:click={() => dispatch("setFilenameSort", { sort: "desc" })}>Z-A</button>
-                  <button class="secondary" class:active={filenameSort === "none"} on:click={() => dispatch("setFilenameSort", { sort: "none" })}>Без сорт.</button>
-                </div>
-                <div class="popup-row">
-                  <input
-                    type="text"
-                    placeholder="Фильтр по имени файла"
-                    value={filenameFilterText}
-                    on:input={(event) => {
-                      const target = event.target as HTMLInputElement
-                      dispatch("setFilenameFilterText", { value: target.value })
-                    }}
-                  />
-                </div>
-                <div class="popup-row">
-                  <button class="secondary" on:click={() => dispatch("clearFilenameFilter")}>Сбросить</button>
-                  <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
-                </div>
-              </div>
-            {/if}
-          </th>
-          <th class="field-header-cell">
-            <button
-              class="field-header-trigger"
-              class:active={isCreatedAtFilterActive()}
-              on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:created_at" })}
-            >
-              <span>Создан</span>
-              <span class="filter-icon">▾</span>
-            </button>
-            <button
-              type="button"
-              class="column-resizer"
-              aria-label="Изменить ширину колонки дата создания"
-              on:mousedown={(event) => startResize(event, "created_at")}
-            ></button>
-            {#if openFilterField === "system:created_at"}
-              <div class="field-filter-popup">
-                <div class="popup-row">
-                  <button class="secondary" class:active={createdAtSort === "newest"} on:click={() => dispatch("setCreatedAtSort", { sort: "newest" })}>Сначала новые</button>
-                  <button class="secondary" class:active={createdAtSort === "oldest"} on:click={() => dispatch("setCreatedAtSort", { sort: "oldest" })}>Сначала старые</button>
-                  <button class="secondary" class:active={createdAtSort === "none"} on:click={() => dispatch("setCreatedAtSort", { sort: "none" })}>Без сорт.</button>
-                </div>
-                <div class="popup-row">
-                  <button class="secondary" class:active={createdAtRange === "today"} on:click={() => dispatch("setCreatedAtRange", { range: "today" })}>Сегодня</button>
-                  <button class="secondary" class:active={createdAtRange === "last_7_days"} on:click={() => dispatch("setCreatedAtRange", { range: "last_7_days" })}>7 дней</button>
-                  <button class="secondary" class:active={createdAtRange === "this_month"} on:click={() => dispatch("setCreatedAtRange", { range: "this_month" })}>Этот месяц</button>
-                  <button class="secondary" class:active={createdAtRange === "all"} on:click={() => dispatch("setCreatedAtRange", { range: "all" })}>Все</button>
-                </div>
-                <div class="popup-row">
-                  <button class="secondary" on:click={() => dispatch("clearCreatedAtFilter")}>Сбросить</button>
-                  <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
-                </div>
-              </div>
-            {/if}
-          </th>
-          <th>
-            Теги
-            <button
-              type="button"
-              class="column-resizer"
-              aria-label="Изменить ширину колонки теги"
-              on:mousedown={(event) => startResize(event, "tags")}
-            ></button>
-          </th>
-          {#each customFieldSettings as field}
-            <th class="field-header-cell">
-              <button
-                class="field-header-trigger"
-                class:active={isFieldFilterActive(field.name)}
-                on:click={() => dispatch("toggleFilterPanel", { fieldName: field.name })}
-              >
-                <span>{field.name}</span>
-                <span class="filter-icon">▾</span>
-              </button>
-              <button
-                type="button"
-                class="column-resizer"
-                aria-label={`Изменить ширину колонки ${field.name}`}
-                on:mousedown={(event) => startResize(event, widthColumnIdForField(field.name))}
-              ></button>
-
-              {#if openFilterField === field.name}
-                <div class="field-filter-popup">
-                  {#if customFieldFilters[field.name]?.mode === "text"}
+          {#each visibleColumns as column (column.id)}
+            {#if column.kind === "select"}
+              <th>{column.label}</th>
+            {:else if column.kind === "preview" || column.kind === "tags"}
+              <th>
+                {column.label}
+                {#if column.resizable}
+                  <button
+                    type="button"
+                    class="column-resizer"
+                    aria-label={`Изменить ширину колонки ${column.label.toLowerCase()}`}
+                    on:pointerdown={(event) => startResize(event, column)}
+                  ></button>
+                {/if}
+              </th>
+            {:else if column.kind === "filename"}
+              <th class="field-header-cell">
+                <button
+                  class="field-header-trigger"
+                  class:active={isFilenameFilterActive()}
+                  on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:filename" })}
+                >
+                  <span>{column.label}</span>
+                  <span class="filter-icon">▾</span>
+                </button>
+                <button
+                  type="button"
+                  class="column-resizer"
+                  aria-label="Изменить ширину колонки файл"
+                  on:pointerdown={(event) => startResize(event, column)}
+                ></button>
+                {#if openFilterField === "system:filename"}
+                  <div class="field-filter-popup">
                     <div class="popup-row">
-                      <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: field.name, sort: "asc" })}>A-Z</button>
-                      <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: field.name, sort: "desc" })}>Z-A</button>
-                      <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: field.name, sort: "none" })}>Без сорт.</button>
+                      <button class="secondary" class:active={filenameSort === "asc"} on:click={() => dispatch("setFilenameSort", { sort: "asc" })}>A-Z</button>
+                      <button class="secondary" class:active={filenameSort === "desc"} on:click={() => dispatch("setFilenameSort", { sort: "desc" })}>Z-A</button>
+                      <button class="secondary" class:active={filenameSort === "none"} on:click={() => dispatch("setFilenameSort", { sort: "none" })}>Без сорт.</button>
                     </div>
                     <div class="popup-row">
-                      <button class="secondary" on:click={() => dispatch("selectAllTextValues", { fieldName: field.name })}>Выбрать все</button>
-                      <button class="secondary" on:click={() => dispatch("clearTextValues", { fieldName: field.name })}>Очистить</button>
-                    </div>
-                    <div class="popup-values">
-                      {#each fieldUniqueTextValues(field.name) as value}
-                        <label class="popup-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={customFieldFilters[field.name]?.mode === "text" && customFieldFilters[field.name].selectedValues.includes(value)}
-                            on:change={() => dispatch("toggleTextValue", { fieldName: field.name, value })}
-                          />
-                          <span>{value}</span>
-                        </label>
-                      {/each}
-                    </div>
-                  {:else}
-                    <div class="popup-row">
-                      <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: field.name, sort: "asc" })}>0-9</button>
-                      <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: field.name, sort: "desc" })}>9-0</button>
-                      <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: field.name, sort: "none" })}>Без сорт.</button>
-                    </div>
-                    <div class="popup-row">
-                      <select
-                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].operator : "none"}
-                        on:change={(event) => {
-                          const target = event.target as HTMLSelectElement
-                          dispatch("setNumberOperator", { fieldName: field.name, operator: target.value as NumberFilter["operator"] })
-                        }}
-                      >
-                        <option value="none">Без фильтра</option>
-                        <option value="equals">Равно</option>
-                        <option value="greater_than">Больше</option>
-                        <option value="less_than">Меньше</option>
-                        <option value="between">Между</option>
-                      </select>
-                    </div>
-                    <div class="popup-row number-inputs">
                       <input
-                        type="number"
-                        placeholder="Значение"
-                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value1 : ""}
+                        type="text"
+                        placeholder="Фильтр по имени файла"
+                        value={filenameFilterText}
                         on:input={(event) => {
                           const target = event.target as HTMLInputElement
-                          dispatch("setNumberValue", { fieldName: field.name, key: "value1", value: target.value })
+                          dispatch("setFilenameFilterText", { value: target.value })
                         }}
                       />
-                      {#if customFieldFilters[field.name]?.mode === "number" && customFieldFilters[field.name].operator === "between"}
+                    </div>
+                    <div class="popup-row">
+                      <button class="secondary" on:click={() => dispatch("clearFilenameFilter")}>Сбросить</button>
+                      <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+                    </div>
+                  </div>
+                {/if}
+              </th>
+            {:else if column.kind === "created_at"}
+              <th class="field-header-cell">
+                <button
+                  class="field-header-trigger"
+                  class:active={isCreatedAtFilterActive()}
+                  on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:created_at" })}
+                >
+                  <span>{column.label}</span>
+                  <span class="filter-icon">▾</span>
+                </button>
+                <button
+                  type="button"
+                  class="column-resizer"
+                  aria-label="Изменить ширину колонки дата создания"
+                  on:pointerdown={(event) => startResize(event, column)}
+                ></button>
+                {#if openFilterField === "system:created_at"}
+                  <div class="field-filter-popup">
+                    <div class="popup-row">
+                      <button class="secondary" class:active={createdAtSort === "newest"} on:click={() => dispatch("setCreatedAtSort", { sort: "newest" })}>Сначала новые</button>
+                      <button class="secondary" class:active={createdAtSort === "oldest"} on:click={() => dispatch("setCreatedAtSort", { sort: "oldest" })}>Сначала старые</button>
+                      <button class="secondary" class:active={createdAtSort === "none"} on:click={() => dispatch("setCreatedAtSort", { sort: "none" })}>Без сорт.</button>
+                    </div>
+                    <div class="popup-row">
+                      <button class="secondary" class:active={createdAtRange === "today"} on:click={() => dispatch("setCreatedAtRange", { range: "today" })}>Сегодня</button>
+                      <button class="secondary" class:active={createdAtRange === "last_7_days"} on:click={() => dispatch("setCreatedAtRange", { range: "last_7_days" })}>7 дней</button>
+                      <button class="secondary" class:active={createdAtRange === "this_month"} on:click={() => dispatch("setCreatedAtRange", { range: "this_month" })}>Этот месяц</button>
+                      <button class="secondary" class:active={createdAtRange === "all"} on:click={() => dispatch("setCreatedAtRange", { range: "all" })}>Все</button>
+                    </div>
+                    <div class="popup-row">
+                      <button class="secondary" on:click={() => dispatch("clearCreatedAtFilter")}>Сбросить</button>
+                      <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+                    </div>
+                  </div>
+                {/if}
+              </th>
+            {:else}
+              <th
+                class="field-header-cell custom-header"
+                draggable={column.movable}
+                class:drag-source={dragFieldName === column.fieldName}
+                class:drop-before={dragOverFieldName === column.fieldName && dragOverPosition === "before"}
+                class:drop-after={dragOverFieldName === column.fieldName && dragOverPosition === "after"}
+                on:dragstart={(event) => column.fieldName && handleHeaderDragStart(event, column.fieldName)}
+                on:dragover={(event) => column.fieldName && handleHeaderDragOver(event, column.fieldName)}
+                on:drop={(event) => column.fieldName && handleHeaderDrop(event, column.fieldName)}
+                on:dragleave={() => {
+                  if (dragOverFieldName === column.fieldName) {
+                    dragOverFieldName = null
+                  }
+                }}
+                on:dragend={clearDragState}
+              >
+                <button
+                  class="field-header-trigger"
+                  class:active={column.fieldName ? isFieldFilterActive(column.fieldName) : false}
+                  on:click={() => column.fieldName && dispatch("toggleFilterPanel", { fieldName: column.fieldName })}
+                >
+                  <span class="drag-indicator" aria-hidden="true">⋮⋮</span>
+                  <span>{column.label}</span>
+                  <span class="filter-icon">▾</span>
+                </button>
+                <button
+                  type="button"
+                  class="column-resizer"
+                  aria-label={`Изменить ширину колонки ${column.label}`}
+                  on:pointerdown={(event) => startResize(event, column)}
+                ></button>
+
+                {#if openFilterField === column.fieldName && column.fieldName}
+                  <div class="field-filter-popup">
+                    {#if customFieldFilters[column.fieldName]?.mode === "text"}
+                      <div class="popup-row">
+                        <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: column.fieldName!, sort: "asc" })}>A-Z</button>
+                        <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: column.fieldName!, sort: "desc" })}>Z-A</button>
+                        <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: column.fieldName!, sort: "none" })}>Без сорт.</button>
+                      </div>
+                      <div class="popup-row">
+                        <button class="secondary" on:click={() => dispatch("selectAllTextValues", { fieldName: column.fieldName! })}>Выбрать все</button>
+                        <button class="secondary" on:click={() => dispatch("clearTextValues", { fieldName: column.fieldName! })}>Очистить</button>
+                      </div>
+                      <div class="popup-values">
+                        {#each fieldUniqueTextValues(column.fieldName) as value}
+                          <label class="popup-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={customFieldFilters[column.fieldName]?.mode === "text" && customFieldFilters[column.fieldName].selectedValues.includes(value)}
+                              on:change={() => dispatch("toggleTextValue", { fieldName: column.fieldName!, value })}
+                            />
+                            <span>{value}</span>
+                          </label>
+                        {/each}
+                      </div>
+                    {:else}
+                      <div class="popup-row">
+                        <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: column.fieldName!, sort: "asc" })}>0-9</button>
+                        <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: column.fieldName!, sort: "desc" })}>9-0</button>
+                        <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: column.fieldName!, sort: "none" })}>Без сорт.</button>
+                      </div>
+                      <div class="popup-row">
+                        <select
+                          value={customFieldFilters[column.fieldName]?.mode === "number" ? customFieldFilters[column.fieldName].operator : "none"}
+                          on:change={(event) => {
+                            const target = event.target as HTMLSelectElement
+                            dispatch("setNumberOperator", { fieldName: column.fieldName!, operator: target.value as NumberFilter["operator"] })
+                          }}
+                        >
+                          <option value="none">Без фильтра</option>
+                          <option value="equals">Равно</option>
+                          <option value="greater_than">Больше</option>
+                          <option value="less_than">Меньше</option>
+                          <option value="between">Между</option>
+                        </select>
+                      </div>
+                      <div class="popup-row number-inputs">
                         <input
                           type="number"
-                          placeholder="И до"
-                          value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value2 : ""}
+                          placeholder="Значение"
+                          value={customFieldFilters[column.fieldName]?.mode === "number" ? customFieldFilters[column.fieldName].value1 : ""}
                           on:input={(event) => {
                             const target = event.target as HTMLInputElement
-                            dispatch("setNumberValue", { fieldName: field.name, key: "value2", value: target.value })
+                            dispatch("setNumberValue", { fieldName: column.fieldName!, key: "value1", value: target.value })
                           }}
                         />
-                      {/if}
+                        {#if customFieldFilters[column.fieldName]?.mode === "number" && customFieldFilters[column.fieldName].operator === "between"}
+                          <input
+                            type="number"
+                            placeholder="И до"
+                            value={customFieldFilters[column.fieldName]?.mode === "number" ? customFieldFilters[column.fieldName].value2 : ""}
+                            on:input={(event) => {
+                              const target = event.target as HTMLInputElement
+                              dispatch("setNumberValue", { fieldName: column.fieldName!, key: "value2", value: target.value })
+                            }}
+                          />
+                        {/if}
+                      </div>
+                    {/if}
+                    <div class="popup-row">
+                      <button class="secondary" on:click={() => dispatch("clearFieldFilter", { fieldName: column.fieldName! })}>Сбросить</button>
+                      <button class="danger" on:click={() => handleDeleteProperty(column.fieldName!)}>Удалить свойство</button>
+                      <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
                     </div>
-                  {/if}
-                  <div class="popup-row">
-                    <button class="secondary" on:click={() => dispatch("clearFieldFilter", { fieldName: field.name })}>Сбросить</button>
-                    <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
                   </div>
-                </div>
-              {/if}
-            </th>
+                {/if}
+              </th>
+            {/if}
           {/each}
           <th class="add-property-cell">
             <button
@@ -491,37 +663,44 @@
       <tbody>
         {#each documents as doc (doc._id)}
           <tr class:selected-row={selectedIds.includes(doc._id)}>
-            <td class="cell-center">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(doc._id)}
-                on:change={() => dispatch("toggleSelect", { id: doc._id })}
-              />
-            </td>
-            <td>
-              <button class="preview-btn" on:click={() => openPreview(doc)}>
-                <img src={cardImageSrc(doc)} alt="" class="row-preview" />
-              </button>
-            </td>
-            <td>
-              <button class="filename-btn" on:click={() => openPreview(doc)} title={doc.display_filename || doc.filename}>
-                {getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}
-              </button>
-            </td>
-            <td title={formatCreatedAt(doc.created_at)}>{formatCreatedAt(doc.created_at)}</td>
-            <td>
-              <div class="row-tags">
-                {#if tagList(doc).length}
-                  {#each tagList(doc) as tag}
-                    <span class="tag-colored table-tag" style={`--tag-hue: ${tagHue(tag)}`}>{tag}</span>
-                  {/each}
-                {:else}
-                  <span class="muted">—</span>
-                {/if}
-              </div>
-            </td>
-            {#each customFieldSettings as field}
-              <td title={customFieldValue(doc, field.name)}>{customFieldValue(doc, field.name)}</td>
+            {#each visibleColumns as column (column.id)}
+              {#if column.kind === "select"}
+                <td class="cell-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(doc._id)}
+                    on:change={() => dispatch("toggleSelect", { id: doc._id })}
+                  />
+                </td>
+              {:else if column.kind === "preview"}
+                <td>
+                  <button class="preview-btn" on:click={() => openPreview(doc)}>
+                    <img src={cardImageSrc(doc)} alt="" class="row-preview" />
+                  </button>
+                </td>
+              {:else if column.kind === "filename"}
+                <td>
+                  <button class="filename-btn" on:click={() => openPreview(doc)} title={doc.display_filename || doc.filename}>
+                    {getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}
+                  </button>
+                </td>
+              {:else if column.kind === "created_at"}
+                <td title={formatCreatedAt(doc.created_at)}>{formatCreatedAt(doc.created_at)}</td>
+              {:else if column.kind === "tags"}
+                <td>
+                  <div class="row-tags">
+                    {#if tagList(doc).length}
+                      {#each tagList(doc) as tag}
+                        <span class="tag-colored table-tag" style={`--tag-hue: ${tagHue(tag)}`}>{tag}</span>
+                      {/each}
+                    {:else}
+                      <span class="muted">—</span>
+                    {/if}
+                  </div>
+                </td>
+              {:else}
+                <td title={customFieldValue(doc, column.fieldName ?? "")}>{customFieldValue(doc, column.fieldName ?? "")}</td>
+              {/if}
             {/each}
             <td class="add-property-spacer"></td>
           </tr>
@@ -601,6 +780,7 @@
     cursor: pointer;
     color: inherit;
     font-weight: 700;
+    max-width: calc(100% - 14px);
   }
 
   .field-header-trigger:hover {
@@ -609,6 +789,34 @@
 
   .field-header-trigger.active {
     color: var(--primary);
+  }
+
+  .drag-indicator {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+    transform: translateY(-1px);
+  }
+
+  .custom-header:hover .drag-indicator,
+  .custom-header.drag-source .drag-indicator {
+    opacity: 1;
+  }
+
+  .custom-header {
+    user-select: none;
+  }
+
+  .custom-header.drag-source {
+    opacity: 0.55;
+  }
+
+  .custom-header.drop-before {
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary), white 20%);
+  }
+
+  .custom-header.drop-after {
+    box-shadow: inset -3px 0 0 color-mix(in srgb, var(--primary), white 20%);
   }
 
   .filter-icon {
@@ -713,6 +921,7 @@
     height: 100%;
     cursor: col-resize;
     z-index: 30;
+    touch-action: none;
   }
 
   .column-resizer::after {
