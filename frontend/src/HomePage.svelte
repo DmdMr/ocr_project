@@ -1,11 +1,9 @@
 <script lang="ts">
     import Upload from "./lib/components/Upload.svelte"
     import DocumentList from "./lib/components/DocumentList.svelte"
+    import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
     import { onMount } from "svelte"
-    import DocumentCard from "./lib/components/DocumentCard.svelte";
     import { push } from 'svelte-spa-router'
-
-    
 
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
@@ -13,10 +11,10 @@
     let language: "en" | "ru" = "en"
     let viewMode: "grid" | "list" = "grid"
     let viewModeLoaded = false
-    let isHelpOpen = false
-    let showPreview = false
     let columnCount = 5
     let columnsLoaded = false
+    let sidebarOpen = true
+    let sidebarStateLoaded = false
 
 
     onMount(() => {
@@ -33,6 +31,10 @@
 
     function handleUpload() {
         refreshKey += 1
+    }
+
+    function toggleSidebar() {
+        sidebarOpen = !sidebarOpen
     }
 
 
@@ -65,6 +67,11 @@
         if (saved === "grid" || saved === "list") {
             viewMode = saved
         }
+        const savedSidebar = localStorage.getItem("workspaceSidebarOpen")
+        if (savedSidebar === "true" || savedSidebar === "false") {
+            sidebarOpen = savedSidebar === "true"
+        }
+        sidebarStateLoaded = true
         viewModeLoaded = true
     })
 
@@ -73,26 +80,46 @@
         localStorage.setItem("viewMode", viewMode)
     }
 
+    $: if (sidebarStateLoaded) {
+        localStorage.setItem("workspaceSidebarOpen", String(sidebarOpen))
+    }
+
 </script>
 
+<div class="workspace-shell">
+  <button
+    type="button"
+    class="sidebar-backdrop"
+    class:open={sidebarOpen}
+    aria-label="Закрыть боковую панель"
+    on:click={toggleSidebar}
+  ></button>
 
-<div class="panel about-manager">
-  <div class="quick-actions">
-    <button on:click={() => push('/about')}>
-      О проекте
-    </button>
+  <aside class="workspace-sidebar panel" class:open={sidebarOpen} aria-hidden={!sidebarOpen}>
+    <div class="sidebar-scroll">
+      <WorkspaceSidebar
+        on:navigateAbout={() => push('/about')}
+        on:navigateArchive={() => push('/archive')}
+        on:navigateAssistant={() => push('/assistant')}
+        on:navigateSettings={() => push('/settings')}
+      />
+      <Upload embedded on:uploaded={handleUpload} />
+    </div>
+  </aside>
 
-    <button on:click={() => push('/archive')}>
-      Архив
-    </button>
-
-    <button class="primary" on:click={() => push('/assistant')}>
-      Чат-помощник
-    </button>
-
-    <button on:click={() => push('/settings')}>
-      Настройки полей
-    </button>
+  <div class="workspace-layout">
+    <div class="workspace-main">
+      <DocumentList
+        {refreshKey}
+        {viewMode}
+        {columnCount}
+        {sidebarOpen}
+        on:toggleSidebar={toggleSidebar}
+        on:viewModeChange={(event) => {
+            viewMode = event.detail.mode
+        }}
+      />
+    </div>
   </div>
 </div>
 
@@ -117,18 +144,6 @@
 -->
 
 
-<Upload on:uploaded={handleUpload} />
-
-<DocumentList
-    {refreshKey}
-    {viewMode}
-    {columnCount}
-    on:viewModeChange={(event) => {
-        viewMode = event.detail.mode
-    }}
-/>
-
-
 <!--
 <LifeguardHelp bind:viewMode bind:columnCount />
 
@@ -136,33 +151,71 @@
 -->
 
 <style>
-.about-manager {
-    padding: 14px;
-    margin-bottom: 16px;
-    text-align: left;
+.workspace-shell {
+    position: relative;
+    min-height: calc(100vh - 4rem);
+    overflow-x: hidden;
+}
+
+.workspace-layout {
+    min-width: 0;
+}
+
+.workspace-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(320px, 92vw);
+    height: 100vh;
+    border-radius: 0;
+    padding: 12px;
+    transform: translate3d(-100%, 0, 0);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 40;
+    will-change: transform, opacity;
+    transition: transform 150ms ease, opacity 130ms ease;
+}
+
+.workspace-sidebar.open {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-scroll {
+    max-height: calc(100vh - 4rem);
+    overflow: auto;
+}
+
+.workspace-main {
+    min-width: 0;
+}
+
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgba(11, 15, 22, 0);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 35;
+    transition: opacity 130ms ease;
+}
+
+.sidebar-backdrop.open {
+    background: rgba(11, 15, 22, 0.2);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 @media (max-width: 640px) {
-    .about-manager {
-        padding: 8px;
-        margin-bottom: 12px;
-        text-align: center;
+    .workspace-shell {
+        min-height: calc(100vh - 2rem);
+    }
+
+    .workspace-sidebar {
+        width: min(320px, 94vw);
     }
 }
-
-.quick-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-@media (max-width: 640px) {
-    .quick-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        text-align: center;
-    }
-}
-
-
 </style>

@@ -9,23 +9,32 @@
     import { 
         normalizeTag,
         setDocumentTags,
-        deleteDocument
+        deleteDocument,
+        createCardField
     
     } from "../api"
 
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
     export let columnCount = 5
-    const dispatch = createEventDispatcher<{ viewModeChange: { mode: "grid" | "list" } }>()
+    const dispatch = createEventDispatcher<{
+        viewModeChange: { mode: "grid" | "list" }
+        toggleSidebar: void
+    }>()
 
     let documents: Document[] = []
     let search = ""
-    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc"
+    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc" = "date_desc"
     let tags: string[] = []
     let activeTag: string | null = null
     let selectedIds: string[] = []
     let customFieldSettings: CardCustomFieldSetting[] = []
     let openFilterField: string | null = null
+    let filenameFilterText = ""
+    let filenameSort: "none" | "asc" | "desc" = "none"
+    let createdAtSort: "none" | "newest" | "oldest" = "none"
+    let createdAtRange: "all" | "today" | "last_7_days" | "this_month" = "all"
+    export let sidebarOpen = true
 
     type TextFilter = {
         mode: "text"
@@ -174,6 +183,96 @@
 
     function toggleFilterPanel(fieldName: string) {
         openFilterField = openFilterField === fieldName ? null : fieldName
+    }
+
+    function setFilenameFilterText(value: string) {
+        filenameFilterText = value
+    }
+
+    function setFilenameSort(sort: "none" | "asc" | "desc") {
+        filenameSort = sort
+    }
+
+    function clearFilenameFilter() {
+        filenameFilterText = ""
+        filenameSort = "none"
+    }
+
+    function setCreatedAtSort(sort: "none" | "newest" | "oldest") {
+        createdAtSort = sort
+    }
+
+    function setCreatedAtRange(range: "all" | "today" | "last_7_days" | "this_month") {
+        createdAtRange = range
+    }
+
+    function clearCreatedAtFilter() {
+        createdAtSort = "none"
+        createdAtRange = "all"
+    }
+
+    function isSameLocalDay(date: Date, reference: Date) {
+        return (
+            date.getFullYear() === reference.getFullYear() &&
+            date.getMonth() === reference.getMonth() &&
+            date.getDate() === reference.getDate()
+        )
+    }
+
+    function matchesCreatedAtRange(createdAt: string) {
+        if (createdAtRange === "all") return true
+        const created = new Date(createdAt)
+        if (Number.isNaN(created.getTime())) return false
+
+        const now = new Date()
+        if (createdAtRange === "today") {
+            return isSameLocalDay(created, now)
+        }
+
+        if (createdAtRange === "last_7_days") {
+            const threshold = new Date(now)
+            threshold.setDate(threshold.getDate() - 6)
+            threshold.setHours(0, 0, 0, 0)
+            return created.getTime() >= threshold.getTime()
+        }
+
+        if (createdAtRange === "this_month") {
+            return (
+                created.getFullYear() === now.getFullYear() &&
+                created.getMonth() === now.getMonth()
+            )
+        }
+
+        return true
+    }
+
+    function isFilenameFilterActive() {
+        return filenameSort !== "none" || filenameFilterText.trim().length > 0
+    }
+
+    function isCreatedAtFilterActive() {
+        return createdAtSort !== "none" || createdAtRange !== "all"
+    }
+
+    async function handleAddProperty() {
+        const name = prompt("Название нового свойства")
+        if (!name || !name.trim()) return
+
+        const typePrompt = prompt("Тип свойства: text или number", "text")
+        if (!typePrompt) return
+        const normalizedType = typePrompt.trim().toLowerCase()
+        if (normalizedType !== "text" && normalizedType !== "number") {
+            alert("Поддерживаются только типы: text или number")
+            return
+        }
+
+        try {
+            await createCardField(name.trim(), normalizedType as "text" | "number")
+            await load()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Не удалось создать свойство"
+            alert(message)
+        }
     }
 
     function setTextSort(fieldName: string, sort: "none" | "asc" | "desc") {
@@ -350,13 +449,16 @@
  
     $: filtered = documents.filter(doc => {
         const displayName = doc.display_filename ?? doc.filename
+        const filenameValue = (displayName || doc.filename || "").toLowerCase()
         const matchesText =
             displayName.toLowerCase().includes(search.toLowerCase()) ||
             doc.filename.toLowerCase().includes(search.toLowerCase()) ||
             doc.recognized_text.toLowerCase().includes(search.toLowerCase()) ||
             doc.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
         const matchesTag = !activeTag || doc.tags?.includes(activeTag)
-        if (!matchesText || !matchesTag) return false
+        const matchesFilenameText = !filenameFilterText.trim() || filenameValue.includes(filenameFilterText.trim().toLowerCase())
+        const matchesDateRange = matchesCreatedAtRange(doc.created_at)
+        if (!matchesText || !matchesTag || !matchesFilenameText || !matchesDateRange) return false
 
         for (const field of customFieldSettings) {
             const filter = customFieldFilters[field.name]
@@ -376,6 +478,21 @@
 
 
     $: sortedDocuments = [...filtered].sort((a, b) => {
+        if (filenameSort !== "none") {
+            const aName = (a.display_filename || a.filename || "")
+            const bName = (b.display_filename || b.filename || "")
+            const compared = aName.localeCompare(bName, undefined, { sensitivity: "base" })
+            if (compared !== 0) return filenameSort === "asc" ? compared : -compared
+        }
+
+        if (createdAtSort !== "none") {
+            const dateA = new Date(a.created_at).getTime()
+            const dateB = new Date(b.created_at).getTime()
+            if (dateA !== dateB) {
+                return createdAtSort === "newest" ? dateB - dateA : dateA - dateB
+            }
+        }
+
         const customSort = getActiveCustomSort()
         if (customSort) {
             const directionMultiplier = customSort.direction === "asc" ? 1 : -1
@@ -437,20 +554,24 @@
 
 
 <div class="search-manager panel">
-    <div class="controls-row">
+    <div class="controls-row compact-toolbar">
+        <button
+            type="button"
+            class="sidebar-toggle-inline"
+            class:active={sidebarOpen}
+            aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+            title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+            on:click={() => dispatch("toggleSidebar")}
+        >
+            ☰
+        </button>
+
         <input
             type="text"
-            class="my-input"
+            class="my-input compact-search"
             placeholder="Поиск документов"
             bind:value={search}
         />
-
-        <select bind:value={sortOrder} class="sort-select">
-            <option value="date_desc">Сначала новые</option>
-            <option value="date_asc">Сначала старые</option> 
-            <option value="name_asc">Имя (A–Z)</option>
-            <option value="name_desc">Имя (Z–A)</option>
-        </select>
 
         <div class="view-toggle" role="group" aria-label="Режим отображения">
             <button
@@ -470,107 +591,6 @@
         </div>
     </div>
 </div>
-
-{#if customFieldSettings.length}
-<div class="panel custom-filters-panel">
-    <div class="custom-filters-header">Фильтры по полям карточки</div>
-    <div class="custom-filter-buttons">
-        <button on:click={() => push('/settings')}>
-            Настройки полей
-        </button>
-        {#each customFieldSettings as field}
-            <div class="field-filter-item">
-                <button
-                    class="field-filter-trigger"
-                    class:active={isFieldFilterActive(field.name)}
-                    on:click={() => toggleFilterPanel(field.name)}
-                >
-                    {field.name}
-                    <span class="filter-icon">▾</span>
-                </button>
-
-                {#if openFilterField === field.name}
-                    <div class="field-filter-popup">
-                        {#if field.type === "text"}
-                            <div class="popup-row">
-                                <button class="secondary" on:click={() => setTextSort(field.name, "asc")}>A-Z</button>
-                                <button class="secondary" on:click={() => setTextSort(field.name, "desc")}>Z-A</button>
-                                <button class="secondary" on:click={() => setTextSort(field.name, "none")}>Без сорт.</button>
-                            </div>
-                            <div class="popup-row">
-                                <button class="secondary" on:click={() => selectAllTextValues(field.name)}>Выбрать все</button>
-                                <button class="secondary" on:click={() => clearTextValues(field.name)}>Очистить</button>
-                            </div>
-                            <div class="popup-values">
-                                {#each fieldUniqueTextValues(field.name) as value}
-                                    <label class="popup-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            checked={customFieldFilters[field.name]?.mode === "text" && customFieldFilters[field.name].selectedValues.includes(value)}
-                                            on:change={() => toggleTextValue(field.name, value)}
-                                        />
-                                        <span>{value}</span>
-                                    </label>
-                                {/each}
-                            </div>
-                        {:else}
-                            <div class="popup-row">
-                                <button class="secondary" on:click={() => setNumberSort(field.name, "asc")}>0-9</button>
-                                <button class="secondary" on:click={() => setNumberSort(field.name, "desc")}>9-0</button>
-                                <button class="secondary" on:click={() => setNumberSort(field.name, "none")}>Без сорт.</button>
-                            </div>
-                            <div class="popup-row">
-                                <select
-                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].operator : "none"}
-                                    on:change={(event) => {
-                                        const target = event.target as HTMLSelectElement
-                                        setNumberOperator(field.name, target.value as NumberFilter["operator"])
-                                    }}
-                                >
-                                    <option value="none">Без фильтра</option>
-                                    <option value="equals">Равно</option>
-                                    <option value="greater_than">Больше</option>
-                                    <option value="less_than">Меньше</option>
-                                    <option value="between">Между</option>
-                                </select>
-                            </div>
-                            <div class="popup-row number-inputs">
-                                <input
-                                    type="number"
-                                    placeholder="Значение"
-                                    value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value1 : ""}
-                                    on:input={(event) => {
-                                        const target = event.target as HTMLInputElement
-                                        setNumberValue(field.name, "value1", target.value)
-                                    }}
-                                />
-                                {#if customFieldFilters[field.name]?.mode === "number" && customFieldFilters[field.name].operator === "between"}
-                                    <input
-                                        type="number"
-                                        placeholder="И до"
-                                        value={customFieldFilters[field.name]?.mode === "number" ? customFieldFilters[field.name].value2 : ""}
-                                        on:input={(event) => {
-                                            const target = event.target as HTMLInputElement
-                                            setNumberValue(field.name, "value2", target.value)
-                                        }}
-                                    />
-                                {/if}
-                            </div>
-                        {/if}
-                        <div class="popup-row">
-                            <button class="secondary" on:click={() => clearFieldFilter(field.name)}>Сбросить</button>
-                            <button class="primary" on:click={() => openFilterField = null}>Готово</button>
-                        </div>
-                    </div>
-                {/if}
-            </div>
-        {/each}
-    </div>
-</div>
-{/if}
-
-
-
 
 <TagManager
     initialTags={tags}
@@ -635,7 +655,34 @@
     documents={sortedDocuments}
     {selectedIds}
     {customFieldSettings}
+    {customFieldFilters}
+    {openFilterField}
+    {fieldUniqueTextValues}
+    {isFieldFilterActive}
+    {filenameFilterText}
+    {filenameSort}
+    {createdAtSort}
+    {createdAtRange}
+    {isFilenameFilterActive}
+    {isCreatedAtFilterActive}
     on:toggleSelect={(e) => toggleCardSelection(e.detail.id)}
+    on:addProperty={handleAddProperty}
+    on:toggleFilterPanel={(e) => toggleFilterPanel(e.detail.fieldName)}
+    on:setFilenameFilterText={(e) => setFilenameFilterText(e.detail.value)}
+    on:setFilenameSort={(e) => setFilenameSort(e.detail.sort)}
+    on:clearFilenameFilter={clearFilenameFilter}
+    on:setCreatedAtSort={(e) => setCreatedAtSort(e.detail.sort)}
+    on:setCreatedAtRange={(e) => setCreatedAtRange(e.detail.range)}
+    on:clearCreatedAtFilter={clearCreatedAtFilter}
+    on:setTextSort={(e) => setTextSort(e.detail.fieldName, e.detail.sort)}
+    on:setNumberSort={(e) => setNumberSort(e.detail.fieldName, e.detail.sort)}
+    on:toggleTextValue={(e) => toggleTextValue(e.detail.fieldName, e.detail.value)}
+    on:selectAllTextValues={(e) => selectAllTextValues(e.detail.fieldName)}
+    on:clearTextValues={(e) => clearTextValues(e.detail.fieldName)}
+    on:setNumberOperator={(e) => setNumberOperator(e.detail.fieldName, e.detail.operator)}
+    on:setNumberValue={(e) => setNumberValue(e.detail.fieldName, e.detail.key, e.detail.value)}
+    on:clearFieldFilter={(e) => clearFieldFilter(e.detail.fieldName)}
+    on:closeFilterPanel={() => openFilterField = null}
     on:deleted={(e) => removeFromList(e.detail.id)}
     on:updated={(e) => replaceDocumentInList(e.detail.document)}
   />
@@ -646,7 +693,7 @@
 <style>
 
 .search-manager {
-    padding: 14px;
+    padding: 10px 12px;
     margin-bottom: 16px;
     text-align: left;
 }
@@ -664,98 +711,55 @@
     display: flex;
     justify-content: left;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+}
+
+.compact-toolbar {
+    gap: 6px;
+}
+
+.compact-search {
+    min-width: min(340px, 100%);
+    flex: 1 1 260px;
+}
+
+.sidebar-toggle-inline {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface), transparent 12%);
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.sidebar-toggle-inline:hover {
+    background: color-mix(in srgb, var(--surface), var(--bg-accent) 45%);
+    color: var(--text);
+}
+
+.sidebar-toggle-inline.active {
+    color: var(--text);
 }
 
 .view-toggle {
     display: inline-flex;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
+}
+
+.view-toggle button {
+    padding-inline: 0.7rem;
+    min-height: 30px;
 }
 
 .view-toggle button.active {
     border-color: color-mix(in srgb, var(--primary), white 20%);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 75%);
     background: color-mix(in srgb, var(--surface), var(--primary) 10%);
-}
-
-.custom-filters-panel {
-    margin-bottom: 16px;
-    text-align: left;
-    padding: 12px;
-}
-
-.custom-filters-header {
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.custom-filter-buttons {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.field-filter-item {
-    position: relative;
-}
-
-.field-filter-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.field-filter-trigger.active {
-    border-color: color-mix(in srgb, var(--primary), white 20%);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 75%);
-}
-
-.filter-icon {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.field-filter-popup {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 20;
-    min-width: 250px;
-    max-width: min(86vw, 320px);
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface-elevated);
-    box-shadow: var(--shadow-soft);
-    display: grid;
-    gap: 8px;
-}
-
-.popup-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.popup-values {
-    display: grid;
-    gap: 4px;
-    max-height: 150px;
-    overflow: auto;
-    padding-right: 2px;
-}
-
-.popup-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.9rem;
-}
-
-.number-inputs input {
-    width: 100%;
 }
 
 @media (max-width: 640px) {
@@ -823,14 +827,6 @@
     gap: 10px;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
-
-
-
-.sort-select {
-    min-height: 42px;
-}
-
-
 
 
 

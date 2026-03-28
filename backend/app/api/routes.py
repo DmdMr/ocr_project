@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Form
 from bson import ObjectId
 
 
@@ -189,7 +189,11 @@ def write_audit_log(request: Request, action: str, payload: dict):
 
 
 @router.post("/upload")
-async def upload_image(request: Request, file: UploadFile = File(...)):
+async def upload_image(
+    request: Request,
+    file: UploadFile = File(...),
+    perform_ocr: bool = Form(True),
+):
 
     if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
         raise HTTPException(status_code=400, detail="Разрешены только PNG и JPG")
@@ -203,7 +207,10 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 
     filename, file_path = save_upload_file(file, file_bytes)
     file_path = autocrop_whitespace(file_path)
-    ocr_result = recognize_text(file_path)
+    if perform_ocr:
+        ocr_result = recognize_text(file_path)
+    else:
+        ocr_result = {"text": "", "boxes": []}
 
     gallery_item = build_gallery_item(
         filename=filename,
@@ -244,7 +251,11 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
     write_audit_log(
         request,
         "document.upload",
-        {"document_id": document_data["_id"], "filename": document_data["filename"]},
+        {
+            "document_id": document_data["_id"],
+            "filename": document_data["filename"],
+            "perform_ocr": perform_ocr,
+        },
     )
 
     return {"message": "Файл успешно загружен", "document": document_data}
