@@ -5,7 +5,6 @@
     //import SettingsPage from "../SettingsPage.svelte";
     import DocumentCard from "./DocumentCard.svelte"
     import DocumentTable from "./DocumentTable.svelte"
-    import TagManager from "./TagManager.svelte";
     import { 
         normalizeTag,
         setDocumentTags,
@@ -26,8 +25,7 @@
     let documents: Document[] = []
     let search = ""
     let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc" = "date_desc"
-    let tags: string[] = []
-    let activeTag: string | null = null
+    export let activeTag: string | null = null
     let selectedIds: string[] = []
     let customFieldSettings: CardCustomFieldSetting[] = []
     let openFilterField: string | null = null
@@ -120,7 +118,6 @@
 
     async function load() {
         documents = await getDocuments()
-        tags = await getTags()
         const settings = await getSettings()
         customFieldSettings = settings.fields_for_cards ?? []
         console.debug("[DocumentList] fields_for_cards from backend:", settings.fields_for_cards)
@@ -150,14 +147,6 @@
 
     function replaceDocumentInList(updatedDocument: Document) {
         documents = documents.map(doc => doc._id === updatedDocument._id ? updatedDocument : doc)
-    }
-
-    function handleTagSelect(event: CustomEvent<{ tag: string | null }>) {
-        activeTag = event.detail.tag
-    }
-    
-    function handleTagsChanged(event: CustomEvent<{ tags: string[] }>) {
-        tags = event.detail.tags
     }
 
     function getFieldRawValue(doc: Document, fieldName: string) {
@@ -620,13 +609,6 @@
         </div>
     </div>
 </div>
-
-<TagManager
-    initialTags={tags}
-    on:select={handleTagSelect}
-    on:tagsChanged={handleTagsChanged}
-/>
-
 
 {#if selectedIds.length > 0}
   <div class="bulk-actions-manager panel">
