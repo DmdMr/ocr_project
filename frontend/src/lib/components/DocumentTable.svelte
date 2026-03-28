@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from "svelte"
+  import { createEventDispatcher, onMount, tick } from "svelte"
   import type { CardCustomFieldSetting, Document } from "../types"
   import CardPreview from "./CardPreview.svelte"
   import { tagHue } from "../tagColors"
@@ -100,6 +100,8 @@
   let editedText = ""
   let galleryUploading = false
   let tableShellElement: HTMLDivElement | null = null
+  let tableScrollElement: HTMLDivElement | null = null
+  let overlayPopupElement: HTMLDivElement | null = null
 
   let columnWidths: Record<string, number> = {}
   let customFieldOrder: string[] = []
@@ -111,6 +113,8 @@
   let dragOverPosition: "before" | "after" = "after"
 
   let cleanupResizeListeners: (() => void) | null = null
+  let filterTriggerElements: Record<string, HTMLElement | undefined> = {}
+  let popupPosition = { top: 0, left: 0 }
 
   function widthColumnIdForField(fieldName: string) {
     return `custom:${fieldName}`
@@ -201,6 +205,30 @@
 
     customFieldOrder = current
     persistColumnPreferences()
+  }
+
+  function registerFilterTrigger(node: HTMLElement, fieldName: string) {
+    filterTriggerElements = { ...filterTriggerElements, [fieldName]: node }
+    return {
+      destroy() {
+        const next = { ...filterTriggerElements }
+        delete next[fieldName]
+        filterTriggerElements = next
+      }
+    }
+  }
+
+  function updatePopupPosition() {
+    if (!openFilterField) return
+    const anchor = filterTriggerElements[openFilterField]
+    if (!anchor) return
+
+    const rect = anchor.getBoundingClientRect()
+    const maxLeft = Math.max(8, window.innerWidth - 340)
+    popupPosition = {
+      top: rect.bottom + 6,
+      left: Math.max(8, Math.min(rect.left, maxLeft))
+    }
   }
 
   function startResize(event: PointerEvent, column: TableColumnDef) {
@@ -390,7 +418,15 @@
   function handleOutsideClick(event: MouseEvent) {
     if (!openFilterField || !tableShellElement) return
     const target = event.target as Node
-    if (!tableShellElement.contains(target)) {
+    const clickedInsideTable = tableShellElement.contains(target)
+    const clickedInsideOverlay = overlayPopupElement?.contains(target) ?? false
+    if (!clickedInsideTable && !clickedInsideOverlay) {
+      dispatch("closeFilterPanel")
+    }
+  }
+
+  function handleEscape(event: KeyboardEvent) {
+    if (event.key === "Escape" && openFilterField) {
       dispatch("closeFilterPanel")
     }
   }
@@ -455,6 +491,10 @@
 
     initializeColumnState()
     document.addEventListener("mousedown", handleOutsideClick)
+    document.addEventListener("keydown", handleEscape)
+    window.addEventListener("resize", updatePopupPosition)
+    window.addEventListener("scroll", updatePopupPosition, true)
+    tableScrollElement?.addEventListener("scroll", updatePopupPosition)
 
     return () => {
       if (cleanupResizeListeners) {
@@ -462,15 +502,22 @@
         cleanupResizeListeners = null
       }
       document.removeEventListener("mousedown", handleOutsideClick)
+      document.removeEventListener("keydown", handleEscape)
+      window.removeEventListener("resize", updatePopupPosition)
+      window.removeEventListener("scroll", updatePopupPosition, true)
+      tableScrollElement?.removeEventListener("scroll", updatePopupPosition)
     }
   })
 
   $: initializeColumnState()
   $: persistColumnPreferences()
+  $: if (openFilterField) {
+    tick().then(updatePopupPosition)
+  }
 </script>
 
 <div class="table-shell panel" bind:this={tableShellElement}>
-  <div class="table-scroll">
+  <div class="table-scroll" bind:this={tableScrollElement}>
     <table class="documents-table">
       <colgroup>
         {#each visibleColumns as column (column.id)}
@@ -500,6 +547,7 @@
                 <button
                   class="field-header-trigger"
                   class:active={isFilenameFilterActive()}
+                  use:registerFilterTrigger={"system:filename"}
                   on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:filename" })}
                 >
                   <span>{column.label}</span>
@@ -511,36 +559,13 @@
                   aria-label="Изменить ширину колонки файл"
                   on:pointerdown={(event) => startResize(event, column)}
                 ></button>
-                {#if openFilterField === "system:filename"}
-                  <div class="field-filter-popup">
-                    <div class="popup-row">
-                      <button class="secondary" class:active={filenameSort === "asc"} on:click={() => dispatch("setFilenameSort", { sort: "asc" })}>A-Z</button>
-                      <button class="secondary" class:active={filenameSort === "desc"} on:click={() => dispatch("setFilenameSort", { sort: "desc" })}>Z-A</button>
-                      <button class="secondary" class:active={filenameSort === "none"} on:click={() => dispatch("setFilenameSort", { sort: "none" })}>Без сорт.</button>
-                    </div>
-                    <div class="popup-row">
-                      <input
-                        type="text"
-                        placeholder="Фильтр по имени файла"
-                        value={filenameFilterText}
-                        on:input={(event) => {
-                          const target = event.target as HTMLInputElement
-                          dispatch("setFilenameFilterText", { value: target.value })
-                        }}
-                      />
-                    </div>
-                    <div class="popup-row">
-                      <button class="secondary" on:click={() => dispatch("clearFilenameFilter")}>Сбросить</button>
-                      <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
-                    </div>
-                  </div>
-                {/if}
               </th>
             {:else if column.kind === "created_at"}
               <th class="field-header-cell">
                 <button
                   class="field-header-trigger"
                   class:active={isCreatedAtFilterActive()}
+                  use:registerFilterTrigger={"system:created_at"}
                   on:click={() => dispatch("toggleFilterPanel", { fieldName: "system:created_at" })}
                 >
                   <span>{column.label}</span>
@@ -552,25 +577,6 @@
                   aria-label="Изменить ширину колонки дата создания"
                   on:pointerdown={(event) => startResize(event, column)}
                 ></button>
-                {#if openFilterField === "system:created_at"}
-                  <div class="field-filter-popup">
-                    <div class="popup-row">
-                      <button class="secondary" class:active={createdAtSort === "newest"} on:click={() => dispatch("setCreatedAtSort", { sort: "newest" })}>Сначала новые</button>
-                      <button class="secondary" class:active={createdAtSort === "oldest"} on:click={() => dispatch("setCreatedAtSort", { sort: "oldest" })}>Сначала старые</button>
-                      <button class="secondary" class:active={createdAtSort === "none"} on:click={() => dispatch("setCreatedAtSort", { sort: "none" })}>Без сорт.</button>
-                    </div>
-                    <div class="popup-row">
-                      <button class="secondary" class:active={createdAtRange === "today"} on:click={() => dispatch("setCreatedAtRange", { range: "today" })}>Сегодня</button>
-                      <button class="secondary" class:active={createdAtRange === "last_7_days"} on:click={() => dispatch("setCreatedAtRange", { range: "last_7_days" })}>7 дней</button>
-                      <button class="secondary" class:active={createdAtRange === "this_month"} on:click={() => dispatch("setCreatedAtRange", { range: "this_month" })}>Этот месяц</button>
-                      <button class="secondary" class:active={createdAtRange === "all"} on:click={() => dispatch("setCreatedAtRange", { range: "all" })}>Все</button>
-                    </div>
-                    <div class="popup-row">
-                      <button class="secondary" on:click={() => dispatch("clearCreatedAtFilter")}>Сбросить</button>
-                      <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
-                    </div>
-                  </div>
-                {/if}
               </th>
             {:else}
               <th
@@ -592,6 +598,7 @@
                 <button
                   class="field-header-trigger"
                   class:active={column.fieldName ? isFieldFilterActive(column.fieldName) : false}
+                  use:registerFilterTrigger={column.fieldName ?? ""}
                   on:click={() => column.fieldName && dispatch("toggleFilterPanel", { fieldName: column.fieldName })}
                 >
                   <span class="drag-indicator" aria-hidden="true">⋮⋮</span>
@@ -604,82 +611,6 @@
                   aria-label={`Изменить ширину колонки ${column.label}`}
                   on:pointerdown={(event) => startResize(event, column)}
                 ></button>
-
-                {#if openFilterField === column.fieldName && column.fieldName}
-                  <div class="field-filter-popup">
-                    {#if customFieldFilters[column.fieldName]?.mode === "text"}
-                      <div class="popup-row">
-                        <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: column.fieldName!, sort: "asc" })}>A-Z</button>
-                        <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: column.fieldName!, sort: "desc" })}>Z-A</button>
-                        <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: column.fieldName!, sort: "none" })}>Без сорт.</button>
-                      </div>
-                      <div class="popup-row">
-                        <button class="secondary" on:click={() => dispatch("selectAllTextValues", { fieldName: column.fieldName! })}>Выбрать все</button>
-                        <button class="secondary" on:click={() => dispatch("clearTextValues", { fieldName: column.fieldName! })}>Очистить</button>
-                      </div>
-                      <div class="popup-values">
-                        {#each fieldUniqueTextValues(column.fieldName) as value}
-                          <label class="popup-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={customFieldFilters[column.fieldName]?.mode === "text" && customFieldFilters[column.fieldName].selectedValues.includes(value)}
-                              on:change={() => dispatch("toggleTextValue", { fieldName: column.fieldName!, value })}
-                            />
-                            <span>{value}</span>
-                          </label>
-                        {/each}
-                      </div>
-                    {:else}
-                      <div class="popup-row">
-                        <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: column.fieldName!, sort: "asc" })}>0-9</button>
-                        <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: column.fieldName!, sort: "desc" })}>9-0</button>
-                        <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: column.fieldName!, sort: "none" })}>Без сорт.</button>
-                      </div>
-                      <div class="popup-row">
-                        <select
-                          value={customFieldFilters[column.fieldName]?.mode === "number" ? customFieldFilters[column.fieldName].operator : "none"}
-                          on:change={(event) => {
-                            const target = event.target as HTMLSelectElement
-                            dispatch("setNumberOperator", { fieldName: column.fieldName!, operator: target.value as NumberFilter["operator"] })
-                          }}
-                        >
-                          <option value="none">Без фильтра</option>
-                          <option value="equals">Равно</option>
-                          <option value="greater_than">Больше</option>
-                          <option value="less_than">Меньше</option>
-                          <option value="between">Между</option>
-                        </select>
-                      </div>
-                      <div class="popup-row number-inputs">
-                        <input
-                          type="number"
-                          placeholder="Значение"
-                          value={customFieldFilters[column.fieldName]?.mode === "number" ? customFieldFilters[column.fieldName].value1 : ""}
-                          on:input={(event) => {
-                            const target = event.target as HTMLInputElement
-                            dispatch("setNumberValue", { fieldName: column.fieldName!, key: "value1", value: target.value })
-                          }}
-                        />
-                        {#if customFieldFilters[column.fieldName]?.mode === "number" && customFieldFilters[column.fieldName].operator === "between"}
-                          <input
-                            type="number"
-                            placeholder="И до"
-                            value={customFieldFilters[column.fieldName]?.mode === "number" ? customFieldFilters[column.fieldName].value2 : ""}
-                            on:input={(event) => {
-                              const target = event.target as HTMLInputElement
-                              dispatch("setNumberValue", { fieldName: column.fieldName!, key: "value2", value: target.value })
-                            }}
-                          />
-                        {/if}
-                      </div>
-                    {/if}
-                    <div class="popup-row">
-                      <button class="secondary" on:click={() => dispatch("clearFieldFilter", { fieldName: column.fieldName! })}>Сбросить</button>
-                      <button class="danger" on:click={() => handleDeleteProperty(column.fieldName!)}>Удалить свойство</button>
-                      <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
-                    </div>
-                  </div>
-                {/if}
               </th>
             {/if}
           {/each}
@@ -745,6 +676,125 @@
     </table>
   </div>
 </div>
+
+{#if openFilterField}
+  <div
+    class="field-filter-popup-overlay"
+    bind:this={overlayPopupElement}
+    style={`top: ${popupPosition.top}px; left: ${popupPosition.left}px;`}
+  >
+    {#if openFilterField === "system:filename"}
+      <div class="popup-row">
+        <button class="secondary" class:active={filenameSort === "asc"} on:click={() => dispatch("setFilenameSort", { sort: "asc" })}>A-Z</button>
+        <button class="secondary" class:active={filenameSort === "desc"} on:click={() => dispatch("setFilenameSort", { sort: "desc" })}>Z-A</button>
+        <button class="secondary" class:active={filenameSort === "none"} on:click={() => dispatch("setFilenameSort", { sort: "none" })}>Без сорт.</button>
+      </div>
+      <div class="popup-row">
+        <input
+          type="text"
+          placeholder="Фильтр по имени файла"
+          value={filenameFilterText}
+          on:input={(event) => {
+            const target = event.target as HTMLInputElement
+            dispatch("setFilenameFilterText", { value: target.value })
+          }}
+        />
+      </div>
+      <div class="popup-row">
+        <button class="secondary" on:click={() => dispatch("clearFilenameFilter")}>Сбросить</button>
+        <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+      </div>
+    {:else if openFilterField === "system:created_at"}
+      <div class="popup-row">
+        <button class="secondary" class:active={createdAtSort === "newest"} on:click={() => dispatch("setCreatedAtSort", { sort: "newest" })}>Сначала новые</button>
+        <button class="secondary" class:active={createdAtSort === "oldest"} on:click={() => dispatch("setCreatedAtSort", { sort: "oldest" })}>Сначала старые</button>
+        <button class="secondary" class:active={createdAtSort === "none"} on:click={() => dispatch("setCreatedAtSort", { sort: "none" })}>Без сорт.</button>
+      </div>
+      <div class="popup-row">
+        <button class="secondary" class:active={createdAtRange === "today"} on:click={() => dispatch("setCreatedAtRange", { range: "today" })}>Сегодня</button>
+        <button class="secondary" class:active={createdAtRange === "last_7_days"} on:click={() => dispatch("setCreatedAtRange", { range: "last_7_days" })}>7 дней</button>
+        <button class="secondary" class:active={createdAtRange === "this_month"} on:click={() => dispatch("setCreatedAtRange", { range: "this_month" })}>Этот месяц</button>
+        <button class="secondary" class:active={createdAtRange === "all"} on:click={() => dispatch("setCreatedAtRange", { range: "all" })}>Все</button>
+      </div>
+      <div class="popup-row">
+        <button class="secondary" on:click={() => dispatch("clearCreatedAtFilter")}>Сбросить</button>
+        <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+      </div>
+    {:else}
+      {#if customFieldFilters[openFilterField]?.mode === "text"}
+        <div class="popup-row">
+          <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: openFilterField, sort: "asc" })}>A-Z</button>
+          <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: openFilterField, sort: "desc" })}>Z-A</button>
+          <button class="secondary" on:click={() => dispatch("setTextSort", { fieldName: openFilterField, sort: "none" })}>Без сорт.</button>
+        </div>
+        <div class="popup-row">
+          <button class="secondary" on:click={() => dispatch("selectAllTextValues", { fieldName: openFilterField })}>Выбрать все</button>
+          <button class="secondary" on:click={() => dispatch("clearTextValues", { fieldName: openFilterField })}>Очистить</button>
+        </div>
+        <div class="popup-values">
+          {#each fieldUniqueTextValues(openFilterField) as value}
+            <label class="popup-checkbox">
+              <input
+                type="checkbox"
+                checked={customFieldFilters[openFilterField]?.mode === "text" && customFieldFilters[openFilterField].selectedValues.includes(value)}
+                on:change={() => dispatch("toggleTextValue", { fieldName: openFilterField, value })}
+              />
+              <span>{value}</span>
+            </label>
+          {/each}
+        </div>
+      {:else}
+        <div class="popup-row">
+          <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: openFilterField, sort: "asc" })}>0-9</button>
+          <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: openFilterField, sort: "desc" })}>9-0</button>
+          <button class="secondary" on:click={() => dispatch("setNumberSort", { fieldName: openFilterField, sort: "none" })}>Без сорт.</button>
+        </div>
+        <div class="popup-row">
+          <select
+            value={customFieldFilters[openFilterField]?.mode === "number" ? customFieldFilters[openFilterField].operator : "none"}
+            on:change={(event) => {
+              const target = event.target as HTMLSelectElement
+              dispatch("setNumberOperator", { fieldName: openFilterField, operator: target.value as NumberFilter["operator"] })
+            }}
+          >
+            <option value="none">Без фильтра</option>
+            <option value="equals">Равно</option>
+            <option value="greater_than">Больше</option>
+            <option value="less_than">Меньше</option>
+            <option value="between">Между</option>
+          </select>
+        </div>
+        <div class="popup-row number-inputs">
+          <input
+            type="number"
+            placeholder="Значение"
+            value={customFieldFilters[openFilterField]?.mode === "number" ? customFieldFilters[openFilterField].value1 : ""}
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement
+              dispatch("setNumberValue", { fieldName: openFilterField, key: "value1", value: target.value })
+            }}
+          />
+          {#if customFieldFilters[openFilterField]?.mode === "number" && customFieldFilters[openFilterField].operator === "between"}
+            <input
+              type="number"
+              placeholder="И до"
+              value={customFieldFilters[openFilterField]?.mode === "number" ? customFieldFilters[openFilterField].value2 : ""}
+              on:input={(event) => {
+                const target = event.target as HTMLInputElement
+                dispatch("setNumberValue", { fieldName: openFilterField, key: "value2", value: target.value })
+              }}
+            />
+          {/if}
+        </div>
+      {/if}
+      <div class="popup-row">
+        <button class="secondary" on:click={() => dispatch("clearFieldFilter", { fieldName: openFilterField })}>Сбросить</button>
+        <button class="danger" on:click={() => handleDeleteProperty(openFilterField)}>Удалить свойство</button>
+        <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
+      </div>
+    {/if}
+  </div>
+{/if}
 
 {#if activeDoc}
   <CardPreview
@@ -864,11 +914,9 @@
     color: var(--primary);
   }
 
-  .field-filter-popup {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 25;
+  .field-filter-popup-overlay {
+    position: fixed;
+    z-index: 1200;
     min-width: 220px;
     max-width: min(86vw, 320px);
     padding: 8px;
@@ -886,9 +934,9 @@
     flex-wrap: wrap;
   }
 
-  .field-filter-popup :global(button),
-  .field-filter-popup :global(select),
-  .field-filter-popup :global(input) {
+  .field-filter-popup-overlay :global(button),
+  .field-filter-popup-overlay :global(select),
+  .field-filter-popup-overlay :global(input) {
     min-height: 28px;
     padding: 0.32rem 0.56rem;
     font-size: 0.84rem;
