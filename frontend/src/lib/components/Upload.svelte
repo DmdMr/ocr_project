@@ -3,6 +3,7 @@
     import { uploadImage } from "../api"
 
     export let galleryUploading = false
+    export let embedded = false
 
     const dispatch = createEventDispatcher()
 
@@ -104,7 +105,7 @@
 <!-- Upload Area -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 
-<div class="panel upload-manager">
+<div class="upload-manager" class:panel={!embedded} class:embedded={embedded}>
 <div
     class="upload"
     on:drop={handleDrop}
@@ -164,6 +165,11 @@
     padding: 14px;
     margin-bottom: 16px;
     text-align: left;
+}
+
+.upload-manager.embedded {
+    padding: 0;
+    margin: 10px 0 0;
 }
 
 @media (max-width: 640px) {

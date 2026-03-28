@@ -20,7 +20,7 @@
 
     let documents: Document[] = []
     let search = ""
-    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc"
+    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc" = "date_desc"
     let tags: string[] = []
     let activeTag: string | null = null
     let selectedIds: string[] = []
@@ -536,13 +536,6 @@
             bind:value={search}
         />
 
-        <select bind:value={sortOrder} class="sort-select compact-sort">
-            <option value="date_desc">Сначала новые</option>
-            <option value="date_asc">Сначала старые</option> 
-            <option value="name_asc">Имя (A–Z)</option>
-            <option value="name_desc">Имя (Z–A)</option>
-        </select>
-
         <div class="view-toggle" role="group" aria-label="Режим отображения">
             <button
                 class="secondary"
@@ -693,10 +686,6 @@
     flex: 1 1 260px;
 }
 
-.compact-sort {
-    max-width: 220px;
-}
-
 .view-toggle {
     display: inline-flex;
     gap: 4px;
@@ -779,14 +768,6 @@
     gap: 10px;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
-
-
-
-.sort-select {
-    min-height: 42px;
-}
-
-
 
 
 

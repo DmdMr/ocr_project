@@ -98,19 +98,29 @@
     ☰
   </button>
 
-  <div class="workspace-layout">
-    <aside class="workspace-sidebar panel" class:collapsed={!sidebarOpen} aria-hidden={!sidebarOpen}>
+  {#if sidebarOpen}
+    <button
+      type="button"
+      class="sidebar-backdrop"
+      aria-label="Закрыть боковую панель"
+      on:click={toggleSidebar}
+    ></button>
+  {/if}
+
+  <aside class="workspace-sidebar panel" class:open={sidebarOpen} aria-hidden={!sidebarOpen}>
+    <div class="sidebar-scroll">
       <WorkspaceSidebar
         on:navigateAbout={() => push('/about')}
         on:navigateArchive={() => push('/archive')}
         on:navigateAssistant={() => push('/assistant')}
         on:navigateSettings={() => push('/settings')}
       />
-    </aside>
+      <Upload embedded on:uploaded={handleUpload} />
+    </div>
+  </aside>
 
+  <div class="workspace-layout">
     <div class="workspace-main">
-      <Upload on:uploaded={handleUpload} />
-
       <DocumentList
         {refreshKey}
         {viewMode}
@@ -152,12 +162,14 @@
 
 <style>
 .workspace-shell {
-    display: grid;
-    gap: 10px;
+    position: relative;
+    min-height: calc(100vh - 4rem);
 }
 
 .sidebar-toggle {
-    justify-self: start;
+    position: fixed;
+    top: 1.15rem;
+    left: max(1rem, calc((100vw - min(90%, 100%)) / 2 + 0.2rem));
     width: 34px;
     height: 34px;
     padding: 0;
@@ -167,6 +179,7 @@
     color: var(--text-muted);
     font-size: 1rem;
     line-height: 1;
+    z-index: 45;
 }
 
 .sidebar-toggle:hover {
@@ -183,48 +196,62 @@
 }
 
 .workspace-layout {
-    display: flex;
-    gap: 16px;
-    align-items: start;
+    min-width: 0;
 }
 
 .workspace-sidebar {
-    width: 240px;
-    flex: 0 0 240px;
-    position: sticky;
-    top: 1rem;
+    position: fixed;
+    top: 0.8rem;
+    left: max(0.8rem, calc((100vw - min(90%, 100%)) / 2));
+    width: min(320px, calc(100vw - 1.6rem));
+    max-height: calc(100vh - 1.6rem);
     padding: 12px;
-    overflow: hidden;
-    transition: width 160ms ease, flex-basis 160ms ease, padding 160ms ease, opacity 140ms ease, transform 160ms ease, border-width 140ms ease;
+    transform: translateX(calc(-100% - 20px));
+    opacity: 0;
+    pointer-events: none;
+    z-index: 40;
+    transition: transform 170ms ease, opacity 140ms ease;
 }
 
-.workspace-sidebar.collapsed {
-    width: 0;
-    flex-basis: 0;
-    padding: 0;
-    border-width: 0;
-    opacity: 0;
-    transform: translateX(-8px);
-    pointer-events: none;
+.workspace-sidebar.open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-scroll {
+    max-height: calc(100vh - 4rem);
+    overflow: auto;
 }
 
 .workspace-main {
-    flex: 1 1 auto;
     min-width: 0;
-    transition: max-width 160ms ease;
+}
+
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgba(11, 15, 22, 0.24);
+    backdrop-filter: blur(1px);
+    z-index: 35;
 }
 
 @media (max-width: 640px) {
     .workspace-shell {
-        gap: 8px;
+        min-height: calc(100vh - 2rem);
     }
 
-    .workspace-layout {
-        gap: 10px;
+    .sidebar-toggle {
+        top: 0.7rem;
+        left: 0.65rem;
     }
 
     .workspace-sidebar {
-        position: static;
+        top: 0.4rem;
+        left: 0.4rem;
+        width: calc(100vw - 0.8rem);
+        max-height: calc(100vh - 0.8rem);
     }
 }
 </style>
