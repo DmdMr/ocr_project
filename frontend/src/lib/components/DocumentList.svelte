@@ -16,7 +16,10 @@
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
     export let columnCount = 5
-    const dispatch = createEventDispatcher<{ viewModeChange: { mode: "grid" | "list" } }>()
+    const dispatch = createEventDispatcher<{
+        viewModeChange: { mode: "grid" | "list" }
+        toggleSidebar: void
+    }>()
 
     let documents: Document[] = []
     let search = ""
@@ -30,6 +33,7 @@
     let filenameSort: "none" | "asc" | "desc" = "none"
     let createdAtSort: "none" | "newest" | "oldest" = "none"
     let createdAtRange: "all" | "today" | "last_7_days" | "this_month" = "all"
+    export let sidebarOpen = true
 
     type TextFilter = {
         mode: "text"
@@ -529,6 +533,17 @@
 
 <div class="search-manager panel">
     <div class="controls-row compact-toolbar">
+        <button
+            type="button"
+            class="sidebar-toggle-inline"
+            class:active={sidebarOpen}
+            aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+            title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+            on:click={() => dispatch("toggleSidebar")}
+        >
+            ☰
+        </button>
+
         <input
             type="text"
             class="my-input compact-search"
@@ -684,6 +699,27 @@
 .compact-search {
     min-width: min(340px, 100%);
     flex: 1 1 260px;
+}
+
+.sidebar-toggle-inline {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface), transparent 12%);
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.sidebar-toggle-inline:hover {
+    background: color-mix(in srgb, var(--surface), var(--bg-accent) 45%);
+    color: var(--text);
+}
+
+.sidebar-toggle-inline.active {
+    color: var(--text);
 }
 
 .view-toggle {

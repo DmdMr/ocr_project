@@ -88,24 +88,12 @@
 
 <div class="workspace-shell">
   <button
-    class="sidebar-toggle"
-    class:collapsed={!sidebarOpen}
     type="button"
-    aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
-    title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+    class="sidebar-backdrop"
+    class:open={sidebarOpen}
+    aria-label="Закрыть боковую панель"
     on:click={toggleSidebar}
-  >
-    ☰
-  </button>
-
-  {#if sidebarOpen}
-    <button
-      type="button"
-      class="sidebar-backdrop"
-      aria-label="Закрыть боковую панель"
-      on:click={toggleSidebar}
-    ></button>
-  {/if}
+  ></button>
 
   <aside class="workspace-sidebar panel" class:open={sidebarOpen} aria-hidden={!sidebarOpen}>
     <div class="sidebar-scroll">
@@ -125,6 +113,8 @@
         {refreshKey}
         {viewMode}
         {columnCount}
+        {sidebarOpen}
+        on:toggleSidebar={toggleSidebar}
         on:viewModeChange={(event) => {
             viewMode = event.detail.mode
         }}
@@ -164,35 +154,7 @@
 .workspace-shell {
     position: relative;
     min-height: calc(100vh - 4rem);
-}
-
-.sidebar-toggle {
-    position: fixed;
-    top: 1.15rem;
-    left: max(1rem, calc((100vw - min(90%, 100%)) / 2 + 0.2rem));
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border-radius: 10px;
-    border-color: transparent;
-    background: color-mix(in srgb, var(--surface), transparent 10%);
-    color: var(--text-muted);
-    font-size: 1rem;
-    line-height: 1;
-    z-index: 45;
-}
-
-.sidebar-toggle:hover {
-    background: color-mix(in srgb, var(--surface), var(--bg-accent) 45%);
-    color: var(--text);
-}
-
-.sidebar-toggle:active {
-    transform: translateY(1px);
-}
-
-.sidebar-toggle.collapsed {
-    color: var(--text);
+    overflow-x: hidden;
 }
 
 .workspace-layout {
@@ -201,20 +163,22 @@
 
 .workspace-sidebar {
     position: fixed;
-    top: 0.8rem;
-    left: max(0.8rem, calc((100vw - min(90%, 100%)) / 2));
-    width: min(320px, calc(100vw - 1.6rem));
-    max-height: calc(100vh - 1.6rem);
+    top: 0;
+    left: 0;
+    width: min(320px, 92vw);
+    height: 100vh;
+    border-radius: 0;
     padding: 12px;
-    transform: translateX(calc(-100% - 20px));
+    transform: translate3d(-100%, 0, 0);
     opacity: 0;
     pointer-events: none;
     z-index: 40;
-    transition: transform 170ms ease, opacity 140ms ease;
+    will-change: transform, opacity;
+    transition: transform 150ms ease, opacity 130ms ease;
 }
 
 .workspace-sidebar.open {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
     pointer-events: auto;
 }
@@ -232,9 +196,17 @@
     position: fixed;
     inset: 0;
     border: 0;
-    background: rgba(11, 15, 22, 0.24);
-    backdrop-filter: blur(1px);
+    background: rgba(11, 15, 22, 0);
+    opacity: 0;
+    pointer-events: none;
     z-index: 35;
+    transition: opacity 130ms ease;
+}
+
+.sidebar-backdrop.open {
+    background: rgba(11, 15, 22, 0.2);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 @media (max-width: 640px) {
@@ -242,16 +214,8 @@
         min-height: calc(100vh - 2rem);
     }
 
-    .sidebar-toggle {
-        top: 0.7rem;
-        left: 0.65rem;
-    }
-
     .workspace-sidebar {
-        top: 0.4rem;
-        left: 0.4rem;
-        width: calc(100vw - 0.8rem);
-        max-height: calc(100vh - 0.8rem);
+        width: min(320px, 94vw);
     }
 }
 </style>
