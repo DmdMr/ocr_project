@@ -123,6 +123,9 @@
         tags = await getTags()
         const settings = await getSettings()
         customFieldSettings = settings.fields_for_cards ?? []
+        console.debug("[DocumentList] fields_for_cards from backend:", settings.fields_for_cards)
+        console.debug("[DocumentList] customFieldSettings state:", customFieldSettings)
+        console.debug("[DocumentList] first document custom_fields:", documents[0]?.custom_fields ?? null)
         for (const field of customFieldSettings) {
             if (customFieldFilters[field.name]) continue
             customFieldFilters[field.name] = field.type === "number"

@@ -103,6 +103,8 @@
 
   let columnWidths: Record<string, number> = {}
   let customFieldOrder: string[] = []
+  let orderedCustomColumns: TableColumnDef[] = []
+  let visibleColumns: TableColumnDef[] = []
 
   let dragFieldName: string | null = null
   let dragOverFieldName: string | null = null
@@ -146,13 +148,6 @@
   function initializeColumnState() {
     const fieldNames = customFieldSettings.map(field => field.name)
 
-    const existingOrder = customFieldOrder.filter(name => fieldNames.includes(name))
-    const missingNames = fieldNames.filter(name => !existingOrder.includes(name))
-    const nextOrder = [...existingOrder, ...missingNames]
-    if (nextOrder.join("\u0000") !== customFieldOrder.join("\u0000")) {
-      customFieldOrder = nextOrder
-    }
-
     const allowedColumnIds = new Set<string>([
       ...systemColumns.map(column => column.id),
       ...fieldNames.map(name => widthColumnIdForField(name))
@@ -184,6 +179,11 @@
 
   function customFieldByName(fieldName: string) {
     return customFieldSettings.find(field => field.name === fieldName)
+  }
+
+  function arraysEqual(left: string[], right: string[]) {
+    if (left.length !== right.length) return false
+    return left.every((value, index) => value === right[index])
   }
 
   function moveCustomField(sourceName: string, targetName: string, position: "before" | "after") {
@@ -395,12 +395,48 @@
     }
   }
 
+  $: {
+    const customFieldNames = customFieldSettings.map(field => field.name)
+    const existingOrder = customFieldOrder.filter(name => customFieldNames.includes(name))
+    const missingNames = customFieldNames.filter(name => !existingOrder.includes(name))
+    const nextOrder = [...existingOrder, ...missingNames]
+
+    if (!arraysEqual(customFieldOrder, nextOrder)) {
+      customFieldOrder = nextOrder
+    }
+  }
+
   $: orderedCustomColumns = customFieldOrder
     .map(name => customFieldByName(name))
     .filter((field): field is CardCustomFieldSetting => Boolean(field))
     .map(customColumnFromField)
 
   $: visibleColumns = [...systemColumns, ...orderedCustomColumns]
+
+  $: {
+    console.debug("[DocumentTable] customFieldSettings loaded:", customFieldSettings)
+    console.debug("[DocumentTable] ordered custom field names:", customFieldOrder)
+    console.debug("[DocumentTable] visible columns:", visibleColumns.map(column => column.id))
+  }
+
+  $: {
+    if (documents.length && orderedCustomColumns.length) {
+      const sampleDoc = documents[0]
+      const sampleMapping = orderedCustomColumns.reduce<Record<string, string | number | null | undefined>>(
+        (acc, column) => {
+          if (column.fieldName) {
+            acc[column.fieldName] = sampleDoc.custom_fields?.[column.fieldName]
+          }
+          return acc
+        },
+        {}
+      )
+      console.debug("[DocumentTable] first row custom-field mapping:", {
+        documentId: sampleDoc._id,
+        mapping: sampleMapping
+      })
+    }
+  }
 
   onMount(() => {
     const savedRaw = window.localStorage.getItem(columnPreferencesStorageKey)
