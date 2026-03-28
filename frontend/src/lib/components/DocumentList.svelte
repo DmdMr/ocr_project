@@ -9,7 +9,8 @@
     import { 
         normalizeTag,
         setDocumentTags,
-        deleteDocument
+        deleteDocument,
+        createCardField
     
     } from "../api"
 
@@ -251,6 +252,27 @@
 
     function isCreatedAtFilterActive() {
         return createdAtSort !== "none" || createdAtRange !== "all"
+    }
+
+    async function handleAddProperty() {
+        const name = prompt("Название нового свойства")
+        if (!name || !name.trim()) return
+
+        const typePrompt = prompt("Тип свойства: text или number", "text")
+        if (!typePrompt) return
+        const normalizedType = typePrompt.trim().toLowerCase()
+        if (normalizedType !== "text" && normalizedType !== "number") {
+            alert("Поддерживаются только типы: text или number")
+            return
+        }
+
+        try {
+            await createCardField(name.trim(), normalizedType as "text" | "number")
+            await load()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Не удалось создать свойство"
+            alert(message)
+        }
     }
 
     function setTextSort(fieldName: string, sort: "none" | "asc" | "desc") {
@@ -644,6 +666,7 @@
     {isFilenameFilterActive}
     {isCreatedAtFilterActive}
     on:toggleSelect={(e) => toggleCardSelection(e.detail.id)}
+    on:addProperty={handleAddProperty}
     on:toggleFilterPanel={(e) => toggleFilterPanel(e.detail.fieldName)}
     on:setFilenameFilterText={(e) => setFilenameFilterText(e.detail.value)}
     on:setFilenameSort={(e) => setFilenameSort(e.detail.sort)}

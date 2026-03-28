@@ -43,6 +43,7 @@
     toggleSelect: { id: string }
     deleted: { id: string }
     updated: { document: Document }
+    addProperty: void
     toggleFilterPanel: { fieldName: string }
     setTextSort: { fieldName: string; sort: "none" | "asc" | "desc" }
     setNumberSort: { fieldName: string; sort: "none" | "asc" | "desc" }
@@ -283,6 +284,7 @@
         {#each customFieldSettings as _}
           <col style={`width: ${getColumnWidth(widthColumnIdForField(_.name))}px; min-width: ${getColumnMinWidth(widthColumnIdForField(_.name))}px;`} />
         {/each}
+        <col style="width: 44px; min-width: 44px;" />
       </colgroup>
       <thead>
         <tr>
@@ -473,6 +475,17 @@
               {/if}
             </th>
           {/each}
+          <th class="add-property-cell">
+            <button
+              type="button"
+              class="add-property-btn"
+              aria-label="Добавить свойство"
+              title="Добавить свойство"
+              on:click={() => dispatch("addProperty")}
+            >
+              +
+            </button>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -510,6 +523,7 @@
             {#each customFieldSettings as field}
               <td title={customFieldValue(doc, field.name)}>{customFieldValue(doc, field.name)}</td>
             {/each}
+            <td class="add-property-spacer"></td>
           </tr>
         {/each}
       </tbody>
@@ -655,6 +669,39 @@
 
   .number-inputs input {
     width: 100%;
+  }
+
+  .add-property-cell {
+    text-align: center;
+    width: 44px;
+    min-width: 44px;
+    padding-right: 8px;
+  }
+
+  .add-property-btn {
+    all: unset;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px dashed var(--border-strong);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .add-property-btn:hover {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--primary), var(--border-strong) 50%);
+    background: color-mix(in srgb, var(--surface), var(--bg-accent) 25%);
+  }
+
+  .add-property-spacer {
+    width: 44px;
+    min-width: 44px;
   }
 
   .column-resizer {
