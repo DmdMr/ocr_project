@@ -2,6 +2,8 @@
     import Upload from "./lib/components/Upload.svelte"
     import DocumentList from "./lib/components/DocumentList.svelte"
     import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
+    import TagManager from "./lib/components/TagManager.svelte"
+    import { getTags } from "./lib/api"
     import { onMount } from "svelte"
     import { push } from 'svelte-spa-router'
 
@@ -15,6 +17,8 @@
     let columnsLoaded = false
     let sidebarOpen = true
     let sidebarStateLoaded = false
+    let tags: string[] = []
+    let activeTag: string | null = null
 
 
     onMount(() => {
@@ -23,6 +27,14 @@
         columnCount = Number(saved)
         }
         columnsLoaded = true
+    })
+
+    onMount(async () => {
+        try {
+            tags = await getTags()
+        } catch (error) {
+            console.error("Failed to load tags for sidebar manager", error)
+        }
     })
 
     $: if (columnsLoaded) {
@@ -103,6 +115,11 @@
         on:navigateAssistant={() => push('/assistant')}
         on:navigateSettings={() => push('/settings')}
       />
+      <TagManager
+        initialTags={tags}
+        on:select={(event) => activeTag = event.detail.tag}
+        on:tagsChanged={(event) => tags = event.detail.tags}
+      />
       <Upload embedded on:uploaded={handleUpload} />
     </div>
   </aside>
@@ -114,6 +131,7 @@
         {viewMode}
         {columnCount}
         {sidebarOpen}
+        {activeTag}
         on:toggleSidebar={toggleSidebar}
         on:viewModeChange={(event) => {
             viewMode = event.detail.mode

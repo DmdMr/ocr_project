@@ -5,12 +5,12 @@
     //import SettingsPage from "../SettingsPage.svelte";
     import DocumentCard from "./DocumentCard.svelte"
     import DocumentTable from "./DocumentTable.svelte"
-    import TagManager from "./TagManager.svelte";
     import { 
         normalizeTag,
         setDocumentTags,
         deleteDocument,
-        createCardField
+        createCardField,
+        deleteCardField
     
     } from "../api"
 
@@ -25,8 +25,7 @@
     let documents: Document[] = []
     let search = ""
     let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc" = "date_desc"
-    let tags: string[] = []
-    let activeTag: string | null = null
+    export let activeTag: string | null = null
     let selectedIds: string[] = []
     let customFieldSettings: CardCustomFieldSetting[] = []
     let openFilterField: string | null = null
@@ -119,9 +118,11 @@
 
     async function load() {
         documents = await getDocuments()
-        tags = await getTags()
         const settings = await getSettings()
         customFieldSettings = settings.fields_for_cards ?? []
+        console.debug("[DocumentList] fields_for_cards from backend:", settings.fields_for_cards)
+        console.debug("[DocumentList] customFieldSettings state:", customFieldSettings)
+        console.debug("[DocumentList] first document custom_fields:", documents[0]?.custom_fields ?? null)
         for (const field of customFieldSettings) {
             if (customFieldFilters[field.name]) continue
             customFieldFilters[field.name] = field.type === "number"
@@ -146,14 +147,6 @@
 
     function replaceDocumentInList(updatedDocument: Document) {
         documents = documents.map(doc => doc._id === updatedDocument._id ? updatedDocument : doc)
-    }
-
-    function handleTagSelect(event: CustomEvent<{ tag: string | null }>) {
-        activeTag = event.detail.tag
-    }
-    
-    function handleTagsChanged(event: CustomEvent<{ tags: string[] }>) {
-        tags = event.detail.tags
     }
 
     function getFieldRawValue(doc: Document, fieldName: string) {
@@ -271,6 +264,31 @@
             await load()
         } catch (error) {
             const message = error instanceof Error ? error.message : "Не удалось создать свойство"
+            alert(message)
+        }
+    }
+
+    async function handleDeleteProperty(fieldName: string) {
+        const field = customFieldSettings.find(item => item.name === fieldName)
+        if (!field) return
+
+        try {
+            await deleteCardField(fieldName)
+            customFieldSettings = customFieldSettings.filter(item => item.name !== fieldName)
+            documents = documents.map(doc => {
+                if (!doc.custom_fields || !(fieldName in doc.custom_fields)) return doc
+                const nextCustomFields = { ...doc.custom_fields }
+                delete nextCustomFields[fieldName]
+                return { ...doc, custom_fields: nextCustomFields }
+            })
+            const nextFilters = { ...customFieldFilters }
+            delete nextFilters[fieldName]
+            customFieldFilters = nextFilters
+            if (openFilterField === fieldName) {
+                openFilterField = null
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Не удалось удалить свойство"
             alert(message)
         }
     }
@@ -592,13 +610,6 @@
     </div>
 </div>
 
-<TagManager
-    initialTags={tags}
-    on:select={handleTagSelect}
-    on:tagsChanged={handleTagsChanged}
-/>
-
-
 {#if selectedIds.length > 0}
   <div class="bulk-actions-manager panel">
     <div class="bulk-left">
@@ -683,6 +694,7 @@
     on:setNumberValue={(e) => setNumberValue(e.detail.fieldName, e.detail.key, e.detail.value)}
     on:clearFieldFilter={(e) => clearFieldFilter(e.detail.fieldName)}
     on:closeFilterPanel={() => openFilterField = null}
+    on:deleteProperty={(e) => handleDeleteProperty(e.detail.fieldName)}
     on:deleted={(e) => removeFromList(e.detail.id)}
     on:updated={(e) => replaceDocumentInList(e.detail.document)}
   />

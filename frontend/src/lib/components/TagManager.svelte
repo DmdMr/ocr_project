@@ -164,15 +164,15 @@
   }
 
   .tags-creation{
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     margin-bottom: 8px;
   }
 
   .tags-management {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     margin-bottom: 8px;
   }
@@ -181,13 +181,13 @@
   @media (max-width: 640px) {
     .tags-creation{
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       text-align: center;
     }
 
     .tags-management {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       text-align: center;
     }
 
@@ -210,23 +210,24 @@
   .tags-list {
     display: flex;
     gap: 8px;
-    flex-wrap: nowrap;
-    overflow: hidden;
+    flex-wrap: wrap;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 180px;
     margin-top: 8px;
   }
 
   @media (max-width: 640px) {
     .tags-list {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      overflow-y: hidden;
+      flex-wrap: wrap;
+      overflow-x: hidden;
+      overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
       padding-bottom: 4px;
     }
     .tags-list > * {
-      flex-shrink: 0;
-
+      flex-shrink: 1;
     }
 
   }
@@ -256,7 +257,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .tag-chip-row.deleting .tag-chip {
@@ -272,6 +275,7 @@
   }
 
   .tags-list::-webkit-scrollbar {
+    width: 6px;
     height: 6px;
   }
 
