@@ -120,13 +120,15 @@
         hidden
     />
 
-    <button class="upload-btn" on:click={() => openFilePicker("with_ocr")} disabled={uploading}>
-        {uploading && selectedUploadMode === "with_ocr" ? "Загрузка..." : "Загрузить с распознаванием"}
-    </button>
+    <div class="upload-actions">
+        <button class="upload-btn upload-action-btn" on:click={() => openFilePicker("with_ocr")} disabled={uploading}>
+            {uploading && selectedUploadMode === "with_ocr" ? "Загрузка..." : "Загрузить с распознаванием"}
+        </button>
 
-    <button class="secondary" on:click={() => openFilePicker("without_ocr")} disabled={uploading}>
-        {uploading && selectedUploadMode === "without_ocr" ? "Загрузка..." : "Загрузить без распознавания"}
-    </button>
+        <button class="secondary upload-action-btn" on:click={() => openFilePicker("without_ocr")} disabled={uploading}>
+            {uploading && selectedUploadMode === "without_ocr" ? "Загрузка..." : "Загрузить без распознавания"}
+        </button>
+    </div>
 </div>
 
 <!-- File List -->
@@ -182,17 +184,33 @@
 
 .upload {
     transition: border-color 0.2s ease;
-    display: flex;
-    justify-content: left;
-    align-items: center;
+    display: block;
+}
+
+.upload-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
+.upload-action-btn {
+    width: 100%;
+    min-height: 56px;
+    height: 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.2;
+    white-space: normal;
+    word-break: break-word;
+    padding: 10px 12px;
+    box-sizing: border-box;
+}
+
 @media (max-width: 640px) {
-    .upload {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        text-align: center;
+    .upload-actions {
+        grid-template-columns: 1fr;
     }
 }
 
