@@ -42,7 +42,7 @@
     let attachmentUploadError = ""
     let attachmentsUploading = false
     let customFieldSettings: CardCustomFieldSetting[] = []
-    let customFieldDraft: Record<string, string | number | null> = {}
+    let customFieldDraft: Record<string, string | number | string[] | null> = {}
     let customFieldsSaving = false
     let customFieldsError = ""
 
@@ -521,6 +521,13 @@
         return attachment.original_name || attachment.filename || "Файл"
     }
 
+    function formatCreatedAt(value?: string) {
+        if (!value) return "—"
+        const parsed = new Date(value)
+        if (Number.isNaN(parsed.getTime())) return "—"
+        return parsed.toLocaleString()
+    }
+
     function formatFileSize(value?: number) {
         if (!value || value <= 0) return "Размер неизвестен"
         if (value < 1024) return `${value} Б`
@@ -571,7 +578,7 @@
     }
 
     $: {
-        const nextDraft: Record<string, string | number | null> = { ...(doc.custom_fields ?? {}) }
+        const nextDraft: Record<string, string | number | string[] | null> = { ...(doc.custom_fields ?? {}) }
         for (const field of customFieldSettings) {
             if (field?.name && !(field.name in nextDraft)) {
                 nextDraft[field.name] = null
@@ -580,11 +587,23 @@
         customFieldDraft = nextDraft
     }
 
-    function normalizeFieldValue(type: "text" | "number", value: string) {
+    function peopleDraftValue(value: string | number | string[] | null | undefined) {
+        if (Array.isArray(value)) return value.join(", ")
+        if (value === null || value === undefined) return ""
+        return String(value)
+    }
+
+    function normalizeFieldValue(type: "text" | "number" | "people", value: string) {
         if (type === "number") {
             if (!value.trim()) return null
             const parsed = Number(value)
             return Number.isFinite(parsed) ? parsed : null
+        }
+        if (type === "people") {
+            return value
+                .split(/[\n,]/)
+                .map(item => item.trim())
+                .filter(Boolean)
         }
         return value
     }
@@ -744,7 +763,10 @@
                     <p class="filename-error">{filenameError}</p>
                 {/if}
 
-                
+                <div class="doc-meta">
+                    <div><strong>Создано:</strong> {formatCreatedAt(doc.created_at)}</div>
+                    <div><strong>Создал:</strong> {doc.created_by_username || "—"}</div>
+                </div>
             </div>
 
             <div class="custom-fields-panel">
@@ -764,7 +786,7 @@
                                 <span>{field.name}</span>
                                 <input
                                     type={field.type === "number" ? "number" : "text"}
-                                    value={customFieldDraft[field.name] ?? ""}
+                                    value={field.type === "people" ? peopleDraftValue(customFieldDraft[field.name]) : (customFieldDraft[field.name] ?? "")}
                                     on:input={(event) => {
                                         const target = event.target as HTMLInputElement
                                         customFieldDraft = {
@@ -1101,6 +1123,18 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+ .doc-meta {
+    display: grid;
+    gap: 4px;
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.doc-meta strong {
+    color: var(--text);
 }
 
 .filename-error {

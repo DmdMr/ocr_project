@@ -60,7 +60,7 @@ def now_yekaterinburg():
 
 
 SETTINGS_DOCUMENT_ID = "main"
-ALLOWED_CUSTOM_FIELD_TYPES = {"text", "number"}
+ALLOWED_CUSTOM_FIELD_TYPES = {"text", "number", "people"}
 
 
 def normalize_custom_field_name(name: str):
@@ -68,6 +68,8 @@ def normalize_custom_field_name(name: str):
 
 
 def default_value_for_field_type(field_type: str):
+    if field_type == "people":
+        return []
     return None
 
 
@@ -208,14 +210,14 @@ async def register(payload: AuthCredentials, response: Response):
     password = payload.password or ""
 
     if len(username) < 3:
-        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+        raise HTTPException(status_code=400, detail="Имя пользователя должно содержать минимум 3 символа")
     if len(password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        raise HTTPException(status_code=400, detail="Пароль должен содержать минимум 6 символов")
 
     username_lower = username.lower()
     existing_user = await users_collection.find_one({"username_lower": username_lower})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username is already taken")
+        raise HTTPException(status_code=400, detail="Пользователь с таким именем уже существует")
 
     now = datetime.now(timezone.utc)
     user_id = str(ObjectId())
@@ -243,9 +245,9 @@ async def login(payload: AuthCredentials, response: Response):
 
     user = await users_collection.find_one({"username_lower": username_lower})
     if not user or not verify_password(password, user.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Неверное имя пользователя или пароль")
     if not user.get("is_active", True):
-        raise HTTPException(status_code=403, detail="User is inactive")
+        raise HTTPException(status_code=403, detail="Пользователь деактивирован")
 
     session_id, expires_at = await create_session(user["_id"])
     set_session_cookie(response, session_id, expires_at)
@@ -268,7 +270,7 @@ async def logout(response: Response, current_user=Depends(get_current_user), ses
 @router.get("/auth/me")
 async def me(current_user=Depends(get_current_user)):
     if not current_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Требуется авторизация")
     return current_user
 
 
