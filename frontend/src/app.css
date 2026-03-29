@@ -355,3 +355,23 @@ button.secondary:hover {
     border-radius: 12px;
   }
 }
+
+.auth-wrap {
+  max-width: 360px;
+  margin: 64px auto;
+  display: grid;
+  gap: 10px;
+}
+
+.auth-wrap input, .auth-wrap button {
+  padding: 10px;
+}
+
+.auth-wrap .link {
+  background: transparent;
+  border: 1px solid #666;
+}
+
+.auth-wrap .error {
+  color: #d62f2f;
+}
