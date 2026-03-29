@@ -46,12 +46,15 @@
     initAuth().then(handleHashChange)
     window.addEventListener('hashchange', handleHashChange)
 
+    const unsubscribeCurrentUser = currentUser.subscribe(() => {
+      handleHashChange()
+    })
+
     return () => {
       window.removeEventListener('hashchange', handleHashChange)
+      unsubscribeCurrentUser()
     }
   })
-
-  currentUser.subscribe(() => enforceRoute(getCurrentPath()))
 </script>
 
 {#if $authReady}
