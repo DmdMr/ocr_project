@@ -60,7 +60,7 @@ def now_yekaterinburg():
 
 
 SETTINGS_DOCUMENT_ID = "main"
-ALLOWED_CUSTOM_FIELD_TYPES = {"text", "number"}
+ALLOWED_CUSTOM_FIELD_TYPES = {"text", "number", "people"}
 
 
 def normalize_custom_field_name(name: str):
@@ -68,6 +68,8 @@ def normalize_custom_field_name(name: str):
 
 
 def default_value_for_field_type(field_type: str):
+    if field_type == "people":
+        return []
     return None
 
 

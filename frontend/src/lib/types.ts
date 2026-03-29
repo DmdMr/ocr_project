@@ -29,7 +29,7 @@ export interface Document {
     image_version?: string
     gallery_images?: GalleryImage[]
     attachments?: AttachmentFile[]
-    custom_fields?: Record<string, string | number | null>
+    custom_fields?: Record<string, string | number | string[] | null>
     created_by_user_id?: string
     created_by_username?: string
     updated_by_user_id?: string
@@ -38,6 +38,6 @@ export interface Document {
 
 export interface CardCustomFieldSetting {
     name: string
-    type: "text" | "number"
+    type: "text" | "number" | "people"
     created_at?: string
 }

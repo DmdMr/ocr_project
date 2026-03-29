@@ -34,7 +34,7 @@
   type CreatedAtSort = "none" | "newest" | "oldest"
   type CreatedAtRange = "all" | "today" | "last_7_days" | "this_month"
 
-  type TableColumnKind = "select" | "preview" | "filename" | "created_at" | "created_by" | "tags" | "custom"
+  type TableColumnKind = "select" | "preview" | "filename" | "created_at" | "created_by" | "updated_by" | "tags" | "custom"
 
   type TableColumnDef = {
     id: string
@@ -93,6 +93,7 @@
     { id: "filename", kind: "filename", label: "Файл", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 220, defaultWidth: 250, filterFieldName: "system:filename" },
     { id: "created_at", kind: "created_at", label: "Создан", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 150, defaultWidth: 180, filterFieldName: "system:created_at" },
     { id: "created_by", kind: "created_by", label: "Создал", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 130, defaultWidth: 160 },
+    { id: "updated_by", kind: "updated_by", label: "Изменил", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 130, defaultWidth: 160 },
     { id: "tags", kind: "tags", label: "Теги", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 160, defaultWidth: 200 }
   ]
 
@@ -459,7 +460,7 @@
   $: {
     if (documents.length && orderedCustomColumns.length) {
       const sampleDoc = documents[0]
-      const sampleMapping = orderedCustomColumns.reduce<Record<string, string | number | null | undefined>>(
+      const sampleMapping = orderedCustomColumns.reduce<Record<string, string | number | string[] | null | undefined>>(
         (acc, column) => {
           if (column.fieldName) {
             acc[column.fieldName] = sampleDoc.custom_fields?.[column.fieldName]
@@ -531,7 +532,7 @@
           {#each visibleColumns as column (column.id)}
             {#if column.kind === "select"}
               <th>{column.label}</th>
-            {:else if column.kind === "preview" || column.kind === "tags" || column.kind === "created_by"}
+            {:else if column.kind === "preview" || column.kind === "tags" || column.kind === "created_by" || column.kind === "updated_by"}
               <th>
                 {column.label}
                 {#if column.resizable}
@@ -656,6 +657,8 @@
                 <td title={formatCreatedAt(doc.created_at)}>{formatCreatedAt(doc.created_at)}</td>
               {:else if column.kind === "created_by"}
                 <td title={doc.created_by_username || "—"}>{doc.created_by_username || "—"}</td>
+              {:else if column.kind === "updated_by"}
+                <td title={doc.updated_by_username || "—"}>{doc.updated_by_username || "—"}</td>
               {:else if column.kind === "tags"}
                 <td>
                   <div class="row-tags">

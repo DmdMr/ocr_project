@@ -42,7 +42,7 @@
     let attachmentUploadError = ""
     let attachmentsUploading = false
     let customFieldSettings: CardCustomFieldSetting[] = []
-    let customFieldDraft: Record<string, string | number | null> = {}
+    let customFieldDraft: Record<string, string | number | string[] | null> = {}
     let customFieldsSaving = false
     let customFieldsError = ""
 
@@ -578,7 +578,7 @@
     }
 
     $: {
-        const nextDraft: Record<string, string | number | null> = { ...(doc.custom_fields ?? {}) }
+        const nextDraft: Record<string, string | number | string[] | null> = { ...(doc.custom_fields ?? {}) }
         for (const field of customFieldSettings) {
             if (field?.name && !(field.name in nextDraft)) {
                 nextDraft[field.name] = null
@@ -587,11 +587,23 @@
         customFieldDraft = nextDraft
     }
 
-    function normalizeFieldValue(type: "text" | "number", value: string) {
+    function peopleDraftValue(value: string | number | string[] | null | undefined) {
+        if (Array.isArray(value)) return value.join(", ")
+        if (value === null || value === undefined) return ""
+        return String(value)
+    }
+
+    function normalizeFieldValue(type: "text" | "number" | "people", value: string) {
         if (type === "number") {
             if (!value.trim()) return null
             const parsed = Number(value)
             return Number.isFinite(parsed) ? parsed : null
+        }
+        if (type === "people") {
+            return value
+                .split(/[\n,]/)
+                .map(item => item.trim())
+                .filter(Boolean)
         }
         return value
     }
@@ -774,7 +786,7 @@
                                 <span>{field.name}</span>
                                 <input
                                     type={field.type === "number" ? "number" : "text"}
-                                    value={customFieldDraft[field.name] ?? ""}
+                                    value={field.type === "people" ? peopleDraftValue(customFieldDraft[field.name]) : (customFieldDraft[field.name] ?? "")}
                                     on:input={(event) => {
                                         const target = event.target as HTMLInputElement
                                         customFieldDraft = {
