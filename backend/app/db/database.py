@@ -8,6 +8,8 @@ db = client["ocr_database"]
 documents_collection = db["documents"]
 tags_collection = db["tags"]
 app_settings_collection = db["app_settings"]
+users_collection = db["users"]
+sessions_collection = db["sessions"]
 
 
 

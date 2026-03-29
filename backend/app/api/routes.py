@@ -1,23 +1,32 @@
-import os
 import hashlib
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Form
-from bson import ObjectId
-
-
-from backend.app.services.ocr_service import recognize_text
-from backend.app.db.database import app_settings_collection, documents_collection
-
 from typing import List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from bson import ObjectId
+from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
-from backend.app.db.database import app_settings_collection, documents_collection, tags_collection
+from backend.app.auth import (
+    clear_session_cookie,
+    create_session,
+    get_current_user,
+    hash_password,
+    require_current_user,
+    set_session_cookie,
+    verify_password,
+)
+from backend.app.db.database import (
+    app_settings_collection,
+    documents_collection,
+    sessions_collection,
+    tags_collection,
+    users_collection,
+)
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
@@ -188,11 +197,87 @@ def write_audit_log(request: Request, action: str, payload: dict):
 
 
 
+class AuthCredentials(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/auth/register")
+async def register(payload: AuthCredentials, response: Response):
+    username = (payload.username or "").strip()
+    password = payload.password or ""
+
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    username_lower = username.lower()
+    existing_user = await users_collection.find_one({"username_lower": username_lower})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username is already taken")
+
+    now = datetime.now(timezone.utc)
+    user_id = str(ObjectId())
+    await users_collection.insert_one(
+        {
+            "_id": user_id,
+            "username": username,
+            "username_lower": username_lower,
+            "password_hash": hash_password(password),
+            "created_at": now,
+            "is_active": True,
+        }
+    )
+
+    session_id, expires_at = await create_session(user_id)
+    set_session_cookie(response, session_id, expires_at)
+    return {"id": user_id, "username": username, "created_at": now, "is_active": True}
+
+
+@router.post("/auth/login")
+async def login(payload: AuthCredentials, response: Response):
+    username = (payload.username or "").strip()
+    password = payload.password or ""
+    username_lower = username.lower()
+
+    user = await users_collection.find_one({"username_lower": username_lower})
+    if not user or not verify_password(password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="User is inactive")
+
+    session_id, expires_at = await create_session(user["_id"])
+    set_session_cookie(response, session_id, expires_at)
+    return {
+        "id": user["_id"],
+        "username": user["username"],
+        "created_at": user.get("created_at"),
+        "is_active": user.get("is_active", True),
+    }
+
+
+@router.post("/auth/logout")
+async def logout(response: Response, current_user=Depends(get_current_user), session_id: Optional[str] = Cookie(default=None, alias="session_id")):
+    if session_id:
+        await sessions_collection.delete_one({"session_id": session_id})
+    clear_session_cookie(response)
+    return {"message": "Logged out"}
+
+
+@router.get("/auth/me")
+async def me(current_user=Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return current_user
+
+
 @router.post("/upload")
 async def upload_image(
     request: Request,
     file: UploadFile = File(...),
     perform_ocr: bool = Form(True),
+    current_user=Depends(require_current_user),
 ):
 
     if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
@@ -243,6 +328,10 @@ async def upload_image(
         "gallery_images": [gallery_item],
         "attachments": [],
         "custom_fields": custom_fields,
+        "created_by_user_id": current_user["id"],
+        "created_by_username": current_user["username"],
+        "updated_by_user_id": current_user["id"],
+        "updated_by_username": current_user["username"],
     }
 
 
@@ -261,7 +350,7 @@ async def upload_image(
     return {"message": "Файл успешно загружен", "document": document_data}
 
 @router.post("/documents/{doc_id}/gallery")
-async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...)):
+async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -325,7 +414,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
         {"_id": object_id},
         {
             "$push": {"gallery_images": {"$each": added_items}},
-            "$set": {"recognized_text": combined_text},
+            "$set": {"recognized_text": combined_text, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]},
         },
     )
 
@@ -348,7 +437,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
 
 @router.post("/documents/{doc_id}/attachments")
-async def upload_attachments_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...)):
+async def upload_attachments_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -402,7 +491,7 @@ async def upload_attachments_to_document(request: Request, doc_id: str, files: L
 
     await documents_collection.update_one(
         {"_id": object_id},
-        {"$push": {"attachments": {"$each": added_items}}},
+        {"$push": {"attachments": {"$each": added_items}}, "$set": {"updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
 
     updated_doc = await documents_collection.find_one({"_id": object_id})
@@ -475,7 +564,7 @@ async def get_settings():
 
 
 @router.post("/settings/fields")
-async def create_settings_field(request: Request, payload: CustomFieldDefinition):
+async def create_settings_field(request: Request, payload: CustomFieldDefinition, current_user=Depends(require_current_user)):
     field_name = normalize_custom_field_name(payload.name)
     field_type = (payload.type or "").strip().lower()
 
@@ -503,7 +592,7 @@ async def create_settings_field(request: Request, payload: CustomFieldDefinition
 
 
 @router.delete("/settings/fields/{name}")
-async def delete_settings_field(request: Request, name: str):
+async def delete_settings_field(request: Request, name: str, current_user=Depends(require_current_user)):
     field_name = normalize_custom_field_name(name)
     if not field_name:
         raise HTTPException(status_code=400, detail="Имя поля обязательно")
@@ -522,7 +611,7 @@ async def delete_settings_field(request: Request, name: str):
     return {"message": "Поле удалено", "field_name": field_name}
 
 @router.put("/documents/{doc_id}")
-async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
+async def update_document(request: Request, doc_id: str, data: DocumentUpdate, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     update_data = {key: value for key, value in data.model_dump().items() if value is not None}
 
@@ -535,6 +624,9 @@ async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
             update_data["display_filename"],
             existing_doc.get("filename") or existing_doc.get("display_filename") or "",
         )
+
+    update_data["updated_by_user_id"] = current_user["id"]
+    update_data["updated_by_username"] = current_user["username"]
 
     await documents_collection.update_one({"_id": object_id}, {"$set": update_data})
 
@@ -551,7 +643,7 @@ async def update_document(request: Request, doc_id: str, data: DocumentUpdate):
 
 
 @router.patch("/documents/{doc_id}/fields")
-async def update_document_custom_fields(request: Request, doc_id: str, payload: DocumentCustomFieldsUpdate):
+async def update_document_custom_fields(request: Request, doc_id: str, payload: DocumentCustomFieldsUpdate, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     existing_doc = await documents_collection.find_one({"_id": object_id})
     if not existing_doc:
@@ -576,7 +668,7 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
 
     await documents_collection.update_one(
         {"_id": object_id},
-        {"$set": {"custom_fields": merged_fields}},
+        {"$set": {"custom_fields": merged_fields, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
@@ -591,7 +683,7 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
 
 
 @router.put("/documents/{doc_id}/image")
-async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequest):
+async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequest, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
 
     document = await documents_collection.find_one({"_id": object_id})
@@ -653,7 +745,7 @@ async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequ
     if set_payload:
         await documents_collection.update_one(
             {"_id": object_id},
-            {"$set": set_payload},
+            {"$set": {**set_payload, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
         )
 
     await documents_collection.update_one(
@@ -682,7 +774,7 @@ async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequ
 
 
 @router.delete("/documents/{doc_id}/gallery/{image_filename}")
-async def delete_gallery_image(request: Request, doc_id: str, image_filename: str):
+async def delete_gallery_image(request: Request, doc_id: str, image_filename: str, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -716,7 +808,7 @@ async def delete_gallery_image(request: Request, doc_id: str, image_filename: st
             }
         )
 
-    await documents_collection.update_one({"_id": object_id}, {"$set": set_payload})
+    await documents_collection.update_one({"_id": object_id}, {"$set": {**set_payload, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}})
 
     removed_path = removed_image.get("path") or os.path.join(UPLOAD_DIR, image_filename)
     if removed_path and os.path.exists(removed_path):
@@ -735,7 +827,7 @@ async def delete_gallery_image(request: Request, doc_id: str, image_filename: st
 
 
 @router.delete("/documents/{doc_id}/attachments/{attachment_filename}")
-async def delete_attachment(request: Request, doc_id: str, attachment_filename: str):
+async def delete_attachment(request: Request, doc_id: str, attachment_filename: str, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -752,7 +844,7 @@ async def delete_attachment(request: Request, doc_id: str, attachment_filename: 
 
     await documents_collection.update_one(
         {"_id": object_id},
-        {"$pull": {"attachments": {"filename": attachment_filename}}},
+        {"$pull": {"attachments": {"filename": attachment_filename}}, "$set": {"updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
 
     updated_doc = await documents_collection.find_one({"_id": object_id})
@@ -772,7 +864,7 @@ async def delete_attachment(request: Request, doc_id: str, attachment_filename: 
 UPLOAD_FOLDER = "backend/uploads"
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(request: Request, doc_id: str):
+async def delete_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -782,7 +874,7 @@ async def delete_document(request: Request, doc_id: str):
 
     await documents_collection.update_one(
         {"_id": object_id},
-        {"$set": {"is_archived": True, "archived_at": datetime.now(timezone.utc)}},
+        {"$set": {"is_archived": True, "archived_at": datetime.now(timezone.utc), "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
     write_audit_log(
         request,
@@ -802,7 +894,7 @@ async def get_archived_documents():
 
 
 @router.post("/documents/{doc_id}/restore")
-async def restore_archived_document(request: Request, doc_id: str):
+async def restore_archived_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -810,7 +902,7 @@ async def restore_archived_document(request: Request, doc_id: str):
 
     await documents_collection.update_one(
         {"_id": object_id},
-        {"$set": {"is_archived": False, "archived_at": None}},
+        {"$set": {"is_archived": False, "archived_at": None, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
     restored_doc = await documents_collection.find_one({"_id": object_id})
     if not restored_doc:
@@ -821,7 +913,7 @@ async def restore_archived_document(request: Request, doc_id: str):
 
 
 @router.delete("/documents/{doc_id}/permanent")
-async def permanently_delete_archived_document(request: Request, doc_id: str):
+async def permanently_delete_archived_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -839,21 +931,21 @@ async def permanently_delete_archived_document(request: Request, doc_id: str):
 
 
 @router.post("/documents/archive/restore-bulk")
-async def restore_archived_documents_bulk(request: Request, payload: DocumentIdsRequest):
+async def restore_archived_documents_bulk(request: Request, payload: DocumentIdsRequest, current_user=Depends(require_current_user)):
     object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
     if not object_ids:
         raise HTTPException(status_code=400, detail="Список карточек пуст")
 
     await documents_collection.update_many(
         {"_id": {"$in": object_ids}, "is_archived": True},
-        {"$set": {"is_archived": False, "archived_at": None}},
+        {"$set": {"is_archived": False, "archived_at": None, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
     write_audit_log(request, "document.bulk_restore", {"document_ids": payload.ids})
     return {"message": "Карточки восстановлены"}
 
 
 @router.post("/documents/archive/permanent-delete-bulk")
-async def permanently_delete_archived_documents_bulk(request: Request, payload: DocumentIdsRequest):
+async def permanently_delete_archived_documents_bulk(request: Request, payload: DocumentIdsRequest, current_user=Depends(require_current_user)):
     object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
     if not object_ids:
         raise HTTPException(status_code=400, detail="Список карточек пуст")
@@ -901,7 +993,7 @@ class TagRequest(BaseModel):
     tag: str
 
 @router.post("/tags")
-async def create_tag(http_request: Request, request: TagRequest):
+async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_current_user)):
     tag = request.tag.strip().lower()
 
     existing_tag = await tags_collection.find_one({"tag": tag})
@@ -914,7 +1006,7 @@ async def create_tag(http_request: Request, request: TagRequest):
     return {"message": "Тег добавлен", "tag": new_tag}
 
 @router.delete("/tags/{tag}")
-async def delete_tag(request: Request, tag: str):
+async def delete_tag(request: Request, tag: str, current_user=Depends(require_current_user)):
     normalized = tag.strip().lower()
 
     if not normalized:
