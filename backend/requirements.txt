@@ -10,4 +10,4 @@ motor
 pillow
 numpy
 python-doctr[torch]
-
+passlib[bcrypt]
