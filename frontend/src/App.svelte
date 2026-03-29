@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Router, { location, push } from 'svelte-spa-router'
+  import Router, { push } from 'svelte-spa-router'
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
 
@@ -24,6 +24,12 @@
     '/register': RegisterPage
   }
 
+  function getCurrentPath() {
+    const hash = window.location.hash || '#/'
+    const normalized = hash.startsWith('#') ? hash.slice(1) : hash
+    return normalized || '/'
+  }
+
   function enforceRoute(path: string) {
     if (!get(authReady)) return
     const user = get(currentUser)
@@ -34,13 +40,18 @@
     }
   }
 
-  onMount(async () => {
-    await initAuth()
-    enforceRoute(get(location))
+  onMount(() => {
+    const handleHashChange = () => enforceRoute(getCurrentPath())
+
+    initAuth().then(handleHashChange)
+    window.addEventListener('hashchange', handleHashChange)
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
   })
 
-  location.subscribe((path) => enforceRoute(path))
-  currentUser.subscribe(() => enforceRoute(get(location)))
+  currentUser.subscribe(() => enforceRoute(getCurrentPath()))
 </script>
 
 {#if $authReady}
