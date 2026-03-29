@@ -349,7 +349,7 @@ export async function register(username: string, password: string): Promise<Auth
         body: JSON.stringify({ username, password })
     })
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to register")
+    if (!response.ok) throw new Error(data.detail || "Не удалось зарегистрироваться")
     return data
 }
 
@@ -360,7 +360,7 @@ export async function login(username: string, password: string): Promise<AuthUse
         body: JSON.stringify({ username, password })
     })
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to login")
+    if (!response.ok) throw new Error(data.detail || "Не удалось войти")
     return data
 }
 

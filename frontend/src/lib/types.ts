@@ -30,6 +30,10 @@ export interface Document {
     gallery_images?: GalleryImage[]
     attachments?: AttachmentFile[]
     custom_fields?: Record<string, string | number | null>
+    created_by_user_id?: string
+    created_by_username?: string
+    updated_by_user_id?: string
+    updated_by_username?: string
 }
 
 export interface CardCustomFieldSetting {
