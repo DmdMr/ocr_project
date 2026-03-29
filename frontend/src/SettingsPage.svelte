@@ -8,7 +8,7 @@
   let loading = true
   let error = ''
   let newName = ''
-  let newType: 'text' | 'number' = 'text'
+  let newType: 'text' | 'number' | 'people' = 'text'
   let saving = false
 
   async function loadSettings() {
@@ -67,6 +67,7 @@
     <select bind:value={newType}>
       <option value="text">Текст</option>
       <option value="number">Число</option>
+      <option value="people">Люди</option>
     </select>
     <button class="primary" on:click={addField} disabled={saving || !newName.trim()}>
       {saving ? 'Добавление...' : 'Добавить'}

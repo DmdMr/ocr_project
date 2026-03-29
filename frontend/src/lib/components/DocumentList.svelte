@@ -251,16 +251,16 @@
         const name = prompt("Название нового свойства")
         if (!name || !name.trim()) return
 
-        const typePrompt = prompt("Тип свойства: text или number", "text")
+        const typePrompt = prompt("Тип свойства: text, number или people", "text")
         if (!typePrompt) return
         const normalizedType = typePrompt.trim().toLowerCase()
-        if (normalizedType !== "text" && normalizedType !== "number") {
-            alert("Поддерживаются только типы: text или number")
+        if (normalizedType !== "text" && normalizedType !== "number" && normalizedType !== "people") {
+            alert("Поддерживаются только типы: text, number или people")
             return
         }
 
         try {
-            await createCardField(name.trim(), normalizedType as "text" | "number")
+            await createCardField(name.trim(), normalizedType as "text" | "number" | "people")
             await load()
         } catch (error) {
             const message = error instanceof Error ? error.message : "Не удалось создать свойство"
