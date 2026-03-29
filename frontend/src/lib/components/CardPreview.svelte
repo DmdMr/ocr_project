@@ -521,6 +521,13 @@
         return attachment.original_name || attachment.filename || "Файл"
     }
 
+    function formatCreatedAt(value?: string) {
+        if (!value) return "—"
+        const parsed = new Date(value)
+        if (Number.isNaN(parsed.getTime())) return "—"
+        return parsed.toLocaleString()
+    }
+
     function formatFileSize(value?: number) {
         if (!value || value <= 0) return "Размер неизвестен"
         if (value < 1024) return `${value} Б`
@@ -744,7 +751,10 @@
                     <p class="filename-error">{filenameError}</p>
                 {/if}
 
-                
+                <div class="doc-meta">
+                    <div><strong>Создано:</strong> {formatCreatedAt(doc.created_at)}</div>
+                    <div><strong>Создал:</strong> {doc.created_by_username || "—"}</div>
+                </div>
             </div>
 
             <div class="custom-fields-panel">
@@ -1101,6 +1111,18 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+ .doc-meta {
+    display: grid;
+    gap: 4px;
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.doc-meta strong {
+    color: var(--text);
 }
 
 .filename-error {

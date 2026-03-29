@@ -17,6 +17,13 @@ export const UPLOADS_URL = "/uploads"
 
 console.log(UPLOADS_URL);
 
+async function apiFetch(url: string, init: RequestInit = {}) {
+    return fetch(url, {
+        credentials: "include",
+        ...init
+    })
+}
+
 export interface AppSettingsResponse {
     fields_for_cards: Array<{ name: string; type: "text" | "number"; created_at?: string }>
 }
@@ -26,7 +33,7 @@ export async function uploadImage(file: File, performOcr = true) {
     formData.append("file", file)
     formData.append("perform_ocr", String(performOcr))
 
-    const res = await fetch(`${API_URL}/upload`, {
+    const res = await apiFetch(`${API_URL}/upload`, {
         method: "POST",
         body: formData
     })
@@ -44,7 +51,7 @@ export async function uploadImagesToDocument(documentId: string, files: File[]) 
         formData.append("files", file)
     }
 
-    const res = await fetch(`${API_URL}/documents/${documentId}/gallery`, {
+    const res = await apiFetch(`${API_URL}/documents/${documentId}/gallery`, {
         method: "POST",
         body: formData
     })
@@ -64,7 +71,7 @@ export async function uploadDocumentAttachments(documentId: string, files: File[
         formData.append("files", file)
     }
 
-    const response = await fetch(`${API_URL}/documents/${documentId}/attachments`, {
+    const response = await apiFetch(`${API_URL}/documents/${documentId}/attachments`, {
         method: "POST",
         body: formData
     })
@@ -79,13 +86,13 @@ export async function uploadDocumentAttachments(documentId: string, files: File[
 }
 
 export async function getDocuments() {
-    const res = await fetch(`${API_URL}/documents`)
+    const res = await apiFetch(`${API_URL}/documents`)
     if (!res.ok) throw new Error("Failed to fetch documents")
     return await res.json()
 }
 
 export async function deleteDocument(id: string) {
-    const res = await fetch(`${API_URL}/documents/${id}`, {
+    const res = await apiFetch(`${API_URL}/documents/${id}`, {
         method: "DELETE"
     })
 
@@ -94,13 +101,13 @@ export async function deleteDocument(id: string) {
 }
 
 export async function getArchivedDocuments() {
-    const res = await fetch(`${API_URL}/documents/archived`)
+    const res = await apiFetch(`${API_URL}/documents/archived`)
     if (!res.ok) throw new Error("Failed to fetch archived documents")
     return await res.json()
 }
 
 export async function restoreArchivedDocument(id: string) {
-    const res = await fetch(`${API_URL}/documents/${id}/restore`, {
+    const res = await apiFetch(`${API_URL}/documents/${id}/restore`, {
         method: "POST"
     })
     const data = await res.json().catch(() => ({}))
@@ -109,7 +116,7 @@ export async function restoreArchivedDocument(id: string) {
 }
 
 export async function permanentlyDeleteArchivedDocument(id: string) {
-    const res = await fetch(`${API_URL}/documents/${id}/permanent`, {
+    const res = await apiFetch(`${API_URL}/documents/${id}/permanent`, {
         method: "DELETE"
     })
     const data = await res.json().catch(() => ({}))
@@ -118,7 +125,7 @@ export async function permanentlyDeleteArchivedDocument(id: string) {
 }
 
 export async function bulkRestoreArchivedDocuments(ids: string[]) {
-    const res = await fetch(`${API_URL}/documents/archive/restore-bulk`, {
+    const res = await apiFetch(`${API_URL}/documents/archive/restore-bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids })
@@ -129,7 +136,7 @@ export async function bulkRestoreArchivedDocuments(ids: string[]) {
 }
 
 export async function bulkPermanentlyDeleteArchivedDocuments(ids: string[]) {
-    const res = await fetch(`${API_URL}/documents/archive/permanent-delete-bulk`, {
+    const res = await apiFetch(`${API_URL}/documents/archive/permanent-delete-bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids })
@@ -140,7 +147,7 @@ export async function bulkPermanentlyDeleteArchivedDocuments(ids: string[]) {
 }
 
 export async function updateDocument(id: string, data: any) {
-    const response = await fetch(`${API_URL}/documents/${id}`, {
+    const response = await apiFetch(`${API_URL}/documents/${id}`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json"
@@ -156,7 +163,7 @@ export async function updateDocument(id: string, data: any) {
 }
 
 export async function getSettings() {
-    const response = await fetch(`${API_URL}/settings`)
+    const response = await apiFetch(`${API_URL}/settings`)
     const data: AppSettingsResponse = await response.json().catch(() => ({ fields_for_cards: [] }))
     if (!response.ok) {
         throw new Error("Failed to fetch settings")
@@ -165,7 +172,7 @@ export async function getSettings() {
 }
 
 export async function createCardField(name: string, type: "text" | "number") {
-    const response = await fetch(`${API_URL}/settings/fields`, {
+    const response = await apiFetch(`${API_URL}/settings/fields`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -180,7 +187,7 @@ export async function createCardField(name: string, type: "text" | "number") {
 }
 
 export async function deleteCardField(name: string) {
-    const response = await fetch(`${API_URL}/settings/fields/${encodeURIComponent(name)}`, {
+    const response = await apiFetch(`${API_URL}/settings/fields/${encodeURIComponent(name)}`, {
         method: "DELETE"
     })
     const data = await response.json().catch(() => ({}))
@@ -191,7 +198,7 @@ export async function deleteCardField(name: string) {
 }
 
 export async function updateDocumentCustomFields(id: string, customFields: Record<string, string | number | null>) {
-    const response = await fetch(`${API_URL}/documents/${id}/fields`, {
+    const response = await apiFetch(`${API_URL}/documents/${id}/fields`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json"
@@ -211,7 +218,7 @@ export async function setDocumentTags(id: string, tags: string[]) {
 }
 
 export async function searchDocuments(q: string) {
-    const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}`)
+    const res = await apiFetch(`${API_URL}/search?q=${encodeURIComponent(q)}`)
     if (!res.ok) throw new Error("Search request failed")
     return await res.json()
 }
@@ -226,7 +233,7 @@ export function tagExists(tags: string[], tag: string) {
 }
 
 export async function getTags(): Promise<string[]> {
-    const response = await fetch(`${API_URL}/tags`)
+    const response = await apiFetch(`${API_URL}/tags`)
     if (!response.ok) {
         throw new Error("Failed to fetch tags")
     }
@@ -237,7 +244,7 @@ export async function getTags(): Promise<string[]> {
 
 
 export async function createTag(tag: string) {
-    const response = await fetch(`${API_URL}/tags`, {
+    const response = await apiFetch(`${API_URL}/tags`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -255,7 +262,7 @@ export async function createTag(tag: string) {
 }
 
 export async function deleteTag(tag: string) {
-    const response = await fetch(`${API_URL}/tags/${encodeURIComponent(normalizeTag(tag))}`, {
+    const response = await apiFetch(`${API_URL}/tags/${encodeURIComponent(normalizeTag(tag))}`, {
         method: "DELETE"
     })
 
@@ -282,7 +289,7 @@ export interface ImageEditPayload {
 }
 
 export async function editDocumentImage(id: string, payload: ImageEditPayload) {
-    const response = await fetch(`${API_URL}/documents/${id}/image`, {
+    const response = await apiFetch(`${API_URL}/documents/${id}/image`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json"
@@ -300,7 +307,7 @@ export async function editDocumentImage(id: string, payload: ImageEditPayload) {
 }
 
 export async function deleteDocumentAttachment(id: string, attachmentFilename: string) {
-    const response = await fetch(`${API_URL}/documents/${id}/attachments/${encodeURIComponent(attachmentFilename)}`, {
+    const response = await apiFetch(`${API_URL}/documents/${id}/attachments/${encodeURIComponent(attachmentFilename)}`, {
         method: "DELETE"
     })
 
@@ -314,7 +321,7 @@ export async function deleteDocumentAttachment(id: string, attachmentFilename: s
 }
 
 export async function deleteDocumentImage(id: string, imageFilename: string) {
-    const response = await fetch(`${API_URL}/documents/${id}/gallery/${encodeURIComponent(imageFilename)}`, {
+    const response = await apiFetch(`${API_URL}/documents/${id}/gallery/${encodeURIComponent(imageFilename)}`, {
         method: "DELETE"
     })
 
@@ -324,5 +331,48 @@ export async function deleteDocumentImage(id: string, imageFilename: string) {
         throw new Error(data.detail || "Failed to delete image")
     }
 
+    return data
+}
+
+
+export interface AuthUser {
+    id: string
+    username: string
+    created_at?: string
+    is_active?: boolean
+}
+
+export async function register(username: string, password: string): Promise<AuthUser> {
+    const response = await apiFetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Не удалось зарегистрироваться")
+    return data
+}
+
+export async function login(username: string, password: string): Promise<AuthUser> {
+    const response = await apiFetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Не удалось войти")
+    return data
+}
+
+export async function logout() {
+    const response = await apiFetch(`${API_URL}/auth/logout`, { method: "POST" })
+    if (!response.ok) throw new Error("Failed to logout")
+}
+
+export async function getCurrentUser(): Promise<AuthUser | null> {
+    const response = await apiFetch(`${API_URL}/auth/me`)
+    if (response.status === 401) return null
+    const data = await response.json().catch(() => null)
+    if (!response.ok) throw new Error("Failed to load current user")
     return data
 }

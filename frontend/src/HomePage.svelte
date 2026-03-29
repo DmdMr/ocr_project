@@ -6,6 +6,7 @@
     import { getTags } from "./lib/api"
     import { onMount } from "svelte"
     import { push } from 'svelte-spa-router'
+    import { currentUser, logout } from './lib/auth'
 
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
@@ -110,6 +111,11 @@
   <aside class="workspace-sidebar panel" class:open={sidebarOpen} aria-hidden={!sidebarOpen}>
     <div class="sidebar-scroll">
       <WorkspaceSidebar
+        currentUsername={$currentUser?.username ?? null}
+        on:logout={async () => {
+          await logout()
+          push('/login')
+        }}
         on:navigateAbout={() => push('/about')}
         on:navigateArchive={() => push('/archive')}
         on:navigateAssistant={() => push('/assistant')}
