@@ -9,7 +9,7 @@ from passlib.exc import UnknownHashError
 
 from backend.app.db.database import sessions_collection, users_collection
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], default="pbkdf2_sha256", deprecated="auto")
 
 SESSION_COOKIE_NAME = "session_id"
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "7"))
@@ -20,7 +20,6 @@ BCRYPT_PASSWORD_MAX_BYTES = 72
 
 def password_exceeds_bcrypt_limit(password: str) -> bool:
     return len((password or "").encode("utf-8")) > BCRYPT_PASSWORD_MAX_BYTES
-
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)

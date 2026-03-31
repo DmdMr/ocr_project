@@ -216,9 +216,6 @@ async def register(payload: AuthCredentials, response: Response):
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-    if password_exceeds_bcrypt_limit(password):
-        raise HTTPException(status_code=400, detail="Password is too long (max 72 bytes for bcrypt)")
-
     username_lower = username.lower()
     existing_user = await users_collection.find_one({"username_lower": username_lower})
     if existing_user:
@@ -260,7 +257,7 @@ async def login(payload: AuthCredentials, response: Response):
         raise HTTPException(status_code=403, detail="User is inactive")
 
     # Upgrade legacy plaintext password records to bcrypt after successful login.
-    if password_hash and not password_hash.startswith("$2"):
+    if password_hash and not password_hash.startswith("$"):
         await users_collection.update_one(
             {"_id": user["_id"]},
             {"$set": {"password_hash": hash_password(password)}},
