@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Router, { location, push } from 'svelte-spa-router'
+  import Router, { push } from 'svelte-spa-router'
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
 
@@ -27,23 +27,48 @@
     '/document/:id': DocumentPage
   }
 
+  function currentPath() {
+    if (typeof window === 'undefined') return '/'
+    const hash = window.location.hash || ''
+    if (hash.startsWith('#/')) return hash.slice(1)
+    return window.location.pathname || '/'
+  }
+
+  function isPublicRoute(path: string) {
+    if (publicRoutes.has(path)) return true
+    return [...publicRoutes].some((route) => path.startsWith(`${route}/`))
+  }
+
   function enforceRoute(path: string) {
     if (!get(authReady)) return
     const user = get(currentUser)
-    if (!user && !publicRoutes.has(path)) {
+    const routeIsPublic = isPublicRoute(path)
+
+    if (!user && !routeIsPublic) {
       push('/login')
-    } else if (user && publicRoutes.has(path)) {
+    } else if (user && routeIsPublic) {
       push('/')
     }
   }
 
-  onMount(async () => {
-    await initAuth()
-    enforceRoute(get(location))
-  })
+  onMount(() => {
+    const syncRoute = () => enforceRoute(currentPath())
 
-  location.subscribe((path) => enforceRoute(path))
-  currentUser.subscribe(() => enforceRoute(get(location)))
+    void initAuth().then(() => {
+      syncRoute()
+    })
+
+    window.addEventListener('hashchange', syncRoute)
+    window.addEventListener('popstate', syncRoute)
+
+    const unsubscribeUser = currentUser.subscribe(() => syncRoute())
+
+    return () => {
+      window.removeEventListener('hashchange', syncRoute)
+      window.removeEventListener('popstate', syncRoute)
+      unsubscribeUser()
+    }
+  })
 </script>
 
 {#if $authReady}
