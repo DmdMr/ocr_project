@@ -1,13 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte"
   import { push } from "svelte-spa-router"
-  import {
-    getDocumentById,
-    UPLOADS_URL,
-    updateDocumentContentBlocks,
-    uploadImagesToDocument
-  } from "./lib/api"
-  import type { AttachmentFile, ContentBlock, Document, ImageContentBlock } from "./lib/types"
+  import { getDocumentById, UPLOADS_URL, updateDocumentBodyMarkdown, uploadImagesToDocument } from "./lib/api"
+  import type { AttachmentFile, Document } from "./lib/types"
   import { documentRoute, documentSlug } from "./lib/documentRoutes"
 
   export let params: { id?: string; slug?: string } = {}
@@ -19,8 +14,9 @@
 
   let isEditMode = false
   let isSaving = false
-  let editorBlocks: ContentBlock[] = []
-  let hasUnsavedChanges = false
+  let editedBody = ""
+  let originalBody = ""
+  let bodyTextarea: HTMLTextAreaElement | null = null
 
   $: nextId = (params?.id || "").trim()
   $: if (nextId && nextId !== documentId) {
@@ -38,12 +34,12 @@
   async function loadDocument(id: string) {
     loading = true
     error = ""
-    hasUnsavedChanges = false
     isEditMode = false
     try {
       const loadedDoc = await getDocumentById(id) as Document
       doc = loadedDoc
-      editorBlocks = materializeBlocks(loadedDoc)
+      originalBody = getPreferredBody(loadedDoc)
+      editedBody = originalBody
 
       const expectedSlug = documentSlug(loadedDoc)
       const currentSlug = (params?.slug || "").trim()
@@ -58,40 +54,24 @@
     }
   }
 
-  function blockId() {
-    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-      return crypto.randomUUID()
-    }
-    return `block_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-  }
-
-  function materializeBlocks(currentDoc: Document): ContentBlock[] {
-    if (Array.isArray(currentDoc.content_blocks) && currentDoc.content_blocks.length > 0) {
-      return currentDoc.content_blocks.map((block) => ({ ...block }))
+  function getPreferredBody(currentDoc: Document) {
+    if ((currentDoc.body_markdown || "").trim()) {
+      return currentDoc.body_markdown || ""
     }
 
-    const derivedBlocks: ContentBlock[] = []
     const recognized = (currentDoc.recognized_text || "").trim()
+    const sections: string[] = []
     if (recognized) {
-      derivedBlocks.push({ id: blockId(), type: "text", text: recognized })
+      sections.push(recognized)
     }
 
-    for (const image of currentDoc.gallery_images || []) {
-      derivedBlocks.push({
-        id: blockId(),
-        type: "image",
-        image_filename: image.filename,
-        image_path: image.path,
-        caption: (image as any).caption || (image as any).caption_text || ""
-      })
+    const images = currentDoc.gallery_images || []
+    if (images.length) {
+      const imageLines = images.map((image) => `![${image.filename}](${UPLOADS_URL}/${image.filename})`)
+      sections.push(imageLines.join("\n\n"))
     }
 
-    return derivedBlocks
-  }
-
-  function displayBlocks() {
-    if (!doc) return []
-    return isEditMode ? editorBlocks : materializeBlocks(doc)
+    return sections.join("\n\n")
   }
 
   function formatDate(value?: string) {
@@ -105,70 +85,128 @@
     return current.display_filename || current.filename
   }
 
-  function imageUrlByFilename(filename: string, fallbackPath?: string) {
-    if (!filename && fallbackPath) return fallbackPath
-    return `${UPLOADS_URL}/${filename}`
-  }
-
-
   function attachmentUrl(file: AttachmentFile) {
     return `${UPLOADS_URL}/${file.filename}`
+  }
+
+  function escapeHtml(value: string) {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;")
+  }
+
+  function normalizeImageUrl(url: string) {
+    const trimmed = url.trim()
+    if (!trimmed) return ""
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+      return trimmed
+    }
+    return `${UPLOADS_URL}/${trimmed}`
+  }
+
+  function renderMarkdown(markdown: string) {
+    const lines = (markdown || "").replace(/\r\n/g, "\n").split("\n")
+    const html: string[] = []
+    let paragraphBuffer: string[] = []
+    let listBuffer: string[] = []
+
+    const flushParagraph = () => {
+      if (!paragraphBuffer.length) return
+      const text = escapeHtml(paragraphBuffer.join(" "))
+      html.push(`<p>${text}</p>`)
+      paragraphBuffer = []
+    }
+
+    const flushList = () => {
+      if (!listBuffer.length) return
+      const items = listBuffer.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+      html.push(`<ul>${items}</ul>`)
+      listBuffer = []
+    }
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim()
+
+      if (!line) {
+        flushParagraph()
+        flushList()
+        continue
+      }
+
+      const heading = line.match(/^(#{1,3})\s+(.+)$/)
+      if (heading) {
+        flushParagraph()
+        flushList()
+        const level = heading[1].length
+        html.push(`<h${level}>${escapeHtml(heading[2])}</h${level}>`)
+        continue
+      }
+
+      const image = line.match(/^!\[(.*?)\]\((.*?)\)$/)
+      if (image) {
+        flushParagraph()
+        flushList()
+        const alt = escapeHtml(image[1] || "image")
+        const src = escapeHtml(normalizeImageUrl(image[2] || ""))
+        if (src) {
+          html.push(`<figure><img src="${src}" alt="${alt}" loading="lazy" /></figure>`)
+        }
+        continue
+      }
+
+      const listItem = line.match(/^[-*]\s+(.+)$/)
+      if (listItem) {
+        flushParagraph()
+        listBuffer.push(listItem[1])
+        continue
+      }
+
+      flushList()
+      paragraphBuffer.push(line)
+    }
+
+    flushParagraph()
+    flushList()
+
+    return html.join("\n")
   }
 
   function startEditing() {
     if (!doc) return
     isEditMode = true
-    editorBlocks = materializeBlocks(doc)
-    hasUnsavedChanges = false
+    originalBody = getPreferredBody(doc)
+    editedBody = originalBody
   }
 
   function cancelEditing() {
-    if (!doc) return
     isEditMode = false
-    editorBlocks = materializeBlocks(doc)
-    hasUnsavedChanges = false
+    editedBody = originalBody
   }
 
-  function setDirty(nextBlocks: ContentBlock[]) {
-    editorBlocks = nextBlocks
-    hasUnsavedChanges = true
+  function hasUnsavedChanges() {
+    return editedBody !== originalBody
   }
 
-  function updateBlock(index: number, patch: Partial<ContentBlock>) {
-    const current = editorBlocks[index]
-    if (!current) return
-    const next = [...editorBlocks]
-    next[index] = { ...current, ...patch } as ContentBlock
-    setDirty(next)
+  async function saveBody() {
+    if (!doc) return
+    isSaving = true
+    try {
+      const updatedDoc = await updateDocumentBodyMarkdown(doc._id, editedBody)
+      doc = updatedDoc as Document
+      originalBody = getPreferredBody(doc)
+      editedBody = originalBody
+      isEditMode = false
+    } catch (saveError) {
+      alert(saveError instanceof Error ? saveError.message : "Failed to save document body")
+    } finally {
+      isSaving = false
+    }
   }
 
-  function removeBlock(index: number) {
-    const next = editorBlocks.filter((_, idx) => idx !== index)
-    setDirty(next)
-  }
-
-  function moveBlock(index: number, direction: -1 | 1) {
-    const targetIndex = index + direction
-    if (targetIndex < 0 || targetIndex >= editorBlocks.length) return
-    const next = [...editorBlocks]
-    const [item] = next.splice(index, 1)
-    next.splice(targetIndex, 0, item)
-    setDirty(next)
-  }
-
-  function addTextBlock() {
-    setDirty([...editorBlocks, { id: blockId(), type: "text", text: "" }])
-  }
-
-  function addHeadingBlock(level: 1 | 2 | 3 = 2) {
-    setDirty([...editorBlocks, { id: blockId(), type: "heading", level, text: "" }])
-  }
-
-  function addDividerBlock() {
-    setDirty([...editorBlocks, { id: blockId(), type: "divider" }])
-  }
-
-  async function addImageBlock(event: Event) {
+  async function insertImageAtCursor(event: Event) {
     if (!doc) return
     const input = event.currentTarget as HTMLInputElement
     const files = Array.from(input.files || [])
@@ -181,39 +219,35 @@
         doc = result.document as Document
       }
 
-      const currentImages = doc?.gallery_images || []
-      const added = currentImages.filter((item) => !previousNames.has(item.filename))
-      const imageBlocks: ImageContentBlock[] = added.map((item) => ({
-        id: blockId(),
-        type: "image",
-        image_filename: item.filename,
-        image_path: item.path,
-        caption: ""
-      }))
-      if (imageBlocks.length > 0) {
-        setDirty([...editorBlocks, ...imageBlocks])
+      const addedImages = (doc?.gallery_images || []).filter((item) => !previousNames.has(item.filename))
+      if (!addedImages.length) return
+
+      const snippets = addedImages.map((image) => `![${image.filename}](${UPLOADS_URL}/${image.filename})`).join("\n\n")
+      const insertion = `\n\n${snippets}\n\n`
+
+      const textarea = bodyTextarea
+      if (!textarea) {
+        editedBody += insertion
+        return
       }
+
+      const start = textarea.selectionStart ?? editedBody.length
+      const end = textarea.selectionEnd ?? editedBody.length
+      editedBody = `${editedBody.slice(0, start)}${insertion}${editedBody.slice(end)}`
+
+      await tickCursor(textarea, start + insertion.length)
     } catch (uploadError) {
-      alert(uploadError instanceof Error ? uploadError.message : "Failed to upload image block")
+      alert(uploadError instanceof Error ? uploadError.message : "Failed to upload image")
     } finally {
       input.value = ""
     }
   }
 
-  async function saveBlocks() {
-    if (!doc) return
-    isSaving = true
-    try {
-      const updatedDoc = await updateDocumentContentBlocks(doc._id, editorBlocks)
-      doc = updatedDoc as Document
-      editorBlocks = materializeBlocks(doc)
-      hasUnsavedChanges = false
-      isEditMode = false
-    } catch (saveError) {
-      alert(saveError instanceof Error ? saveError.message : "Failed to save blocks")
-    } finally {
-      isSaving = false
-    }
+  async function tickCursor(textarea: HTMLTextAreaElement, nextPos: number) {
+    await Promise.resolve()
+    textarea.focus()
+    textarea.selectionStart = nextPos
+    textarea.selectionEnd = nextPos
   }
 </script>
 
@@ -227,15 +261,19 @@
     </div>
   {:else if doc}
     <article class="document-reading-layout">
-      <header class="document-header">
-        <div class="header-row">
+      <header class="document-header card-like">
+        <div class="top-actions">
           <button class="back-button" on:click={() => push("/")}>← Back</button>
           {#if !isEditMode}
-            <button on:click={startEditing}>Edit blocks</button>
+            <button on:click={startEditing}>Edit</button>
           {:else}
             <div class="editor-actions">
+              <label class="insert-image-btn">
+                Insert image
+                <input type="file" accept="image/*" on:change={insertImageAtCursor} />
+              </label>
               <button class="secondary" on:click={cancelEditing}>Cancel</button>
-              <button on:click={saveBlocks} disabled={isSaving}>{isSaving ? "Saving..." : "Save blocks"}</button>
+              <button on:click={saveBody} disabled={isSaving || !hasUnsavedChanges()}>{isSaving ? "Saving..." : "Save"}</button>
             </div>
           {/if}
         </div>
@@ -244,7 +282,11 @@
 
       <section class="properties card-like">
         <div><strong>Created:</strong> {formatDate(doc.created_at)}</div>
+        {#if (doc as any).created_by || (doc as any).updated_by_username}
+          <div><strong>Author:</strong> {(doc as any).created_by || (doc as any).updated_by_username}</div>
+        {/if}
         <div><strong>Filename:</strong> {doc.filename}</div>
+
         {#if doc.tags?.length}
           <div class="tags-wrap">
             <strong>Tags:</strong>
@@ -284,84 +326,16 @@
         </section>
       {/if}
 
-      {#if isEditMode}
-        <section class="card-like block-toolbar">
-          <strong>Add block:</strong>
-          <div class="toolbar-buttons">
-            <button on:click={addTextBlock}>Add text</button>
-            <button on:click={() => addHeadingBlock(2)}>Add heading</button>
-            <button on:click={addDividerBlock}>Add divider</button>
-            <label class="file-button">
-              Add image
-              <input type="file" accept="image/*" on:change={addImageBlock} />
-            </label>
-          </div>
-          {#if hasUnsavedChanges}
-            <p class="muted">You have unsaved block changes.</p>
+      <section class="card-like note-body">
+        {#if isEditMode}
+          <textarea bind:this={bodyTextarea} bind:value={editedBody} rows="24" class="note-editor"></textarea>
+          {#if hasUnsavedChanges()}
+            <p class="muted">Unsaved changes</p>
           {/if}
-        </section>
-      {/if}
-
-      <section class="card-like content-blocks">
-        {#if displayBlocks().length === 0}
-          <p class="muted">No content blocks yet. Add one in edit mode.</p>
+        {:else}
+          {@html renderMarkdown(getPreferredBody(doc))}
         {/if}
-
-        {#each displayBlocks() as block, index (block.id)}
-          <div class="block-item">
-            {#if block.type === "heading"}
-              {#if isEditMode}
-                <div class="block-controls">
-                  <select value={String(block.level || 1)} on:change={(event) => updateBlock(index, { level: Number((event.currentTarget as HTMLSelectElement).value) as 1 | 2 | 3 })}>
-                    <option value="1">H1</option>
-                    <option value="2">H2</option>
-                    <option value="3">H3</option>
-                  </select>
-                  <input value={block.text} placeholder="Heading" on:input={(event) => updateBlock(index, { text: (event.currentTarget as HTMLInputElement).value })} />
-                </div>
-              {:else if block.level === 1}
-                <h1>{block.text}</h1>
-              {:else if block.level === 2}
-                <h2>{block.text}</h2>
-              {:else}
-                <h3>{block.text}</h3>
-              {/if}
-            {:else if block.type === "text"}
-              {#if isEditMode}
-                <textarea
-                  rows="5"
-                  value={block.text}
-                  placeholder="Write text..."
-                  on:input={(event) => updateBlock(index, { text: (event.currentTarget as HTMLTextAreaElement).value })}
-                ></textarea>
-              {:else}
-                <pre>{block.text}</pre>
-              {/if}
-            {:else if block.type === "image"}
-              <figure>
-                <img src={imageUrlByFilename(block.image_filename, block.image_path)} alt={block.image_filename} loading="lazy" />
-                {#if isEditMode}
-                  <input value={block.caption || ""} placeholder="Image caption" on:input={(event) => updateBlock(index, { caption: (event.currentTarget as HTMLInputElement).value })} />
-                {:else if block.caption}
-                  <figcaption>{block.caption}</figcaption>
-                {/if}
-              </figure>
-            {:else if block.type === "divider"}
-              <hr />
-            {/if}
-
-            {#if isEditMode}
-              <div class="reorder-controls">
-                <button on:click={() => moveBlock(index, -1)} disabled={index === 0}>↑</button>
-                <button on:click={() => moveBlock(index, 1)} disabled={index === displayBlocks().length - 1}>↓</button>
-                <button class="danger" on:click={() => removeBlock(index)}>Delete</button>
-              </div>
-            {/if}
-          </div>
-        {/each}
       </section>
-
-      
     </article>
   {/if}
 </div>
@@ -379,20 +353,6 @@
     gap: 16px;
   }
 
-  .header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .editor-actions { display: flex; gap: 8px; }
-
-  .document-header h1 {
-    margin: 10px 0 0;
-    line-height: 1.2;
-  }
-
   .card-like,
   .state-card {
     border: 1px solid var(--border);
@@ -401,21 +361,32 @@
     padding: 16px;
   }
 
-  .toolbar-buttons {
-    margin-top: 8px;
+  .top-actions {
     display: flex;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .document-header h1 {
+    margin: 12px 0 0;
+    line-height: 1.2;
+  }
+
+  .editor-actions {
+    display: flex;
+    align-items: center;
     gap: 8px;
   }
 
-  .file-button {
+  .insert-image-btn {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 6px 12px;
+    padding: 6px 10px;
     cursor: pointer;
   }
 
-  .file-button input {
+  .insert-image-btn input {
     display: none;
   }
 
@@ -431,53 +402,43 @@
   .custom-fields dt { font-weight: 600; }
   .custom-fields dd { margin: 0; color: var(--text-muted); }
 
-  .content-blocks {
-    display: grid;
-    gap: 12px;
-  }
-
-  .block-item {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 12px;
-    background: var(--surface);
-    display: grid;
-    gap: 8px;
-  }
-
-  .block-controls,
-  .reorder-controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  input,
-  select,
-  textarea {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  pre {
-    white-space: pre-wrap;
-    word-break: break-word;
-    margin: 0;
-    line-height: 1.55;
-    font-family: inherit;
-  }
-
   .attachment-list { margin: 0; padding-left: 18px; }
 
-  figure { margin: 0; }
+  .note-editor {
+    width: 100%;
+    min-height: 62vh;
+    resize: vertical;
+    line-height: 1.6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  }
 
-  img {
+  .note-body :global(h1),
+  .note-body :global(h2),
+  .note-body :global(h3) {
+    margin-top: 1.3em;
+    margin-bottom: 0.5em;
+    line-height: 1.25;
+  }
+
+  .note-body :global(p),
+  .note-body :global(ul) {
+    line-height: 1.7;
+    margin: 0 0 1em;
+  }
+
+  .note-body :global(ul) {
+    padding-left: 1.3rem;
+  }
+
+  .note-body :global(img) {
     width: 100%;
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
-    display: block;
+    margin: 0.75em 0;
   }
 
-  .muted { color: var(--text-muted); }
+  .muted {
+    color: var(--text-muted);
+    margin: 8px 0 0;
+  }
 </style>

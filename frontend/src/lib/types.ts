@@ -50,6 +50,7 @@ export interface Document {
     filename: string
     display_filename?: string
     recognized_text: string
+    body_markdown?: string
     created_at: string
     is_archived?: boolean
     archived_at?: string | null

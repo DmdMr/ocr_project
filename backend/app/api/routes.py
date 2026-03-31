@@ -142,6 +142,8 @@ def normalize_document(doc: dict):
         doc["custom_fields"] = {}
     if doc.get("content_blocks") is not None and not isinstance(doc.get("content_blocks"), list):
         doc["content_blocks"] = []
+    if doc.get("body_markdown") is not None and not isinstance(doc.get("body_markdown"), str):
+        doc["body_markdown"] = ""
     return doc
 
 
@@ -542,6 +544,7 @@ from typing import Optional, List
 
 class DocumentUpdate(BaseModel):
     recognized_text: Optional[str] = None
+    body_markdown: Optional[str] = None
     tags: Optional[List[str]] = None
     display_filename: Optional[str] = None
 

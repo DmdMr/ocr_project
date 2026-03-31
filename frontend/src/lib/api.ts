@@ -171,6 +171,10 @@ export async function updateDocumentContentBlocks(id: string, contentBlocks: any
     return data
 }
 
+export async function updateDocumentBodyMarkdown(id: string, bodyMarkdown: string) {
+    return updateDocument(id, { body_markdown: bodyMarkdown })
+}
+
 export async function updateDocument(id: string, data: any) {
     const response = await apiFetch(`${API_URL}/documents/${id}`, {
         method: "PUT",
