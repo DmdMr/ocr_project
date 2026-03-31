@@ -140,6 +140,10 @@ def normalize_document(doc: dict):
         doc["attachments"] = []
     if not isinstance(doc.get("custom_fields"), dict):
         doc["custom_fields"] = {}
+    if doc.get("content_blocks") is not None and not isinstance(doc.get("content_blocks"), list):
+        doc["content_blocks"] = []
+    if doc.get("body_markdown") is not None and not isinstance(doc.get("body_markdown"), str):
+        doc["body_markdown"] = ""
     return doc
 
 
@@ -211,7 +215,6 @@ async def register(payload: AuthCredentials, response: Response):
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-
     username_lower = username.lower()
     existing_user = await users_collection.find_one({"username_lower": username_lower})
     if existing_user:
@@ -242,10 +245,19 @@ async def login(payload: AuthCredentials, response: Response):
     username_lower = username.lower()
 
     user = await users_collection.find_one({"username_lower": username_lower})
-    if not user or not verify_password(password, user.get("password_hash", "")):
+    password_hash = user.get("password_hash", "") if user else ""
+
+    if not user or not verify_password(password, password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="User is inactive")
+
+    # Upgrade legacy plaintext password records to bcrypt after successful login.
+    if password_hash and not password_hash.startswith("$"):
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"password_hash": hash_password(password)}},
+        )
 
     session_id, expires_at = await create_session(user["_id"])
     set_session_cookie(response, session_id, expires_at)
@@ -540,6 +552,7 @@ from typing import Optional, List
 
 class DocumentUpdate(BaseModel):
     recognized_text: Optional[str] = None
+    body_markdown: Optional[str] = None
     tags: Optional[List[str]] = None
     display_filename: Optional[str] = None
 
@@ -555,6 +568,54 @@ class CustomFieldDefinition(BaseModel):
 
 class DocumentCustomFieldsUpdate(BaseModel):
     custom_fields: dict = Field(default_factory=dict)
+
+
+class ContentBlockUpdate(BaseModel):
+    content_blocks: List[dict] = Field(default_factory=list)
+
+
+def validate_content_blocks(content_blocks: List[dict]):
+    if not isinstance(content_blocks, list):
+        raise HTTPException(status_code=400, detail="content_blocks должен быть списком")
+
+    normalized_blocks = []
+    for index, raw_block in enumerate(content_blocks):
+        if not isinstance(raw_block, dict):
+            raise HTTPException(status_code=400, detail=f"Блок #{index + 1} должен быть объектом")
+
+        block_id = str(raw_block.get("id") or "").strip()
+        block_type = str(raw_block.get("type") or "").strip().lower()
+        if not block_id:
+            raise HTTPException(status_code=400, detail=f"Блок #{index + 1} должен содержать id")
+        if block_type not in {"text", "heading", "image", "divider"}:
+            raise HTTPException(status_code=400, detail=f"Неподдерживаемый тип блока: {block_type or 'unknown'}")
+
+        normalized = {"id": block_id, "type": block_type}
+
+        if block_type == "text":
+            normalized["text"] = str(raw_block.get("text") or "")
+        elif block_type == "heading":
+            level = raw_block.get("level", 1)
+            try:
+                level = int(level)
+            except Exception:
+                level = 1
+            if level not in {1, 2, 3}:
+                level = 1
+            normalized["level"] = level
+            normalized["text"] = str(raw_block.get("text") or "")
+        elif block_type == "image":
+            image_filename = str(raw_block.get("image_filename") or "").strip()
+            if not image_filename:
+                raise HTTPException(status_code=400, detail=f"Блок изображения #{index + 1} должен содержать image_filename")
+            normalized["image_filename"] = image_filename
+            if raw_block.get("image_path"):
+                normalized["image_path"] = str(raw_block.get("image_path"))
+            normalized["caption"] = str(raw_block.get("caption") or "")
+
+        normalized_blocks.append(normalized)
+
+    return normalized_blocks
 
 
 @router.get("/settings")
@@ -680,6 +741,32 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
     )
     return normalize_document(updated_doc)
 
+
+
+@router.put("/documents/{doc_id}/content-blocks")
+async def update_document_content_blocks(request: Request, doc_id: str, payload: ContentBlockUpdate, current_user=Depends(require_current_user)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    normalized_blocks = validate_content_blocks(payload.content_blocks or [])
+
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"content_blocks": normalized_blocks, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
+    )
+
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    write_audit_log(
+        request,
+        "document.content_blocks.update",
+        {"document_id": doc_id, "block_count": len(normalized_blocks)},
+    )
+    return normalize_document(updated_doc)
 
 
 @router.put("/documents/{doc_id}/image")
@@ -966,6 +1053,15 @@ async def permanently_delete_archived_documents_bulk(request: Request, payload: 
     return {"message": "Карточки удалены навсегда", "deleted_count": len(deleted_ids)}
 
 
+
+
+@router.get("/documents/{doc_id}")
+async def get_document(doc_id: str, current_user=Depends(require_current_user)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return normalize_document(document)
 
 
 @router.get("/search")
