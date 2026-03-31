@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Response
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 
 from backend.app.db.database import sessions_collection, users_collection
 
@@ -14,6 +15,11 @@ SESSION_COOKIE_NAME = "session_id"
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "7"))
 COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
+BCRYPT_PASSWORD_MAX_BYTES = 72
+
+
+def password_exceeds_bcrypt_limit(password: str) -> bool:
+    return len((password or "").encode("utf-8")) > BCRYPT_PASSWORD_MAX_BYTES
 
 
 def utc_now() -> datetime:
@@ -25,7 +31,17 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    if not password_hash:
+        return False
+
+    try:
+        return pwd_context.verify(password, password_hash)
+    except UnknownHashError:
+        # Backward compatibility for very old plaintext records.
+        return secrets.compare_digest(password, password_hash)
+    except ValueError:
+        # bcrypt rejects passwords longer than 72 bytes.
+        return False
 
 
 async def create_session(user_id: str):

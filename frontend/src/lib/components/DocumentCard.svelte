@@ -1,8 +1,9 @@
 <script lang="ts">
     import { createEventDispatcher } from "svelte"
+    import { push } from "svelte-spa-router"
     import type { Document } from "../types"
-    import CardPreview from "./CardPreview.svelte"
     import { tagHue } from "../tagColors"
+    import { documentRoute } from "../documentRoutes"
     import {
         deleteDocument,
         updateDocument,
@@ -10,8 +11,6 @@
         UPLOADS_URL
     } from "../api"
     
-
-    export let showPreview = false
 
     export let doc: Document
 
@@ -43,7 +42,7 @@
             return
         }
 
-        showPreview = true
+        push(documentRoute(doc))
     }
 
     function handleCheckboxClick(event: MouseEvent) {
@@ -77,7 +76,7 @@
             return
         }
 
-        showPreview = true
+        push(documentRoute(doc))
     }
 
     function toggleSelection(event: MouseEvent) {
@@ -207,7 +206,7 @@
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="card-media" on:click={handleCardClick}>
-        <img src={cardImageSrc(doc)} alt="" on:click={() => showPreview = true}/>
+        <img src={cardImageSrc(doc)} alt="" on:click={openPreview}/>
         {#if cardImageCount(doc) >= 2}
             <div class="image-count-indicator" aria-label={`Изображений: ${cardImageCount(doc)}`}>
                 {#each Array(visibleIndicatorDots(cardImageCount(doc))) as _, idx (idx)}
@@ -257,24 +256,7 @@
     </div>
 
 
-    {#if showPreview}
-        <CardPreview
-            {doc}
-            //on:openPreview={() => isPreviewOpen = true}
-            //on:closePreview={() => isPreviewOpen = false}
-            bind:editedText
-            {editing}
-            on:close={() => showPreview = false}
-            on:save={save}
-            on:saveFilename={saveFilename}
-            on:delete={remove}
-            on:editToggle={() => editing = !editing}
-            on:tagClick={handleTagClick}
-            on:documentUpdated={handleDocumentUpdated}
-            on:addImages={uploadToCard}
-            {galleryUploading}
-        />
-    {/if}
+    
     
 </div>
 
