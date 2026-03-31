@@ -8,3 +8,4 @@ class DocumentModel(BaseModel):
     file_hash: str
     created_at: datetime
     custom_fields: dict = Field(default_factory=dict)
+    content_blocks: list[dict] | None = None

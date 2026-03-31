@@ -85,6 +85,13 @@ export async function uploadDocumentAttachments(documentId: string, files: File[
     return data
 }
 
+export async function getDocumentById(id: string) {
+    const res = await apiFetch(`${API_URL}/documents/${id}`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch document")
+    return data
+}
+
 export async function getDocuments() {
     const res = await apiFetch(`${API_URL}/documents`)
     if (!res.ok) throw new Error("Failed to fetch documents")
@@ -143,6 +150,24 @@ export async function bulkPermanentlyDeleteArchivedDocuments(ids: string[]) {
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.detail || "Failed to permanently delete documents")
+    return data
+}
+
+export async function updateDocumentContentBlocks(id: string, contentBlocks: any[]) {
+    const response = await apiFetch(`${API_URL}/documents/${id}/content-blocks`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ content_blocks: contentBlocks })
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to update content blocks")
+    }
+
     return data
 }
 
