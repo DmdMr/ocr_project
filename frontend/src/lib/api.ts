@@ -85,6 +85,13 @@ export async function uploadDocumentAttachments(documentId: string, files: File[
     return data
 }
 
+export async function getDocumentById(id: string) {
+    const res = await apiFetch(`${API_URL}/documents/${id}`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch document")
+    return data
+}
+
 export async function getDocuments() {
     const res = await apiFetch(`${API_URL}/documents`)
     if (!res.ok) throw new Error("Failed to fetch documents")

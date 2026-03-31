@@ -968,6 +968,15 @@ async def permanently_delete_archived_documents_bulk(request: Request, payload: 
 
 
 
+@router.get("/documents/{doc_id}")
+async def get_document(doc_id: str, current_user=Depends(require_current_user)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return normalize_document(document)
+
+
 @router.get("/search")
 async def search_documents(q: str):
     results = []
