@@ -15,6 +15,11 @@ SESSION_COOKIE_NAME = "session_id"
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "7"))
 COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
+BCRYPT_PASSWORD_MAX_BYTES = 72
+
+
+def password_exceeds_bcrypt_limit(password: str) -> bool:
+    return len((password or "").encode("utf-8")) > BCRYPT_PASSWORD_MAX_BYTES
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
