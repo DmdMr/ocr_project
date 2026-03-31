@@ -17,6 +17,34 @@ export interface AttachmentFile {
 }
 
 
+export type TextContentBlock = {
+    id: string
+    type: "text"
+    text: string
+}
+
+export type HeadingContentBlock = {
+    id: string
+    type: "heading"
+    text: string
+    level: 1 | 2 | 3
+}
+
+export type DividerContentBlock = {
+    id: string
+    type: "divider"
+}
+
+export type ImageContentBlock = {
+    id: string
+    type: "image"
+    image_filename: string
+    image_path?: string
+    caption?: string
+}
+
+export type ContentBlock = TextContentBlock | HeadingContentBlock | DividerContentBlock | ImageContentBlock
+
 export interface Document {
     _id: string
     filename: string
@@ -30,6 +58,7 @@ export interface Document {
     gallery_images?: GalleryImage[]
     attachments?: AttachmentFile[]
     custom_fields?: Record<string, string | number | null>
+    content_blocks?: ContentBlock[]
 }
 
 export interface CardCustomFieldSetting {
