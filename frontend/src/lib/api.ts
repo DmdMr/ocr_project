@@ -153,6 +153,24 @@ export async function bulkPermanentlyDeleteArchivedDocuments(ids: string[]) {
     return data
 }
 
+export async function updateDocumentContentBlocks(id: string, contentBlocks: any[]) {
+    const response = await apiFetch(`${API_URL}/documents/${id}/content-blocks`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ content_blocks: contentBlocks })
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to update content blocks")
+    }
+
+    return data
+}
+
 export async function updateDocument(id: string, data: any) {
     const response = await apiFetch(`${API_URL}/documents/${id}`, {
         method: "PUT",
