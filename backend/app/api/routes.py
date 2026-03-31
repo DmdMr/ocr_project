@@ -246,10 +246,19 @@ async def login(payload: AuthCredentials, response: Response):
     username_lower = username.lower()
 
     user = await users_collection.find_one({"username_lower": username_lower})
-    if not user or not verify_password(password, user.get("password_hash", "")):
+    password_hash = user.get("password_hash", "") if user else ""
+
+    if not user or not verify_password(password, password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="User is inactive")
+
+    # Upgrade legacy plaintext password records to bcrypt after successful login.
+    if password_hash and not password_hash.startswith("$2"):
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"password_hash": hash_password(password)}},
+        )
 
     session_id, expires_at = await create_session(user["_id"])
     set_session_cookie(response, session_id, expires_at)
