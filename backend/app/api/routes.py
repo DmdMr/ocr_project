@@ -16,6 +16,7 @@ from backend.app.auth import (
     create_session,
     get_current_user,
     hash_password,
+    password_exceeds_bcrypt_limit,
     require_current_user,
     set_session_cookie,
     verify_password,
@@ -243,6 +244,9 @@ async def login(payload: AuthCredentials, response: Response):
     username = (payload.username or "").strip()
     password = payload.password or ""
     username_lower = username.lower()
+
+    if password_exceeds_bcrypt_limit(password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
     user = await users_collection.find_one({"username_lower": username_lower})
     password_hash = user.get("password_hash", "") if user else ""
