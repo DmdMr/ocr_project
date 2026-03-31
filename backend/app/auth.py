@@ -5,15 +5,26 @@ from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Response
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 
 from backend.app.db.database import sessions_collection, users_collection
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], default="pbkdf2_sha256", deprecated="auto")
 
 SESSION_COOKIE_NAME = "session_id"
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "7"))
 COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
+
+
+
+def password_exceeds_bcrypt_limit(password: str) -> bool:
+    """Backward-compatible helper kept for older route imports.
+
+    bcrypt-specific limit checks are no longer required when using
+    pbkdf2_sha256 as default, so this returns False.
+    """
+    return False
 
 
 def utc_now() -> datetime:
@@ -25,7 +36,17 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    if not password_hash:
+        return False
+
+    try:
+        return pwd_context.verify(password, password_hash)
+    except UnknownHashError:
+        # Backward compatibility for very old plaintext records.
+        return secrets.compare_digest(password, password_hash)
+    except ValueError:
+        # bcrypt rejects passwords longer than 72 bytes.
+        return False
 
 
 async def create_session(user_id: str):
