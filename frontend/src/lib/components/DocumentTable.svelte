@@ -13,6 +13,7 @@
   } from "../api"
 
   export let documents: Document[] = []
+  export let openInPageMode = true
   export let selectedIds: string[] = []
   export let customFieldSettings: CardCustomFieldSetting[] = []
 
@@ -341,7 +342,13 @@
   }
 
   function openPreview(doc: Document) {
-    push(documentRoute(doc))
+    if (openInPageMode) {
+      push(documentRoute(doc))
+      return
+    }
+    activeDoc = doc
+    editedText = doc.recognized_text
+    editing = false
   }
 
   function closePreview() {
@@ -827,6 +834,22 @@
       </div>
     {/if}
   </div>
+{/if}
+
+{#if activeDoc}
+  <CardPreview
+    doc={activeDoc}
+    bind:editedText
+    {editing}
+    on:close={closePreview}
+    on:save={savePreviewText}
+    on:saveFilename={savePreviewFilename}
+    on:delete={removeActiveDoc}
+    on:editToggle={() => editing = !editing}
+    on:documentUpdated={(event) => applyDocumentUpdate(event.detail.document)}
+    on:addImages={uploadToCard}
+    {galleryUploading}
+  />
 {/if}
 
 

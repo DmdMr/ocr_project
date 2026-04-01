@@ -13,7 +13,9 @@
     let themeMode: ThemeMode = "system"
     let language: "en" | "ru" = "en"
     let viewMode: "grid" | "list" = "grid"
+    let openMode: "preview" | "page" = "preview"
     let viewModeLoaded = false
+    let openModeLoaded = false
     let columnCount = 5
     let columnsLoaded = false
     let sidebarOpen = true
@@ -80,12 +82,17 @@
         if (saved === "grid" || saved === "list") {
             viewMode = saved
         }
+        const savedOpenMode = localStorage.getItem("documentOpenMode")
+        if (savedOpenMode === "preview" || savedOpenMode === "page") {
+            openMode = savedOpenMode
+        }
         const savedSidebar = localStorage.getItem("workspaceSidebarOpen")
         if (savedSidebar === "true" || savedSidebar === "false") {
             sidebarOpen = savedSidebar === "true"
         }
         sidebarStateLoaded = true
         viewModeLoaded = true
+        openModeLoaded = true
     })
 
 
@@ -95,6 +102,10 @@
 
     $: if (sidebarStateLoaded) {
         localStorage.setItem("workspaceSidebarOpen", String(sidebarOpen))
+    }
+
+    $: if (openModeLoaded) {
+        localStorage.setItem("documentOpenMode", openMode)
     }
 
 </script>
@@ -135,12 +146,16 @@
       <DocumentList
         {refreshKey}
         {viewMode}
+        {openMode}
         {columnCount}
         {sidebarOpen}
         {activeTag}
         on:toggleSidebar={toggleSidebar}
         on:viewModeChange={(event) => {
             viewMode = event.detail.mode
+        }}
+        on:openModeChange={(event) => {
+            openMode = event.detail.mode
         }}
       />
     </div>

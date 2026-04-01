@@ -2,6 +2,7 @@
     import { createEventDispatcher } from "svelte"
     import { push } from "svelte-spa-router"
     import type { Document } from "../types"
+    import CardPreview from "./CardPreview.svelte"
     import { tagHue } from "../tagColors"
     import { documentRoute } from "../documentRoutes"
     import {
@@ -13,6 +14,7 @@
     
 
     export let doc: Document
+    export let openMode: "preview" | "page" = "page"
 
     export let search = ""
 
@@ -29,6 +31,7 @@
     let editing = false
     let editedText = doc.recognized_text
     let galleryUploading = false
+    let showPreview = false
 
     
 
@@ -36,12 +39,15 @@
         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     }
 
-    function handleCardClick() {
+    function openDocument() {
         if (selectionActive) {
             dispatch("toggleSelect")
             return
         }
-
+        if (openMode === "preview") {
+            showPreview = true
+            return
+        }
         push(documentRoute(doc))
     }
 
@@ -50,7 +56,12 @@
         dispatch("toggleSelect")
     }
 
-
+    function handleCardKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            openDocument()
+        }
+    }
 
     function highlightedFilename(filename: string, searchText: string) {
         if (!searchText.trim()) return filename
@@ -60,38 +71,6 @@
 
         return filename.replace(regex, '<mark class="filename-highlight">$1</mark>')
     }
-
-
-    type DocumentCardEvents = {
-        deleted: { id: string }
-        tagClick: { tag: string }
-        updated: { document: Document }
-        toggleSelection: { id: string }
-
-    }
-
-    function openPreview() {
-        if (selectionActive) {
-            dispatch("toggleSelection", { id: doc._id })
-            return
-        }
-
-        push(documentRoute(doc))
-    }
-
-    function toggleSelection(event: MouseEvent) {
-        event.stopPropagation()
-        dispatch("toggleSelection", { id: doc._id })
-    }
-
-    function handleCardKeydown(event: KeyboardEvent) {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            openPreview()
-        }
-    }
-
-    //const dispatch = createEventDispatcher<DocumentCardEvents>()
 
     function applyDocumentUpdate(updated: Document) {
         doc = updated
@@ -182,9 +161,7 @@
         if (lastDot <= 0) return name
 
         return name.slice(0, lastDot)
-    }
-
-    
+    }    
 
 </script>
 
@@ -199,14 +176,14 @@
     role="button"
     tabindex="0"
     aria-pressed={selectionActive ? selected : undefined}
-    on:click={openPreview}
+    on:click={openDocument}
     on:keydown={handleCardKeydown}
 >
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="card-media" on:click={handleCardClick}>
-        <img src={cardImageSrc(doc)} alt="" on:click={openPreview}/>
+    <div class="card-media" on:click={openDocument}>
+        <img src={cardImageSrc(doc)} alt="" on:click={openDocument}/>
         {#if cardImageCount(doc) >= 2}
             <div class="image-count-indicator" aria-label={`Изображений: ${cardImageCount(doc)}`}>
                 {#each Array(visibleIndicatorDots(cardImageCount(doc))) as _, idx (idx)}
@@ -259,6 +236,23 @@
     
     
 </div>
+
+{#if showPreview}
+    <CardPreview
+        {doc}
+        bind:editedText
+        {editing}
+        on:close={() => showPreview = false}
+        on:save={save}
+        on:saveFilename={saveFilename}
+        on:delete={remove}
+        on:editToggle={() => editing = !editing}
+        on:tagClick={handleTagClick}
+        on:documentUpdated={handleDocumentUpdated}
+        on:addImages={uploadToCard}
+        {galleryUploading}
+    />
+{/if}
 
 
 
