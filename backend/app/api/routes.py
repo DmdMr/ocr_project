@@ -22,6 +22,7 @@ from backend.app.auth import (
     set_session_cookie,
     verify_password,
 )
+from backend.app.config import settings
 from backend.app.db.database import (
     app_settings_collection,
     documents_collection,
@@ -35,7 +36,7 @@ from backend.app.utils.image_preprocessing import autocrop_whitespace
 
 router = APIRouter(prefix="/api")
 
-UPLOAD_DIR = "backend/uploads"
+UPLOAD_DIR = settings.upload_dir
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 AUDIT_LOG_DIR = "backend/logs"
 AUDIT_LOG_FILE = os.path.join(AUDIT_LOG_DIR, "audit.log")
@@ -868,7 +869,7 @@ async def delete_attachment(request: Request, doc_id: str, attachment_filename: 
 
 
 
-UPLOAD_FOLDER = "backend/uploads"
+UPLOAD_FOLDER = UPLOAD_DIR
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):

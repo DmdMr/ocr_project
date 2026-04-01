@@ -7,6 +7,7 @@ from fastapi import Cookie, Depends, HTTPException, Response
 from passlib.context import CryptContext
 from passlib.exc import UnknownHashError
 
+from backend.app.config import settings
 from backend.app.db.database import sessions_collection, users_collection
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -14,7 +15,7 @@ MAX_BCRYPT_PASSWORD_BYTES = 72
 
 SESSION_COOKIE_NAME = "session_id"
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "7"))
-COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true" if settings.is_production else "false").lower() == "true"
 COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
 
 
