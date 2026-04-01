@@ -10,4 +10,5 @@ motor
 pillow
 numpy
 python-doctr[torch]
-passlib[bcrypt]
+passlib==1.7.4
+bcrypt==4.0.1
