@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Response
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 
 from backend.app.db.database import sessions_collection, users_collection
 
@@ -25,7 +26,12 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    if not password_hash:
+        return False
+    try:
+        return pwd_context.verify(password, password_hash)
+    except UnknownHashError:
+        return False
 
 
 async def create_session(user_id: str):
