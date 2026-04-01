@@ -6,9 +6,15 @@
   let password = ''
   let error = ''
   let loading = false
+  const MAX_BCRYPT_PASSWORD_BYTES = 72
 
   async function submit() {
     error = ''
+    const passwordBytes = new TextEncoder().encode(password).length
+    if (passwordBytes > MAX_BCRYPT_PASSWORD_BYTES) {
+      error = `Password is too long. Maximum is ${MAX_BCRYPT_PASSWORD_BYTES} UTF-8 bytes.`
+      return
+    }
     loading = true
     try {
       await register(username, password)
