@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Router, { location, push } from 'svelte-spa-router'
+  import Router, { router, push } from 'svelte-spa-router'
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
 
@@ -39,11 +39,12 @@
 
   onMount(async () => {
     await initAuth()
-    enforceRoute(get(location))
+    enforceRoute(router.location)
   })
 
-  location.subscribe((path) => enforceRoute(path))
-  currentUser.subscribe(() => enforceRoute(get(location)))
+  $: if ($authReady) {
+    enforceRoute(router.location)
+  }
 </script>
 
 {#if $authReady}
