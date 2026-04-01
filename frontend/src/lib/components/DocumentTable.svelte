@@ -13,6 +13,7 @@
   } from "../api"
 
   export let documents: Document[] = []
+  export let openInPageMode = true
   export let selectedIds: string[] = []
   export let customFieldSettings: CardCustomFieldSetting[] = []
 
@@ -102,6 +103,8 @@
   let editedText = ""
   let galleryUploading = false
   let tableShellElement: HTMLDivElement | null = null
+  let tableTopScrollElement: HTMLDivElement | null = null
+  let tableTopScrollContentElement: HTMLDivElement | null = null
   let tableScrollElement: HTMLDivElement | null = null
   let overlayPopupElement: HTMLDivElement | null = null
 
@@ -117,6 +120,10 @@
   let cleanupResizeListeners: (() => void) | null = null
   let filterTriggerElements: Record<string, HTMLElement | undefined> = {}
   let popupPosition = { top: 0, left: 0 }
+  let syncingHorizontalScroll = false
+  let hasHorizontalOverflow = false
+  const handleTopHorizontalScroll = () => syncHorizontalScroll("top")
+  const handleBottomHorizontalScroll = () => syncHorizontalScroll("bottom")
 
   function widthColumnIdForField(fieldName: string) {
     return `custom:${fieldName}`
@@ -272,6 +279,29 @@
     window.addEventListener("pointercancel", onPointerUp)
   }
 
+  function syncTopScrollbarWidth() {
+    if (!tableTopScrollContentElement || !tableScrollElement) return
+    hasHorizontalOverflow = tableScrollElement.scrollWidth > tableScrollElement.clientWidth + 1
+    if (!hasHorizontalOverflow) {
+      tableScrollElement.scrollLeft = 0
+      if (tableTopScrollElement) {
+        tableTopScrollElement.scrollLeft = 0
+      }
+    }
+    tableTopScrollContentElement.style.width = `${tableScrollElement.scrollWidth}px`
+  }
+
+  function syncHorizontalScroll(source: "top" | "bottom") {
+    if (!tableTopScrollElement || !tableScrollElement || syncingHorizontalScroll) return
+    syncingHorizontalScroll = true
+    if (source === "top") {
+      tableScrollElement.scrollLeft = tableTopScrollElement.scrollLeft
+    } else {
+      tableTopScrollElement.scrollLeft = tableScrollElement.scrollLeft
+    }
+    syncingHorizontalScroll = false
+  }
+
   function handleHeaderDragStart(event: DragEvent, fieldName: string) {
     dragFieldName = fieldName
     if (event.dataTransfer) {
@@ -320,7 +350,13 @@
   }
 
   function openPreview(doc: Document) {
-    push(documentRoute(doc))
+    if (openInPageMode) {
+      push(documentRoute(doc))
+      return
+    }
+    activeDoc = doc
+    editedText = doc.recognized_text
+    editing = false
   }
 
   function closePreview() {
@@ -490,11 +526,15 @@
     }
 
     initializeColumnState()
+    syncTopScrollbarWidth()
     document.addEventListener("mousedown", handleOutsideClick)
     document.addEventListener("keydown", handleEscape)
     window.addEventListener("resize", updatePopupPosition)
+    window.addEventListener("resize", syncTopScrollbarWidth)
     window.addEventListener("scroll", updatePopupPosition, true)
+    tableTopScrollElement?.addEventListener("scroll", handleTopHorizontalScroll)
     tableScrollElement?.addEventListener("scroll", updatePopupPosition)
+    tableScrollElement?.addEventListener("scroll", handleBottomHorizontalScroll)
 
     return () => {
       if (cleanupResizeListeners) {
@@ -504,19 +544,27 @@
       document.removeEventListener("mousedown", handleOutsideClick)
       document.removeEventListener("keydown", handleEscape)
       window.removeEventListener("resize", updatePopupPosition)
+      window.removeEventListener("resize", syncTopScrollbarWidth)
       window.removeEventListener("scroll", updatePopupPosition, true)
+      tableTopScrollElement?.removeEventListener("scroll", handleTopHorizontalScroll)
       tableScrollElement?.removeEventListener("scroll", updatePopupPosition)
+      tableScrollElement?.removeEventListener("scroll", handleBottomHorizontalScroll)
     }
   })
 
   $: initializeColumnState()
   $: persistColumnPreferences()
+  $: documents, tick().then(syncTopScrollbarWidth)
+  $: visibleColumns, tick().then(syncTopScrollbarWidth)
   $: if (openFilterField) {
     tick().then(updatePopupPosition)
   }
 </script>
 
 <div class="table-shell panel" bind:this={tableShellElement}>
+  <div class="table-top-scroll" class:hidden={!hasHorizontalOverflow} bind:this={tableTopScrollElement}>
+    <div class="table-top-scroll-content" bind:this={tableTopScrollContentElement}></div>
+  </div>
   <div class="table-scroll" bind:this={tableScrollElement}>
     <table class="documents-table">
       <colgroup>
@@ -796,6 +844,22 @@
   </div>
 {/if}
 
+{#if activeDoc}
+  <CardPreview
+    doc={activeDoc}
+    bind:editedText
+    {editing}
+    on:close={closePreview}
+    on:save={savePreviewText}
+    on:saveFilename={savePreviewFilename}
+    on:delete={removeActiveDoc}
+    on:editToggle={() => editing = !editing}
+    on:documentUpdated={(event) => applyDocumentUpdate(event.detail.document)}
+    on:addImages={uploadToCard}
+    {galleryUploading}
+  />
+{/if}
+
 
 
 <style>
@@ -804,9 +868,29 @@
     overflow: hidden;
   }
 
-  .table-scroll {
+  .table-top-scroll {
     overflow-x: auto;
+    overflow-y: hidden;
     width: 100%;
+    margin-bottom: 2px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border), transparent 20%);
+    background: var(--surface);
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+
+  .table-top-scroll.hidden {
+    display: none;
+  }
+
+  .table-top-scroll-content {
+    height: 1px;
+  }
+
+  .table-scroll {
+    overflow: auto;
+    width: 100%;
+    max-height: min(70vh, 760px);
   }
 
   .documents-table {
@@ -830,18 +914,19 @@
   .documents-table th {
     position: sticky;
     top: 0;
-    background: var(--surface-elevated);
-    z-index: 1;
+    background: var(--surface-strong);
+    z-index: 12;
     font-weight: 700;
     color: var(--text-muted);
     overflow: visible;
     padding-right: 14px;
+    box-shadow: inset 0 -1px 0 var(--border);
   }
 
   .documents-table th.field-header-cell {
     position: sticky;
     overflow: visible;
-    z-index: 6;
+    z-index: 16;
   }
 
   .field-header-trigger {

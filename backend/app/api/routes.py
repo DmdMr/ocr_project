@@ -12,10 +12,12 @@ from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 from backend.app.auth import (
+    MAX_BCRYPT_PASSWORD_BYTES,
     clear_session_cookie,
     create_session,
     get_current_user,
     hash_password,
+    password_exceeds_bcrypt_limit,
     require_current_user,
     set_session_cookie,
     verify_password,
@@ -211,6 +213,11 @@ async def register(payload: AuthCredentials, response: Response):
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if password_exceeds_bcrypt_limit(password):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password is too long. Maximum is {MAX_BCRYPT_PASSWORD_BYTES} bytes in UTF-8 for bcrypt.",
+        )
 
     username_lower = username.lower()
     existing_user = await users_collection.find_one({"username_lower": username_lower})
