@@ -121,6 +121,7 @@
   let filterTriggerElements: Record<string, HTMLElement | undefined> = {}
   let popupPosition = { top: 0, left: 0 }
   let syncingHorizontalScroll = false
+  let hasHorizontalOverflow = false
   const handleTopHorizontalScroll = () => syncHorizontalScroll("top")
   const handleBottomHorizontalScroll = () => syncHorizontalScroll("bottom")
 
@@ -280,6 +281,13 @@
 
   function syncTopScrollbarWidth() {
     if (!tableTopScrollContentElement || !tableScrollElement) return
+    hasHorizontalOverflow = tableScrollElement.scrollWidth > tableScrollElement.clientWidth + 1
+    if (!hasHorizontalOverflow) {
+      tableScrollElement.scrollLeft = 0
+      if (tableTopScrollElement) {
+        tableTopScrollElement.scrollLeft = 0
+      }
+    }
     tableTopScrollContentElement.style.width = `${tableScrollElement.scrollWidth}px`
   }
 
@@ -554,7 +562,7 @@
 </script>
 
 <div class="table-shell panel" bind:this={tableShellElement}>
-  <div class="table-top-scroll" bind:this={tableTopScrollElement}>
+  <div class="table-top-scroll" class:hidden={!hasHorizontalOverflow} bind:this={tableTopScrollElement}>
     <div class="table-top-scroll-content" bind:this={tableTopScrollContentElement}></div>
   </div>
   <div class="table-scroll" bind:this={tableScrollElement}>
@@ -864,7 +872,15 @@
     overflow-x: auto;
     overflow-y: hidden;
     width: 100%;
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border), transparent 20%);
+    background: var(--surface);
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+
+  .table-top-scroll.hidden {
+    display: none;
   }
 
   .table-top-scroll-content {
@@ -872,8 +888,9 @@
   }
 
   .table-scroll {
-    overflow-x: auto;
+    overflow: auto;
     width: 100%;
+    max-height: min(70vh, 760px);
   }
 
   .documents-table {
@@ -897,18 +914,19 @@
   .documents-table th {
     position: sticky;
     top: 0;
-    background: var(--surface-elevated);
-    z-index: 1;
+    background: var(--surface-strong);
+    z-index: 12;
     font-weight: 700;
     color: var(--text-muted);
     overflow: visible;
     padding-right: 14px;
+    box-shadow: inset 0 -1px 0 var(--border);
   }
 
   .documents-table th.field-header-cell {
     position: sticky;
     overflow: visible;
-    z-index: 6;
+    z-index: 16;
   }
 
   .field-header-trigger {
