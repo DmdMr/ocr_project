@@ -102,6 +102,8 @@
   let editedText = ""
   let galleryUploading = false
   let tableShellElement: HTMLDivElement | null = null
+  let tableTopScrollElement: HTMLDivElement | null = null
+  let tableTopScrollContentElement: HTMLDivElement | null = null
   let tableScrollElement: HTMLDivElement | null = null
   let overlayPopupElement: HTMLDivElement | null = null
 
@@ -117,6 +119,9 @@
   let cleanupResizeListeners: (() => void) | null = null
   let filterTriggerElements: Record<string, HTMLElement | undefined> = {}
   let popupPosition = { top: 0, left: 0 }
+  let syncingHorizontalScroll = false
+  const handleTopHorizontalScroll = () => syncHorizontalScroll("top")
+  const handleBottomHorizontalScroll = () => syncHorizontalScroll("bottom")
 
   function widthColumnIdForField(fieldName: string) {
     return `custom:${fieldName}`
@@ -270,6 +275,22 @@
     window.addEventListener("pointermove", onPointerMove)
     window.addEventListener("pointerup", onPointerUp)
     window.addEventListener("pointercancel", onPointerUp)
+  }
+
+  function syncTopScrollbarWidth() {
+    if (!tableTopScrollContentElement || !tableScrollElement) return
+    tableTopScrollContentElement.style.width = `${tableScrollElement.scrollWidth}px`
+  }
+
+  function syncHorizontalScroll(source: "top" | "bottom") {
+    if (!tableTopScrollElement || !tableScrollElement || syncingHorizontalScroll) return
+    syncingHorizontalScroll = true
+    if (source === "top") {
+      tableScrollElement.scrollLeft = tableTopScrollElement.scrollLeft
+    } else {
+      tableTopScrollElement.scrollLeft = tableScrollElement.scrollLeft
+    }
+    syncingHorizontalScroll = false
   }
 
   function handleHeaderDragStart(event: DragEvent, fieldName: string) {
@@ -490,11 +511,15 @@
     }
 
     initializeColumnState()
+    syncTopScrollbarWidth()
     document.addEventListener("mousedown", handleOutsideClick)
     document.addEventListener("keydown", handleEscape)
     window.addEventListener("resize", updatePopupPosition)
+    window.addEventListener("resize", syncTopScrollbarWidth)
     window.addEventListener("scroll", updatePopupPosition, true)
+    tableTopScrollElement?.addEventListener("scroll", handleTopHorizontalScroll)
     tableScrollElement?.addEventListener("scroll", updatePopupPosition)
+    tableScrollElement?.addEventListener("scroll", handleBottomHorizontalScroll)
 
     return () => {
       if (cleanupResizeListeners) {
@@ -504,19 +529,27 @@
       document.removeEventListener("mousedown", handleOutsideClick)
       document.removeEventListener("keydown", handleEscape)
       window.removeEventListener("resize", updatePopupPosition)
+      window.removeEventListener("resize", syncTopScrollbarWidth)
       window.removeEventListener("scroll", updatePopupPosition, true)
+      tableTopScrollElement?.removeEventListener("scroll", handleTopHorizontalScroll)
       tableScrollElement?.removeEventListener("scroll", updatePopupPosition)
+      tableScrollElement?.removeEventListener("scroll", handleBottomHorizontalScroll)
     }
   })
 
   $: initializeColumnState()
   $: persistColumnPreferences()
+  $: documents, tick().then(syncTopScrollbarWidth)
+  $: visibleColumns, tick().then(syncTopScrollbarWidth)
   $: if (openFilterField) {
     tick().then(updatePopupPosition)
   }
 </script>
 
 <div class="table-shell panel" bind:this={tableShellElement}>
+  <div class="table-top-scroll" bind:this={tableTopScrollElement}>
+    <div class="table-top-scroll-content" bind:this={tableTopScrollContentElement}></div>
+  </div>
   <div class="table-scroll" bind:this={tableScrollElement}>
     <table class="documents-table">
       <colgroup>
@@ -802,6 +835,17 @@
   .table-shell {
     padding: 0;
     overflow: hidden;
+  }
+
+  .table-top-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table-top-scroll-content {
+    height: 1px;
   }
 
   .table-scroll {

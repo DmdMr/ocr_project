@@ -2,7 +2,6 @@
     import { createEventDispatcher } from "svelte"
     import { uploadImage } from "../api"
 
-    export let galleryUploading = false
     export let embedded = false
 
     const dispatch = createEventDispatcher()
