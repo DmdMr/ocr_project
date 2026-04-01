@@ -16,9 +16,11 @@
 
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
+    export let openMode: "preview" | "page" = "preview"
     export let columnCount = 5
     const dispatch = createEventDispatcher<{
         viewModeChange: { mode: "grid" | "list" }
+        openModeChange: { mode: "preview" | "page" }
         toggleSidebar: void
     }>()
 
@@ -66,6 +68,15 @@
     function setViewMode(mode: "grid" | "list") {
         viewMode = mode
         dispatch("viewModeChange", { mode })
+    }
+
+    function setOpenMode(mode: "preview" | "page") {
+        openMode = mode
+        dispatch("openModeChange", { mode })
+    }
+
+    function shouldOpenInPageMode() {
+        return openMode === "page"
     }
 
     function clearSelection() {
@@ -584,6 +595,23 @@
             ☰
         </button>
 
+        <div class="view-toggle" role="group" aria-label="Режим открытия документа">
+            <button
+                class="secondary"
+                class:active={openMode === "preview"}
+                on:click={() => setOpenMode("preview")}
+            >
+                Превью
+            </button>
+            <button
+                class="secondary"
+                class:active={openMode === "page"}
+                on:click={() => setOpenMode("page")}
+            >
+                Страница
+            </button>
+        </div>
+
         <input
             type="text"
             class="my-input compact-search"
@@ -633,6 +661,7 @@
       {#each sortedDocuments as doc (doc._id)}
         <DocumentCard
           {doc}
+          openMode={openMode}
           search={search}
           selected={selectedIds.includes(doc._id)}
           selectionActive={selectedIds.length > 0}
@@ -649,6 +678,7 @@
           {#each column as doc (doc._id)}
             <DocumentCard
               {doc}
+              openMode={openMode}
               search={search}
               selected={selectedIds.includes(doc._id)}
               selectionActive={selectedIds.length > 0}
@@ -664,6 +694,7 @@
 {:else}
   <DocumentTable
     documents={sortedDocuments}
+    openInPageMode={shouldOpenInPageMode()}
     {selectedIds}
     {customFieldSettings}
     {customFieldFilters}

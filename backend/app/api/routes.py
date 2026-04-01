@@ -12,14 +12,17 @@ from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 from backend.app.auth import (
+    MAX_BCRYPT_PASSWORD_BYTES,
     clear_session_cookie,
     create_session,
     get_current_user,
     hash_password,
+    password_exceeds_bcrypt_limit,
     require_current_user,
     set_session_cookie,
     verify_password,
 )
+from backend.app.config import settings
 from backend.app.db.database import (
     app_settings_collection,
     documents_collection,
@@ -33,7 +36,7 @@ from backend.app.utils.image_preprocessing import autocrop_whitespace
 
 router = APIRouter(prefix="/api")
 
-UPLOAD_DIR = "backend/uploads"
+UPLOAD_DIR = settings.upload_dir
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 AUDIT_LOG_DIR = "backend/logs"
 AUDIT_LOG_FILE = os.path.join(AUDIT_LOG_DIR, "audit.log")
@@ -211,6 +214,11 @@ async def register(payload: AuthCredentials, response: Response):
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if password_exceeds_bcrypt_limit(password):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password is too long. Maximum is {MAX_BCRYPT_PASSWORD_BYTES} bytes in UTF-8 for bcrypt.",
+        )
 
     username_lower = username.lower()
     existing_user = await users_collection.find_one({"username_lower": username_lower})
@@ -861,7 +869,7 @@ async def delete_attachment(request: Request, doc_id: str, attachment_filename: 
 
 
 
-UPLOAD_FOLDER = "backend/uploads"
+UPLOAD_FOLDER = UPLOAD_DIR
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):

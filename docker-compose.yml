@@ -16,11 +16,16 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ${UPLOAD_DIR_HOST:-./data/uploads}:${UPLOAD_DIR_CONTAINER:-/srv/ocr_uploads}
     depends_on:
       - mongodb
     environment:
-      - MONGO_URL=mongodb://mongodb:27017
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - MONGO_URL=${MONGO_URL:-mongodb://mongodb:27017}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-ocr_database}
+      - UPLOAD_DIR=${UPLOAD_DIR_CONTAINER:-/srv/ocr_uploads}
+      - SECRET_KEY=${SECRET_KEY}
+      - FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-http://localhost:5173}
 
   frontend:
     build: ./frontend
@@ -32,5 +37,4 @@ services:
 
 volumes:
   mongo-data:
-
 
