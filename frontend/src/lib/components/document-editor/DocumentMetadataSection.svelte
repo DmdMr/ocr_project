@@ -12,13 +12,20 @@
     customFieldInput: { fieldName: string; value: string; saveNow?: boolean }
     manageTags: void
     deleteDoc: void
-    addImages: Event
+    addImages: { files: File[] }
   }>()
 
   function peopleDraftValue(value: string | number | string[] | null | undefined) {
     if (Array.isArray(value)) return value.join(", ")
     if (value === null || value === undefined) return ""
     return String(value)
+  }
+
+  function emitSelectedImages(event: Event) {
+    const input = event.target as HTMLInputElement
+    const files = Array.from(input.files ?? [])
+    dispatch("addImages", { files })
+    input.value = ""
   }
 </script>
 
@@ -63,7 +70,7 @@
     <h3>Изображения</h3>
     <label class="upload-btn">
       Добавить изображения
-      <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={(event) => dispatch("addImages", event)} />
+      <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={emitSelectedImages} />
     </label>
   </div>
 

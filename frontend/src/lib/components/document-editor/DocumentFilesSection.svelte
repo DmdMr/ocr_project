@@ -10,7 +10,7 @@
   export let successMessage = ""
 
   const dispatch = createEventDispatcher<{
-    upload: Event
+    upload: { files: File[] }
     remove: { attachment: AttachmentFile }
   }>()
 
@@ -21,6 +21,13 @@
   function attachmentLabel(attachment: AttachmentFile) {
     return attachment.original_name || attachment.filename || "Файл"
   }
+
+  function emitSelectedFiles(event: Event) {
+    const input = event.target as HTMLInputElement
+    const files = Array.from(input.files ?? [])
+    dispatch("upload", { files })
+    input.value = ""
+  }
 </script>
 
 <section class="panel files-section">
@@ -28,7 +35,7 @@
     <h3>Файлы</h3>
     <label class="upload-btn" class:disabled={uploading}>
       {uploading ? `Загрузка ${uploadProgress}%` : "Добавить файлы"}
-      <input type="file" multiple hidden disabled={uploading} on:change={(event) => dispatch("upload", event)} />
+      <input type="file" multiple hidden disabled={uploading} on:change={emitSelectedFiles} />
     </label>
   </div>
 

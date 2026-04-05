@@ -200,11 +200,10 @@
     }
   }
 
-  async function handleAttachmentUpload(event: Event) {
+  async function handleAttachmentUpload(event: CustomEvent<{ files: File[] }>) {
     if (!doc) return
-    const input = event.target as HTMLInputElement
-    const files = Array.from(input.files ?? [])
-    input.value = ""
+    const files = event.detail.files ?? []
+    if (!files.length) return
     attachmentUploadSuccess = ""
 
     const nonImageFiles = files.filter((file) => !file.type.startsWith("image/"))
@@ -229,14 +228,11 @@
     }
   }
 
-  async function handleGalleryUpload(event: Event) {
+  async function handleGalleryUpload(event: CustomEvent<{ files: File[] }>) {
     if (!doc) return
-    const input = event.target as HTMLInputElement
-    const files = Array.from(input.files ?? [])
-    input.value = ""
-    galleryUploadSuccess = ""
-
+    const files = event.detail.files ?? []
     if (!files.length) return
+    galleryUploadSuccess = ""
     galleryUploading = true
     galleryUploadProgress = 0
     galleryUploadError = ""
@@ -360,6 +356,14 @@
     filenameDraft = updated.display_filename ?? updated.filename
     syncDraftFromDocument(updated)
   }
+
+  function goBack() {
+    if (window.history.length > 1) {
+      window.history.back()
+      return
+    }
+    push("/")
+  }
 </script>
 
 {#if loading}
@@ -368,6 +372,10 @@
   <div class="page"><p>{error || "Документ не найден"}</p></div>
 {:else}
   <div class="page">
+    <div class="page-top-row">
+      <button class="back-btn" on:click={goBack}>← Back</button>
+    </div>
+
     <DocumentHeader
       {doc}
       bind:filenameDraft
@@ -491,6 +499,8 @@
 
 <style>
   .page { padding: 18px; max-width: 1400px; margin: 0 auto 40px; }
+  .page-top-row { display: flex; justify-content: flex-start; margin-bottom: 10px; }
+  .back-btn { min-height: 36px; padding: 8px 14px; border-radius: 10px; }
   .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
   .left-column { display: grid; gap: 10px; position: sticky; top: 10px; }
   .images-section { margin-top: 14px; padding: 18px; }
@@ -510,36 +520,46 @@
     z-index: 1200;
   }
   .lightbox-inner { position: relative; max-width: min(92vw, 1100px); max-height: 90vh; }
-  .lightbox-inner img { max-width: 100%; max-height: 90vh; border-radius: 12px; display: block; }
-  .lightbox-close { position: absolute; top: 10px; right: 10px; }
-  .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); }
-  .lightbox-nav.left { left: 8px; }
-  .lightbox-nav.right { right: 8px; }
+  .lightbox-inner img { max-width: 100%; max-height: 90vh; border-radius: 12px; display: block; margin: 0 auto; }
+  .lightbox-close { position: fixed; top: 16px; right: 20px; z-index: 1220; }
+  .lightbox-nav { position: fixed; top: 50%; transform: translateY(-50%); z-index: 1220; }
+  .lightbox-nav.left { left: 16px; }
+  .lightbox-nav.right { right: 16px; }
 
   .tag-picker-backdrop {
     position: fixed;
     inset: 0;
     background: rgba(4, 7, 16, 0.55);
-    display: grid;
-    place-items: center;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     z-index: 1300;
-    padding: 20px;
+    padding: 34px 20px 20px;
   }
 
   .tag-picker-modal {
-    width: min(860px, calc(100vw - 40px));
-    min-height: min(65vh, 560px);
-    max-height: min(86vh, 820px);
+    width: min(980px, calc(100vw - 40px));
+    max-height: min(88vh, 860px);
     overflow: auto;
-    background: var(--surface-strong);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 22px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  :global(.tag-picker-modal .picker-shell) {
+    width: min(940px, calc(100vw - 56px));
+    max-height: min(84vh, 820px);
+    margin: 0;
+    border-radius: 18px;
   }
 
   @media (max-width: 980px) {
     .layout { grid-template-columns: 1fr; }
     .left-column { position: static; }
-    .tag-picker-modal { width: calc(100vw - 20px); min-height: 0; }
+    .tag-picker-modal { width: calc(100vw - 20px); }
+    :global(.tag-picker-modal .picker-shell) { width: calc(100vw - 24px); }
   }
 </style>
