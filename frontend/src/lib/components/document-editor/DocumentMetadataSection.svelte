@@ -6,11 +6,10 @@
   export let doc: Document
   export let customFieldSettings: CardCustomFieldSetting[] = []
   export let customFieldDraft: Record<string, string | number | string[] | null> = {}
-  export let customFieldsSaving = false
+  export let customFieldsStatus: "idle" | "saving" | "saved" | "error" = "idle"
 
   const dispatch = createEventDispatcher<{
-    saveCustomFields: void
-    customFieldInput: { fieldName: string; value: string }
+    customFieldInput: { fieldName: string; value: string; saveNow?: boolean }
     manageTags: void
     deleteDoc: void
     addImages: Event
@@ -40,7 +39,11 @@
 
   <div class="section-head">
     <h3>Пользовательские поля</h3>
-    <button class="primary" disabled={customFieldsSaving} on:click={() => dispatch("saveCustomFields")}>Сохранить поля</button>
+    <span class="save-state" data-state={customFieldsStatus}>
+      {#if customFieldsStatus === "saving"}Saving...{/if}
+      {#if customFieldsStatus === "saved"}Saved{/if}
+      {#if customFieldsStatus === "error"}Error{/if}
+    </span>
   </div>
   <div class="fields-grid">
     {#each customFieldSettings as field}
@@ -50,6 +53,7 @@
           type={field.type === "number" ? "number" : "text"}
           value={field.type === "people" ? peopleDraftValue(customFieldDraft[field.name]) : (customFieldDraft[field.name] ?? "")}
           on:input={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value })}
+          on:blur={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value, saveNow: true })}
         />
       </label>
     {/each}
@@ -57,7 +61,7 @@
 
   <div class="section-head">
     <h3>Изображения</h3>
-    <label class="btn">
+    <label class="upload-btn">
       Добавить изображения
       <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={(event) => dispatch("addImages", event)} />
     </label>
@@ -76,4 +80,20 @@
   .fields-grid { display: grid; gap: 8px; }
   .fields-grid label { display: grid; gap: 4px; }
   .muted { color: var(--muted); }
+  .save-state { font-size: 0.82rem; color: var(--muted); min-height: 18px; }
+  .save-state[data-state="saving"] { color: #3b82f6; }
+  .save-state[data-state="saved"] { color: #16a34a; }
+  .save-state[data-state="error"] { color: #ef4444; }
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-strong);
+    cursor: pointer;
+    font-weight: 600;
+  }
 </style>

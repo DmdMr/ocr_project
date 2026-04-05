@@ -45,44 +45,76 @@ export async function uploadImage(file: File, performOcr = true) {
     return await res.json()
 }
 
-export async function uploadImagesToDocument(documentId: string, files: File[]) {
+export async function uploadImagesToDocument(
+    documentId: string,
+    files: File[],
+    onProgress?: (percent: number) => void
+) {
     const formData = new FormData()
     for (const file of files) {
         formData.append("files", file)
     }
 
-    const res = await apiFetch(`${API_URL}/documents/${documentId}/gallery`, {
-        method: "POST",
-        body: formData
-    })
-
-    const data = await res.json().catch(() => ({}))
-
-    if (!res.ok) {
-        throw new Error(data.detail || "Failed to upload images to card")
-    }
-
-    return data
+    return await uploadFormWithProgress(`${API_URL}/documents/${documentId}/gallery`, formData, onProgress)
 }
 
-export async function uploadDocumentAttachments(documentId: string, files: File[]) {
+export async function uploadDocumentAttachments(
+    documentId: string,
+    files: File[],
+    onProgress?: (percent: number) => void
+) {
     const formData = new FormData()
     for (const file of files) {
         formData.append("files", file)
     }
 
-    const response = await apiFetch(`${API_URL}/documents/${documentId}/attachments`, {
-        method: "POST",
-        body: formData
-    })
+    return await uploadFormWithProgress(`${API_URL}/documents/${documentId}/attachments`, formData, onProgress)
+}
 
-    const data = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-        throw new Error(data.detail || "Failed to upload files to card")
+async function uploadFormWithProgress(
+    url: string,
+    formData: FormData,
+    onProgress?: (percent: number) => void
+) {
+    if (!onProgress) {
+        const response = await apiFetch(url, { method: "POST", body: formData })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) {
+            throw new Error(data.detail || "Failed to upload files")
+        }
+        return data
     }
 
-    return data
+    return await new Promise<any>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open("POST", url, true)
+        xhr.withCredentials = true
+
+        xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) return
+            onProgress(Math.round((event.loaded / event.total) * 100))
+        }
+
+        xhr.onload = () => {
+            const raw = xhr.responseText || "{}"
+            const data = (() => {
+                try {
+                    return JSON.parse(raw)
+                } catch {
+                    return {}
+                }
+            })()
+            if (xhr.status >= 200 && xhr.status < 300) {
+                onProgress(100)
+                resolve(data)
+                return
+            }
+            reject(new Error(data.detail || "Failed to upload files"))
+        }
+
+        xhr.onerror = () => reject(new Error("Network error during upload"))
+        xhr.send(formData)
+    })
 }
 
 export async function getDocumentById(id: string) {

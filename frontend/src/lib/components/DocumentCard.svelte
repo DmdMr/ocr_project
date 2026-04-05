@@ -3,13 +3,7 @@
     import { push } from "svelte-spa-router"
     import type { Document } from "../types"
     import { tagHue } from "../tagColors"
-    import { documentRoute } from "../documentRoutes"
-    import {
-        deleteDocument,
-        updateDocument,
-        uploadImagesToDocument,
-        UPLOADS_URL
-    } from "../api"
+    import { UPLOADS_URL } from "../api"
     
 
     export let doc: Document
@@ -26,9 +20,7 @@
     //    toggleSelect: undefined
     //}>()
 
-    let editing = false
     let editedText = doc.recognized_text
-    let galleryUploading = false
 
     
 
@@ -42,7 +34,7 @@
             return
         }
 
-        push(documentRoute(doc))
+        window.location.hash = `#/documents/${doc._id}`
     }
 
     function handleCheckboxClick(event: MouseEvent) {
@@ -76,7 +68,7 @@
             return
         }
 
-        push(documentRoute(doc))
+        window.location.hash = `#/documents/${doc._id}`
     }
 
     function toggleSelection(event: MouseEvent) {
@@ -93,12 +85,6 @@
 
     //const dispatch = createEventDispatcher<DocumentCardEvents>()
 
-    function applyDocumentUpdate(updated: Document) {
-        doc = updated
-        editedText = updated.recognized_text
-        dispatch("updated", { document: updated })
-    }
-
     function cardImageSrc(currentDoc: Document) {
         return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
     }
@@ -111,60 +97,6 @@
     function visibleIndicatorDots(totalImages: number) {
         const safeCount = Math.max(0, totalImages)
         return Math.min(5, safeCount)
-    }
-
-    async function save() {
-        const updated = await updateDocument(doc._id, {
-            recognized_text: editedText
-        })
-
-        applyDocumentUpdate(updated)
-        editing = false
-    }
-
-    async function saveFilename(event: CustomEvent<{ display_filename: string }>) {
-        const updated = await updateDocument(doc._id, {
-            display_filename: event.detail.display_filename
-        })
-
-        applyDocumentUpdate(updated)
-    }
-
-    async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
-        const files = event.detail.files
-        if (!files.length) return
-
-        galleryUploading = true
-
-        try {
-            const result = await uploadImagesToDocument(doc._id, files)
-
-            if (!result.document) {
-                throw new Error("Сервер не вернул обновленные данные карточки")
-            }
-
-            applyDocumentUpdate(result.document)
-
-            const addedCount = Number(result.added_count ?? 0)
-            if (addedCount > 0) {
-                alert(`Добавлено ${addedCount} изображений ${addedCount > 1 ? "s" : ""}`)
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Не удалось добавить изображения в карточку"
-            alert(message)
-            console.error("Не удалось загрузить изображения в галерею", error)
-        } finally {
-            galleryUploading = false
-        }
-    }
-
-    function handleDocumentUpdated(event: CustomEvent<{ document: Document }>) {
-        applyDocumentUpdate(event.detail.document)
-    }
-
-    async function remove() {
-        await deleteDocument(doc._id)
-        dispatch("deleted", { id: doc._id })
     }
 
     function handleTagClick(event: CustomEvent<{ tag: string }>) {
@@ -206,7 +138,7 @@
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="card-media" on:click={handleCardClick}>
-        <img src={cardImageSrc(doc)} alt="" on:click={openPreview}/>
+        <img src={cardImageSrc(doc)} alt="" on:click={() => window.location.hash = `#/documents/${doc._id}`}/>
         {#if cardImageCount(doc) >= 2}
             <div class="image-count-indicator" aria-label={`Изображений: ${cardImageCount(doc)}`}>
                 {#each Array(visibleIndicatorDots(cardImageCount(doc))) as _, idx (idx)}
@@ -239,8 +171,7 @@
     </div>
 
     <div class="doc-links">
-        <a href={`#/documents/${doc._id}/editor`} on:click|stopPropagation>New doc view</a>
-        <a href={`#/documents/${doc._id}/classic`} on:click|stopPropagation>Classic page</a>
+        <a href={`#/documents/${doc._id}`} on:click|stopPropagation>Open document</a>
     </div>
 
 
@@ -258,10 +189,6 @@
             
         {/if}
     </div>
-
-
-    
-    
 </div>
 
 
