@@ -1,31 +1,51 @@
+import base64
+import hashlib
+import hmac
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Response
-from passlib.context import CryptContext
 
 from backend.app.db.database import sessions_collection, users_collection
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 SESSION_COOKIE_NAME = "session_id"
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "7"))
 COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
+PBKDF2_ITERATIONS = int(os.getenv("PASSWORD_HASH_ITERATIONS", "390000"))
 
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _pbkdf2_hash(password: str, salt: bytes, iterations: int) -> str:
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return base64.b64encode(digest).decode("utf-8")
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    salt = secrets.token_bytes(16)
+    salt_b64 = base64.b64encode(salt).decode("utf-8")
+    digest_b64 = _pbkdf2_hash(password, salt, PBKDF2_ITERATIONS)
+    return f"pbkdf2_sha256${PBKDF2_ITERATIONS}${salt_b64}${digest_b64}"
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    if not password_hash or not password_hash.startswith("pbkdf2_sha256$"):
+        return False
+
+    try:
+        _, iterations_raw, salt_b64, digest_b64 = password_hash.split("$", 3)
+        iterations = int(iterations_raw)
+        salt = base64.b64decode(salt_b64.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
+
+    candidate_digest = _pbkdf2_hash(password, salt, iterations)
+    return hmac.compare_digest(candidate_digest, digest_b64)
 
 
 async def create_session(user_id: str):

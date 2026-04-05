@@ -25,7 +25,7 @@ async function apiFetch(url: string, init: RequestInit = {}) {
 }
 
 export interface AppSettingsResponse {
-    fields_for_cards: Array<{ name: string; type: "text" | "number"; created_at?: string }>
+    fields_for_cards: Array<{ name: string; type: "text" | "number" | "people"; created_at?: string }>
 }
 
 export async function uploadImage(file: File, performOcr = true) {
@@ -178,7 +178,7 @@ export async function getSettings() {
     return data
 }
 
-export async function createCardField(name: string, type: "text" | "number") {
+export async function createCardField(name: string, type: "text" | "number" | "people") {
     const response = await apiFetch(`${API_URL}/settings/fields`, {
         method: "POST",
         headers: {
@@ -204,7 +204,7 @@ export async function deleteCardField(name: string) {
     return data
 }
 
-export async function updateDocumentCustomFields(id: string, customFields: Record<string, string | number | null>) {
+export async function updateDocumentCustomFields(id: string, customFields: Record<string, string | number | string[] | null>) {
     const response = await apiFetch(`${API_URL}/documents/${id}/fields`, {
         method: "PATCH",
         headers: {
@@ -356,7 +356,7 @@ export async function register(username: string, password: string): Promise<Auth
         body: JSON.stringify({ username, password })
     })
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to register")
+    if (!response.ok) throw new Error(data.detail || "Не удалось зарегистрироваться")
     return data
 }
 
@@ -367,7 +367,7 @@ export async function login(username: string, password: string): Promise<AuthUse
         body: JSON.stringify({ username, password })
     })
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to login")
+    if (!response.ok) throw new Error(data.detail || "Не удалось войти")
     return data
 }
 

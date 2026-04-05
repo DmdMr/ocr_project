@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Router, { router, push } from 'svelte-spa-router'
+  import Router, { push } from 'svelte-spa-router'
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
 
@@ -10,7 +10,8 @@
   import SettingsPage from './SettingsPage.svelte'
   import LoginPage from './LoginPage.svelte'
   import RegisterPage from './RegisterPage.svelte'
-  import DocumentPage from './DocumentPage.svelte'
+  import DocumentEditorPage from './DocumentEditorPage.svelte'
+  import DocumentClassicPage from './DocumentClassicPage.svelte'
   import { authReady, currentUser, initAuth } from './lib/auth'
 
   const publicRoutes = new Set(['/login', '/register'])
@@ -23,8 +24,14 @@
     '/settings': SettingsPage,
     '/login': LoginPage,
     '/register': RegisterPage,
-    '/document/:id/:slug': DocumentPage,
-    '/document/:id': DocumentPage
+    '/documents/:id/editor': DocumentEditorPage,
+    '/documents/:id/classic': DocumentClassicPage
+  }
+
+  function getCurrentPath() {
+    const hash = window.location.hash || '#/'
+    const normalized = hash.startsWith('#') ? hash.slice(1) : hash
+    return normalized || '/'
   }
 
   function enforceRoute(path: string) {
@@ -37,14 +44,21 @@
     }
   }
 
-  onMount(async () => {
-    await initAuth()
-    enforceRoute(router.location)
-  })
+  onMount(() => {
+    const handleHashChange = () => enforceRoute(getCurrentPath())
 
-  $: if ($authReady) {
-    enforceRoute(router.location)
-  }
+    initAuth().then(handleHashChange)
+    window.addEventListener('hashchange', handleHashChange)
+
+    const unsubscribeCurrentUser = currentUser.subscribe(() => {
+      handleHashChange()
+    })
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+      unsubscribeCurrentUser()
+    }
+  })
 </script>
 
 {#if $authReady}
