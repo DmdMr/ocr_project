@@ -3,6 +3,7 @@
   import { push } from "svelte-spa-router"
   import type { CardCustomFieldSetting, Document } from "../types"
   import { tagHue } from "../tagColors"
+  import { documentRoute } from "../documentRoutes"
   import {
     UPLOADS_URL
   } from "../api"
