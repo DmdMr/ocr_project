@@ -7,15 +7,19 @@ from pathlib import Path
 from typing import List, Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 from backend.app.auth import (
+    USER_ROLE_ADMIN,
+    USER_ROLE_EDITOR,
     clear_session_cookie,
     create_session,
+    get_auth_context,
     get_current_user,
     hash_password,
+    require_admin_user,
     require_current_user,
     set_session_cookie,
     verify_password,
@@ -204,15 +208,37 @@ class AuthCredentials(BaseModel):
     password: str
 
 
+class CreateUserPayload(AuthCredentials):
+    role: str = USER_ROLE_EDITOR
+    is_active: bool = True
+
+
+def serialize_user(user: dict):
+    return {
+        "id": user["_id"],
+        "username": user["username"],
+        "role": user.get("role", USER_ROLE_EDITOR),
+        "created_at": user.get("created_at"),
+        "updated_at": user.get("updated_at"),
+        "is_active": user.get("is_active", True),
+    }
+
+
 @router.post("/auth/register")
-async def register(payload: AuthCredentials, response: Response):
+async def register(
+    payload: CreateUserPayload,
+    current_user=Depends(require_admin_user),
+):
     username = (payload.username or "").strip()
     password = payload.password or ""
+    role = (payload.role or USER_ROLE_EDITOR).strip().lower()
 
     if len(username) < 3:
         raise HTTPException(status_code=400, detail="Имя пользователя должно содержать минимум 3 символа")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Пароль должен содержать минимум 6 символов")
+    if role not in {USER_ROLE_EDITOR, USER_ROLE_ADMIN}:
+        raise HTTPException(status_code=400, detail="Недопустимая роль пользователя")
 
     username_lower = username.lower()
     existing_user = await users_collection.find_one({"username_lower": username_lower})
@@ -227,14 +253,22 @@ async def register(payload: AuthCredentials, response: Response):
             "username": username,
             "username_lower": username_lower,
             "password_hash": hash_password(password),
+            "role": role,
             "created_at": now,
-            "is_active": True,
+            "updated_at": now,
+            "is_active": bool(payload.is_active),
         }
     )
 
-    session_id, expires_at = await create_session(user_id)
-    set_session_cookie(response, session_id, expires_at)
-    return {"id": user_id, "username": username, "created_at": now, "is_active": True}
+    return {
+        "id": user_id,
+        "username": username,
+        "role": role,
+        "created_at": now,
+        "updated_at": now,
+        "is_active": bool(payload.is_active),
+        "created_by": current_user["id"],
+    }
 
 
 @router.post("/auth/login")
@@ -249,14 +283,17 @@ async def login(payload: AuthCredentials, response: Response):
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="Пользователь деактивирован")
 
+    role = user.get("role", USER_ROLE_EDITOR)
+    if role not in {USER_ROLE_EDITOR, USER_ROLE_ADMIN}:
+        role = USER_ROLE_EDITOR
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"role": role, "updated_at": datetime.now(timezone.utc)}},
+        )
+
     session_id, expires_at = await create_session(user["_id"])
     set_session_cookie(response, session_id, expires_at)
-    return {
-        "id": user["_id"],
-        "username": user["username"],
-        "created_at": user.get("created_at"),
-        "is_active": user.get("is_active", True),
-    }
+    return serialize_user({**user, "role": role})
 
 
 @router.post("/auth/logout")
@@ -268,10 +305,8 @@ async def logout(response: Response, current_user=Depends(get_current_user), ses
 
 
 @router.get("/auth/me")
-async def me(current_user=Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Требуется авторизация")
-    return current_user
+async def me(auth_context=Depends(get_auth_context)):
+    return auth_context
 
 
 @router.post("/upload")
