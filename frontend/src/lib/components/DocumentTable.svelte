@@ -1,8 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, tick } from "svelte"
+  import { push } from "svelte-spa-router"
   import type { CardCustomFieldSetting, Document } from "../types"
   import CardPreview from "./CardPreview.svelte"
   import { tagHue } from "../tagColors"
+  import { documentRoute } from "../documentRoutes"
   import {
     deleteDocument,
     updateDocument,
@@ -320,9 +322,7 @@
   }
 
   function openPreview(doc: Document) {
-    activeDoc = doc
-    editedText = doc.recognized_text
-    editing = false
+    push(documentRoute(doc))
   }
 
   function closePreview() {
@@ -802,21 +802,7 @@
   </div>
 {/if}
 
-{#if activeDoc}
-  <CardPreview
-    doc={activeDoc}
-    bind:editedText
-    {editing}
-    on:close={closePreview}
-    on:save={savePreviewText}
-    on:saveFilename={savePreviewFilename}
-    on:delete={removeActiveDoc}
-    on:editToggle={() => editing = !editing}
-    on:documentUpdated={(event) => applyDocumentUpdate(event.detail.document)}
-    on:addImages={uploadToCard}
-    {galleryUploading}
-  />
-{/if}
+
 
 <style>
   .table-shell {
