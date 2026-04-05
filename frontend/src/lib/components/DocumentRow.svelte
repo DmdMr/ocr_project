@@ -196,6 +196,11 @@
             )}
         </div>
 
+    <div class="row-links">
+        <a href={`#/documents/${doc._id}/editor`} on:click|stopPropagation>New doc view</a>
+        <a href={`#/documents/${doc._id}/classic`} on:click|stopPropagation>Classic page</a>
+    </div>
+
         <div class="row-tags">
             {#if doc.tags?.length}
                 {#each doc.tags as tag}
@@ -373,4 +378,8 @@
 }
 
 
+
+.row-links { display:flex; gap:8px; margin-bottom: 6px; }
+.row-links a { font-size: .8rem; color: var(--muted); text-decoration: none; }
+.row-links a:hover { color: var(--text); }
 </style>
