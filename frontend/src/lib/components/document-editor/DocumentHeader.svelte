@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { Document } from "../../types"
-  import DocumentViewSwitcher from "./DocumentViewSwitcher.svelte"
 
   export let doc: Document
   export let filenameDraft = ""
@@ -26,11 +25,6 @@
 </script>
 
 <section class="doc-header panel">
-  <div class="top-row">
-    <DocumentViewSwitcher documentId={doc._id} activeView="editor" />
-    <slot name="actions" />
-  </div>
-
   {#if filenameEditing}
     <div class="editor-row">
       <input bind:value={filenameDraft} aria-label="Document title" />
@@ -60,10 +54,9 @@
     padding: 18px;
     margin-bottom: 14px;
   }
-  .top-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-  .title-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .title-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
   h1 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.65rem); }
-  .editor-row { display: flex; gap: 10px; margin-top: 12px; }
+  .editor-row { display: flex; gap: 10px; margin-top: 6px; }
   .editor-row input { flex: 1; min-width: 180px; }
   .meta-row { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 0.9rem; }
   .error { color: #ef4444; margin: 8px 0 0; }

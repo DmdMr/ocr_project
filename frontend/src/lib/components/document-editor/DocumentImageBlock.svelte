@@ -8,8 +8,6 @@
 
   const dispatch = createEventDispatcher<{
     open: { filename: string }
-    rotateLeft: { filename: string }
-    rotateRight: { filename: string }
     delete: { filename: string }
     edit: { filename: string }
   }>()
@@ -23,9 +21,7 @@
   </button>
   <div class="caption">![[{image.filename}]]</div>
   <div class="image-actions">
-    <button on:click={() => dispatch("edit", { filename: image.filename })}>Edit / Crop</button>
-    <button on:click={() => dispatch("rotateLeft", { filename: image.filename })}>↺ 90°</button>
-    <button on:click={() => dispatch("rotateRight", { filename: image.filename })}>↻ 90°</button>
+    <button on:click={() => dispatch("edit", { filename: image.filename })}>Edit image</button>
     <button class="danger" disabled={!canDelete} on:click={() => dispatch("delete", { filename: image.filename })}>Delete</button>
   </div>
 </div>
