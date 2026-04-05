@@ -1,6 +1,7 @@
 <script lang="ts">
   export let value = ""
   export let editing = false
+  export let canEdit = true
   export let onToggleEdit: () => void
   export let onSave: () => void
 </script>
@@ -9,10 +10,12 @@
   <div class="content-toolbar">
     <h2>Recognized text</h2>
     <div class="actions">
-      {#if editing}
+      {#if canEdit && editing}
         <button class="primary" on:click={onSave}>Сохранить OCR текст</button>
       {/if}
-      <button on:click={onToggleEdit}>{editing ? "Просмотр" : "Редактировать"}</button>
+      {#if canEdit}
+        <button on:click={onToggleEdit}>{editing ? "Просмотр" : "Редактировать"}</button>
+      {/if}
     </div>
   </div>
 

@@ -5,6 +5,7 @@
   export let filenameDraft = ""
   export let filenameEditing = false
   export let filenameError = ""
+  export let canEdit = true
 
   export let onStartEdit: () => void
   export let onSave: () => void
@@ -34,7 +35,9 @@
   {:else}
     <div class="title-row">
       <h1>{getFilenameWithoutExtension(doc.display_filename || doc.filename || "")}</h1>
-      <button on:click={onStartEdit}>✎</button>
+      {#if canEdit}
+        <button on:click={onStartEdit}>✎</button>
+      {/if}
     </div>
   {/if}
 

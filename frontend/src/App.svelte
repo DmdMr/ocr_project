@@ -9,11 +9,13 @@
   import ArchivePage from './ArchivePage.svelte'
   import SettingsPage from './SettingsPage.svelte'
   import LoginPage from './LoginPage.svelte'
-  import RegisterPage from './RegisterPage.svelte'
   import DocumentEditorPage from './DocumentEditorPage.svelte'
+  import AdminUsersPage from './AdminUsersPage.svelte'
+  import ActivityLogsPage from './ActivityLogsPage.svelte'
   import { authReady, currentUser, initAuth } from './lib/auth'
 
-  const publicRoutes = new Set(['/login', '/register'])
+  const authRoutes = new Set(['/login', '/register'])
+  const adminOnlyRoutes = ['/settings', '/admin/users', '/admin/activity']
 
   const routes = {
     '/': HomePage,
@@ -21,8 +23,9 @@
     '/assistant': ChatbotPage,
     '/archive': ArchivePage,
     '/settings': SettingsPage,
+    '/admin/users': AdminUsersPage,
+    '/admin/activity': ActivityLogsPage,
     '/login': LoginPage,
-    '/register': RegisterPage,
     '/documents/:id': DocumentEditorPage,
     '/documents/:id/editor': DocumentEditorPage
   }
@@ -36,10 +39,18 @@
   function enforceRoute(path: string) {
     if (!get(authReady)) return
     const user = get(currentUser)
-    if (!user && !publicRoutes.has(path)) {
-      push('/login')
-    } else if (user && publicRoutes.has(path)) {
+    const isAuthenticated = Boolean(user?.is_authenticated)
+    const isAdmin = isAuthenticated && user?.role === 'admin'
+    if (adminOnlyRoutes.includes(path) && !isAdmin) {
       push('/')
+      return
+    }
+    if (isAuthenticated && authRoutes.has(path)) {
+      push('/')
+      return
+    }
+    if (!isAuthenticated && path === '/register') {
+      push('/login')
     }
   }
 

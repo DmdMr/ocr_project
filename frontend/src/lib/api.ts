@@ -368,9 +368,12 @@ export async function deleteDocumentImage(id: string, imageFilename: string) {
 
 
 export interface AuthUser {
-    id: string
-    username: string
+    id: string | null
+    username: string | null
+    role: "viewer" | "editor" | "admin"
+    is_authenticated?: boolean
     created_at?: string
+    updated_at?: string
     is_active?: boolean
 }
 
@@ -407,4 +410,73 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const data = await response.json().catch(() => null)
     if (!response.ok) throw new Error("Failed to load current user")
     return data
+}
+
+export interface AdminUserPayload {
+    username: string
+    password: string
+    role: "editor" | "admin"
+    is_active: boolean
+}
+
+export interface AdminUserUpdatePayload {
+    username?: string
+    role?: "editor" | "admin"
+    is_active?: boolean
+}
+
+export interface ActivityLogEntry {
+    id: string
+    timestamp?: string
+    created_at?: string
+    action: string
+    actor: Record<string, unknown>
+    payload: Record<string, unknown>
+}
+
+export async function getUsers(): Promise<AuthUser[]> {
+    const response = await apiFetch(`${API_URL}/users`)
+    const data = await response.json().catch(() => ({ users: [] }))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch users")
+    return data.users ?? []
+}
+
+export async function createUserByAdmin(payload: AdminUserPayload): Promise<AuthUser> {
+    const response = await apiFetch(`${API_URL}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to create user")
+    return data
+}
+
+export async function updateUserByAdmin(userId: string, payload: AdminUserUpdatePayload): Promise<AuthUser> {
+    const response = await apiFetch(`${API_URL}/users/${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to update user")
+    return data
+}
+
+export async function resetUserPasswordByAdmin(userId: string, newPassword: string) {
+    const response = await apiFetch(`${API_URL}/users/${encodeURIComponent(userId)}/password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_password: newPassword })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to reset password")
+    return data
+}
+
+export async function getActivityLogs(limit = 100): Promise<ActivityLogEntry[]> {
+    const response = await apiFetch(`${API_URL}/activity-logs?limit=${encodeURIComponent(String(limit))}`)
+    const data = await response.json().catch(() => ({ logs: [] }))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch activity logs")
+    return data.logs ?? []
 }

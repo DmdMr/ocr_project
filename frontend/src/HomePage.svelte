@@ -6,7 +6,7 @@
     import { getTags } from "./lib/api"
     import { onMount } from "svelte"
     import { push } from 'svelte-spa-router'
-    import { currentUser, logout } from './lib/auth'
+    import { canEditDocuments, currentUser, isAdmin, isAuthenticated, logout } from './lib/auth'
 
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
@@ -112,21 +112,31 @@
     <div class="sidebar-scroll">
       <WorkspaceSidebar
         currentUsername={$currentUser?.username ?? null}
+        role={$currentUser.role}
+        isAuthenticated={$isAuthenticated}
         on:logout={async () => {
           await logout()
-          push('/login')
+          push('/')
         }}
+        on:navigateLogin={() => push('/login')}
         on:navigateAbout={() => push('/about')}
         on:navigateArchive={() => push('/archive')}
         on:navigateAssistant={() => push('/assistant')}
         on:navigateSettings={() => push('/settings')}
+        on:navigateAdminUsers={() => push('/admin/users')}
+        on:navigateActivity={() => push('/admin/activity')}
       />
       <TagManager
         initialTags={tags}
+        canManage={$isAdmin}
         on:select={(event) => activeTag = event.detail.tag}
         on:tagsChanged={(event) => tags = event.detail.tags}
       />
-      <Upload embedded on:uploaded={handleUpload} />
+      {#if $canEditDocuments}
+        <Upload embedded on:uploaded={handleUpload} />
+      {:else}
+        <div class="panel sign-in-hint">Sign in as editor/admin to upload and edit documents.</div>
+      {/if}
     </div>
   </aside>
 
@@ -138,6 +148,8 @@
         {columnCount}
         {sidebarOpen}
         {activeTag}
+        canEdit={$canEditDocuments}
+        isAdmin={$isAdmin}
         on:toggleSidebar={toggleSidebar}
         on:viewModeChange={(event) => {
             viewMode = event.detail.mode
@@ -214,6 +226,12 @@
 
 .workspace-main {
     min-width: 0;
+}
+
+.sign-in-hint {
+    margin-top: 10px;
+    padding: 10px;
+    color: var(--text-muted);
 }
 
 .sidebar-backdrop {

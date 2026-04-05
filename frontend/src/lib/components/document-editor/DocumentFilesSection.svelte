@@ -8,6 +8,7 @@
   export let uploadProgress = 0
   export let error = ""
   export let successMessage = ""
+  export let canEdit = true
 
   const dispatch = createEventDispatcher<{
     upload: { files: File[] }
@@ -33,10 +34,12 @@
 <section class="panel files-section">
   <div class="head">
     <h3>Файлы</h3>
+    {#if canEdit}
     <label class="upload-btn" class:disabled={uploading}>
       {uploading ? `Загрузка ${uploadProgress}%` : "Добавить файлы"}
       <input type="file" multiple hidden disabled={uploading} on:change={emitSelectedFiles} />
     </label>
+    {/if}
   </div>
 
   {#if uploading}
@@ -53,7 +56,9 @@
     {#each attachments as attachment}
       <div class="row">
         <a href={attachmentDownloadUrl(attachment)} target="_blank" rel="noreferrer">{attachmentLabel(attachment)}</a>
-        <button class="danger" on:click={() => dispatch("remove", { attachment })}>Удалить</button>
+        {#if canEdit}
+          <button class="danger" on:click={() => dispatch("remove", { attachment })}>Удалить</button>
+        {/if}
       </div>
     {/each}
   {:else}

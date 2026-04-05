@@ -7,6 +7,7 @@
   export let customFieldSettings: CardCustomFieldSetting[] = []
   export let customFieldDraft: Record<string, string | number | string[] | null> = {}
   export let customFieldsStatus: "idle" | "saving" | "saved" | "error" = "idle"
+  export let canEdit = true
 
   const dispatch = createEventDispatcher<{
     customFieldInput: { fieldName: string; value: string; saveNow?: boolean }
@@ -32,7 +33,9 @@
 <section class="panel metadata">
   <div class="section-head">
     <h3>Теги</h3>
-    <button on:click={() => dispatch("manageTags")}>Управлять</button>
+    {#if canEdit}
+      <button on:click={() => dispatch("manageTags")}>Управлять</button>
+    {/if}
   </div>
   <div class="tags">
     {#if doc.tags?.length}
@@ -58,6 +61,7 @@
         <span>{field.name}</span>
         <input
           type={field.type === "number" ? "number" : "text"}
+          disabled={!canEdit}
           value={field.type === "people" ? peopleDraftValue(customFieldDraft[field.name]) : (customFieldDraft[field.name] ?? "")}
           on:input={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value })}
           on:blur={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value, saveNow: true })}
@@ -68,15 +72,19 @@
 
   <div class="section-head">
     <h3>Изображения</h3>
-    <label class="upload-btn">
-      Добавить изображения
-      <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={emitSelectedImages} />
-    </label>
+    {#if canEdit}
+      <label class="upload-btn">
+        Добавить изображения
+        <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={emitSelectedImages} />
+      </label>
+    {/if}
   </div>
 
   <div class="section-head">
     <h3>Действия</h3>
-    <button class="danger" on:click={() => dispatch("deleteDoc")}>Удалить документ</button>
+    {#if canEdit}
+      <button class="danger" on:click={() => dispatch("deleteDoc")}>Удалить документ</button>
+    {/if}
   </div>
 </section>
 

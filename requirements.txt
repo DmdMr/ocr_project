@@ -8,6 +8,7 @@ python-dotenv>=1.0,<2.0
 # Database
 motor>=3.5,<4.0
 pymongo>=4.8,<5.0
+passlib>=1.7,<2.0
 
 # OCR/image stack
 numpy>=1.26,<2.0

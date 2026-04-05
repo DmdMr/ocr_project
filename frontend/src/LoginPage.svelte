@@ -26,6 +26,5 @@
   <input bind:value={username} placeholder="Имя пользователя" />
   <input bind:value={password} placeholder="Пароль" type="password" />
   <button on:click={submit} disabled={loading}>{loading ? 'Входим...' : 'Войти'}</button>
-  <button class="link" on:click={() => push('/register')}>Создать аккаунт</button>
   {#if error}<p class="error">{error}</p>{/if}
 </div>
