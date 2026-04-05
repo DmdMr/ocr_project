@@ -1,12 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, tick } from "svelte"
+  import { push } from "svelte-spa-router"
   import type { CardCustomFieldSetting, Document } from "../types"
-  import CardPreview from "./CardPreview.svelte"
   import { tagHue } from "../tagColors"
   import {
-    deleteDocument,
-    updateDocument,
-    uploadImagesToDocument,
     UPLOADS_URL
   } from "../api"
 
@@ -97,10 +94,6 @@
     { id: "tags", kind: "tags", label: "Теги", isSystem: true, movable: false, resizable: true, deletable: false, minWidth: 160, defaultWidth: 200 }
   ]
 
-  let activeDoc: Document | null = null
-  let editing = false
-  let editedText = ""
-  let galleryUploading = false
   let tableShellElement: HTMLDivElement | null = null
   let tableScrollElement: HTMLDivElement | null = null
   let overlayPopupElement: HTMLDivElement | null = null
@@ -320,15 +313,7 @@
   }
 
   function openPreview(doc: Document) {
-    activeDoc = doc
-    editedText = doc.recognized_text
-    editing = false
-  }
-
-  function closePreview() {
-    activeDoc = null
-    editing = false
-    galleryUploading = false
+    push(`/documents/${doc._id}`)
   }
 
   function cardImageSrc(currentDoc: Document) {
@@ -366,55 +351,6 @@
 
   function applyDocumentUpdate(updated: Document) {
     dispatch("updated", { document: updated })
-    if (activeDoc && activeDoc._id === updated._id) {
-      activeDoc = updated
-      editedText = updated.recognized_text
-    }
-  }
-
-  async function savePreviewText() {
-    if (!activeDoc) return
-    const updated = await updateDocument(activeDoc._id, {
-      recognized_text: editedText
-    })
-    applyDocumentUpdate(updated)
-    editing = false
-  }
-
-  async function savePreviewFilename(event: CustomEvent<{ display_filename: string }>) {
-    if (!activeDoc) return
-    const updated = await updateDocument(activeDoc._id, {
-      display_filename: event.detail.display_filename
-    })
-    applyDocumentUpdate(updated)
-  }
-
-  async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
-    if (!activeDoc) return
-    const files = event.detail.files
-    if (!files.length) return
-
-    galleryUploading = true
-    try {
-      const result = await uploadImagesToDocument(activeDoc._id, files)
-      if (!result.document) {
-        throw new Error("Сервер не вернул обновленные данные карточки")
-      }
-      applyDocumentUpdate(result.document)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось добавить изображения"
-      alert(message)
-    } finally {
-      galleryUploading = false
-    }
-  }
-
-  async function removeActiveDoc() {
-    if (!activeDoc) return
-    const id = activeDoc._id
-    await deleteDocument(id)
-    dispatch("deleted", { id })
-    closePreview()
   }
 
   function handleOutsideClick(event: MouseEvent) {
@@ -800,22 +736,6 @@
       </div>
     {/if}
   </div>
-{/if}
-
-{#if activeDoc}
-  <CardPreview
-    doc={activeDoc}
-    bind:editedText
-    {editing}
-    on:close={closePreview}
-    on:save={savePreviewText}
-    on:saveFilename={savePreviewFilename}
-    on:delete={removeActiveDoc}
-    on:editToggle={() => editing = !editing}
-    on:documentUpdated={(event) => applyDocumentUpdate(event.detail.document)}
-    on:addImages={uploadToCard}
-    {galleryUploading}
-  />
 {/if}
 
 <style>
