@@ -24,6 +24,7 @@
   import DocumentImageBlock from "./lib/components/document-editor/DocumentImageBlock.svelte"
   import DocumentFilesSection from "./lib/components/document-editor/DocumentFilesSection.svelte"
   import DocumentImageEditorModal from "./lib/components/document-editor/DocumentImageEditorModal.svelte"
+  import { canEditDocuments } from "./lib/auth"
 
   export let params: { id: string }
 
@@ -123,6 +124,7 @@
   }
 
   async function saveText() {
+    if (!$canEditDocuments) return
     if (!doc) return
     const updated = await updateDocument(doc._id, { recognized_text: editedText })
     applyDocumentUpdate(updated)
@@ -130,6 +132,7 @@
   }
 
   async function saveFilename() {
+    if (!$canEditDocuments) return
     if (!doc) return
     const normalized = normalizeFilenameDraft(filenameDraft, doc.display_filename ?? doc.filename)
     if (normalized.error) {
@@ -181,6 +184,7 @@
   }
 
   async function saveChangedCustomFields() {
+    if (!$canEditDocuments) return
     if (!doc || !changedCustomFields.size) return
 
     const payload: Record<string, string | number | string[] | null> = {}
@@ -201,6 +205,7 @@
   }
 
   async function handleAttachmentUpload(event: CustomEvent<{ files: File[] }>) {
+    if (!$canEditDocuments) return
     if (!doc) return
     const files = event.detail.files ?? []
     if (!files.length) return
@@ -229,6 +234,7 @@
   }
 
   async function handleGalleryUpload(event: CustomEvent<{ files: File[] }>) {
+    if (!$canEditDocuments) return
     if (!doc) return
     const files = event.detail.files ?? []
     if (!files.length) return
@@ -249,12 +255,14 @@
   }
 
   async function removeAttachment(attachment: AttachmentFile) {
+    if (!$canEditDocuments) return
     if (!doc || !attachment.filename) return
     const updated = await deleteDocumentAttachment(doc._id, attachment.filename)
     applyDocumentUpdate(updated)
   }
 
   async function removeImage(filename: string) {
+    if (!$canEditDocuments) return
     if (!doc || galleryImages.length <= 1) return
     if (!confirm("Удалить это изображение?")) return
     const updated = await deleteDocumentImage(doc._id, filename)
@@ -268,11 +276,13 @@
   }
 
   function openImageEditor(filename: string) {
+    if (!$canEditDocuments) return
     imageBeingEdited = galleryImages.find((item) => item.filename === filename) ?? null
     imageEditorOpen = Boolean(imageBeingEdited)
   }
 
   async function applyRotate(event: CustomEvent<{ filename: string; rotate: number }>) {
+    if (!$canEditDocuments) return
     if (!doc) return
     imageEditorSaving = true
     try {
@@ -288,6 +298,7 @@
   }
 
   async function applyCrop(event: CustomEvent<{ filename: string; crop: { x_percent: number; y_percent: number; width_percent: number; height_percent: number } }>) {
+    if (!$canEditDocuments) return
     if (!doc) return
     imageEditorSaving = true
     try {
@@ -327,6 +338,7 @@
   }
 
   async function handleTagAdded(event: CustomEvent<{ tag: string }>) {
+    if (!$canEditDocuments) return
     if (!doc) return
     const normalized = event.detail.tag.trim().toLowerCase()
     const currentTags = doc.tags ?? []
@@ -336,6 +348,7 @@
   }
 
   async function handleTagRemoved(event: CustomEvent<{ tag: string }>) {
+    if (!$canEditDocuments) return
     if (!doc) return
     const normalized = event.detail.tag.trim().toLowerCase()
     const nextTags = (doc.tags ?? []).filter((tag) => tag.trim().toLowerCase() !== normalized)
@@ -344,6 +357,7 @@
   }
 
   async function removeDocumentNow() {
+    if (!$canEditDocuments) return
     if (!doc) return
     if (!confirm("Удалить карточку?")) return
     await deleteDocument(doc._id)
@@ -378,6 +392,7 @@
 
     <DocumentHeader
       {doc}
+      canEdit={$canEditDocuments}
       bind:filenameDraft
       {filenameEditing}
       {filenameError}
@@ -393,6 +408,7 @@
       <aside class="left-column">
         <DocumentMetadataSection
           {doc}
+          canEdit={$canEditDocuments}
           {customFieldSettings}
           {customFieldDraft}
           {customFieldsStatus}
@@ -417,6 +433,7 @@
 
         <DocumentFilesSection
           attachments={doc.attachments ?? []}
+          canEdit={$canEditDocuments}
           uploading={attachmentsUploading}
           uploadProgress={attachmentUploadProgress}
           successMessage={attachmentUploadSuccess}
@@ -429,6 +446,7 @@
       <main class="center-column">
         <DocumentContentEditor
           bind:value={editedText}
+          canEdit={$canEditDocuments}
           {editing}
           onToggleEdit={() => editing = !editing}
           onSave={saveText}
@@ -437,9 +455,13 @@
         <section class="panel images-section">
           <h2>Image blocks</h2>
           <p class="hint">Изображения рендерятся как блоки внизу документа. Идентификатор: filename.</p>
+          {#if !$canEditDocuments}
+            <p class="hint">Sign in as editor/admin to modify images, tags, fields, files, or OCR text.</p>
+          {/if}
           {#each galleryImages as image}
             <DocumentImageBlock
               {image}
+              canEdit={$canEditDocuments}
               canDelete={galleryImages.length > 1}
               on:open={(event) => openImage(event.detail.filename)}
               on:delete={(event) => removeImage(event.detail.filename)}
@@ -450,7 +472,7 @@
       </main>
     </div>
 
-    {#if tagPickerOpen}
+    {#if $canEditDocuments && tagPickerOpen}
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="tag-picker-backdrop" on:click={() => tagPickerOpen = false}>
@@ -485,7 +507,7 @@
       </div>
     {/if}
 
-    {#if imageEditorOpen && imageBeingEdited}
+    {#if $canEditDocuments && imageEditorOpen && imageBeingEdited}
       <DocumentImageEditorModal
         image={imageBeingEdited}
         saving={imageEditorSaving}

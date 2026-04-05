@@ -10,6 +10,7 @@
     bulkRestoreArchivedDocuments,
     bulkPermanentlyDeleteArchivedDocuments
   } from "./lib/api"
+  import { canEditDocuments } from "./lib/auth"
 
   let archivedDocs: Document[] = []
   let selectedIds: string[] = []
@@ -84,9 +85,13 @@
 <div class="panel actions-bar">
   <span>Выбрано: {selectedIds.length}</span>
   <div class="bulk-actions">
-    <button class="secondary" on:click={restoreSelected} disabled={!selectedIds.length}>Восстановить выбранные</button>
-    <button class="danger" on:click={deleteSelectedPermanently} disabled={!selectedIds.length}>Удалить выбранные</button>
-    <button class="secondary" on:click={clearSelection} disabled={!selectedIds.length}>Снять выбор</button>
+    {#if $canEditDocuments}
+      <button class="secondary" on:click={restoreSelected} disabled={!selectedIds.length}>Восстановить выбранные</button>
+      <button class="danger" on:click={deleteSelectedPermanently} disabled={!selectedIds.length}>Удалить выбранные</button>
+      <button class="secondary" on:click={clearSelection} disabled={!selectedIds.length}>Снять выбор</button>
+    {:else}
+      <span class="muted">Только просмотр. Войдите как editor/admin для изменения архива.</span>
+    {/if}
   </div>
 </div>
 
@@ -99,11 +104,13 @@
     {#each archivedDocs as doc (doc._id)}
       <div class="document-card archive-card">
         <div class="archive-left">
-          <input
-            type="checkbox"
-            checked={selectedIds.includes(doc._id)}
-            on:change={() => toggleSelection(doc._id)}
-          />
+          {#if $canEditDocuments}
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(doc._id)}
+              on:change={() => toggleSelection(doc._id)}
+            />
+          {/if}
           <img
             src={`${UPLOADS_URL}/${doc.filename}?v=${encodeURIComponent(doc.image_version ?? doc.created_at ?? "")}`}
             alt={displayName(doc)}
@@ -118,8 +125,10 @@
         </div>
 
         <div class="card-actions">
-          <button class="secondary" on:click={() => restoreOne(doc._id)}>Восстановить</button>
-          <button class="danger" on:click={() => deleteOnePermanently(doc._id)}>Удалить навсегда</button>
+          {#if $canEditDocuments}
+            <button class="secondary" on:click={() => restoreOne(doc._id)}>Восстановить</button>
+            <button class="danger" on:click={() => deleteOnePermanently(doc._id)}>Удалить навсегда</button>
+          {/if}
         </div>
       </div>
     {/each}

@@ -17,6 +17,8 @@
     export let refreshKey: number
     export let viewMode: "grid" | "list" = "grid"
     export let columnCount = 5
+    export let canEdit = false
+    export let isAdmin = false
     const dispatch = createEventDispatcher<{
         viewModeChange: { mode: "grid" | "list" }
         toggleSidebar: void
@@ -56,6 +58,7 @@
     let viewportWidth = 1280
 
     function toggleCardSelection(id: string) {
+        if (!canEdit) return
         if (selectedIds.includes(id)) {
             selectedIds = selectedIds.filter(item => item !== id)
         } else {
@@ -73,6 +76,7 @@
     }
 
     async function bulkDelete() {
+        if (!canEdit) return
         if (!selectedIds.length) return
 
         const confirmed = confirm(`Удалить ${selectedIds.length} карточек?`)
@@ -85,6 +89,7 @@
     }
 
     async function bulkAddTag() {
+        if (!canEdit) return
 
         const availableTags = await getTags()
 
@@ -248,6 +253,7 @@
     }
 
     async function handleAddProperty() {
+        if (!isAdmin) return
         const name = prompt("Название нового свойства")
         if (!name || !name.trim()) return
 
@@ -269,6 +275,7 @@
     }
 
     async function handleDeleteProperty(fieldName: string) {
+        if (!isAdmin) return
         const field = customFieldSettings.find(item => item.name === fieldName)
         if (!field) return
 
@@ -610,7 +617,7 @@
     </div>
 </div>
 
-{#if selectedIds.length > 0}
+{#if canEdit && selectedIds.length > 0}
   <div class="bulk-actions-manager panel">
     <div class="bulk-left">
       Выбрано: {selectedIds.length}
@@ -633,6 +640,7 @@
       {#each sortedDocuments as doc (doc._id)}
         <DocumentCard
           {doc}
+          {canEdit}
           search={search}
           selected={selectedIds.includes(doc._id)}
           selectionActive={selectedIds.length > 0}
@@ -649,6 +657,7 @@
           {#each column as doc (doc._id)}
             <DocumentCard
               {doc}
+              {canEdit}
               search={search}
               selected={selectedIds.includes(doc._id)}
               selectionActive={selectedIds.length > 0}
@@ -664,6 +673,8 @@
 {:else}
   <DocumentTable
     documents={sortedDocuments}
+    {canEdit}
+    {isAdmin}
     {selectedIds}
     {customFieldSettings}
     {customFieldFilters}
