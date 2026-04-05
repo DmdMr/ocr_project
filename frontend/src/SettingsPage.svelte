@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { push } from 'svelte-spa-router'
   import { createCardField, deleteCardField, getSettings } from './lib/api'
+  import { isAdmin } from './lib/auth'
   import type { CardCustomFieldSetting } from './lib/types'
 
   let fields: CardCustomFieldSetting[] = []
@@ -60,6 +61,9 @@
     <button on:click={() => push('/')}>Назад</button>
   </div>
 
+  {#if !$isAdmin}
+    <p class="error">Доступно только администраторам.</p>
+  {:else}
   <p class="muted">Поля ниже добавляются в каждую карточку документа.</p>
 
   <div class="add-field-row">
@@ -94,6 +98,7 @@
         </div>
       {/each}
     </div>
+  {/if}
   {/if}
 </div>
 

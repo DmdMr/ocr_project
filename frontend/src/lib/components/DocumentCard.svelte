@@ -12,6 +12,7 @@
 
     export let selected = false
     export let selectionActive = false
+    export let canEdit = false
 
     const dispatch = createEventDispatcher()
 
@@ -29,7 +30,7 @@
     }
 
     function handleCardClick() {
-        if (selectionActive) {
+        if (canEdit && selectionActive) {
             dispatch("toggleSelect")
             return
         }
@@ -63,7 +64,7 @@
     }
 
     function openPreview() {
-        if (selectionActive) {
+        if (canEdit && selectionActive) {
             dispatch("toggleSelection", { id: doc._id })
             return
         }
@@ -153,14 +154,16 @@
 
         
 
-        <button
-            class="select-checkbox"
-            class:visible={selected}
-            aria-label="Выбрать карточку"
-            on:click={handleCheckboxClick}
-        >
-            {#if selected}{/if}
-        </button>
+        {#if canEdit}
+            <button
+                class="select-checkbox"
+                class:visible={selected}
+                aria-label="Выбрать карточку"
+                on:click={handleCheckboxClick}
+            >
+                {#if selected}{/if}
+            </button>
+        {/if}
     </div>
     
     <div class="card-filename">
@@ -364,4 +367,3 @@ img {
 .doc-links a:hover { color: var(--text); }
 
 </style>
-

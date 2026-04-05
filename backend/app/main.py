@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.routes import router
-from backend.app.db.database import sessions_collection, users_collection
+from backend.app.auth import bootstrap_first_admin
+from backend.app.db.database import activity_logs_collection, sessions_collection, users_collection
 
 app = FastAPI()
 
@@ -24,8 +25,13 @@ app.add_middleware(
 @app.on_event("startup")
 async def setup_indexes():
     await users_collection.create_index("username_lower", unique=True)
+    await users_collection.create_index("role")
     await sessions_collection.create_index("session_id", unique=True)
     await sessions_collection.create_index("expires_at", expireAfterSeconds=0)
+    await activity_logs_collection.create_index("created_at")
+    await activity_logs_collection.create_index("action")
+    await activity_logs_collection.create_index("actor.user_id")
+    await bootstrap_first_admin()
 
 
 app.include_router(router)

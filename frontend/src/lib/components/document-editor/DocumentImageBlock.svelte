@@ -5,6 +5,7 @@
 
   export let image: GalleryImage
   export let canDelete = true
+  export let canEdit = true
 
   const dispatch = createEventDispatcher<{
     open: { filename: string }
@@ -21,8 +22,10 @@
   </button>
   <div class="caption">![[{image.filename}]]</div>
   <div class="image-actions">
-    <button on:click={() => dispatch("edit", { filename: image.filename })}>Edit image</button>
-    <button class="danger" disabled={!canDelete} on:click={() => dispatch("delete", { filename: image.filename })}>Delete</button>
+    {#if canEdit}
+      <button on:click={() => dispatch("edit", { filename: image.filename })}>Edit image</button>
+      <button class="danger" disabled={!canDelete} on:click={() => dispatch("delete", { filename: image.filename })}>Delete</button>
+    {/if}
   </div>
 </div>
 

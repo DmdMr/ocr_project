@@ -4,6 +4,7 @@
   import { tagHue } from "../tagColors"
 
   export let initialTags: string[] = []
+  export let canManage = false
 
   const dispatch = createEventDispatcher<{
     select: { tag: string | null }
@@ -24,6 +25,7 @@
   )
 
   async function submitTag() {
+    if (!canManage) return
     const normalized = normalizeTag(createInput)
     createError = ""
 
@@ -71,6 +73,7 @@
   }
 
   async function removeTag(tag: string) {
+    if (!canManage) return
     try {
       await deleteTag(tag)
       tags = tags.filter(existing => existing !== tag)
@@ -92,18 +95,19 @@
 
 <div class="tag-manager panel">
 
+  {#if canManage}
+    <div class="tags-creation">
+      <input
+        type="text"
+        class="my-input"
+        placeholder="Создать тег"
+        bind:value={createInput}
+        on:keydown={handleCreateKeydown}
+      />
 
-  <div class="tags-creation">
-    <input
-      type="text"
-      class="my-input"
-      placeholder="Создать тег"
-      bind:value={createInput}
-      on:keydown={handleCreateKeydown}
-    />
-
-    <button class="primary" on:click={submitTag}>Создать тег</button> 
-  </div>
+      <button class="primary" on:click={submitTag}>Создать тег</button> 
+    </div>
+  {/if}
 
   <div class="tags-management">
     <input
@@ -113,9 +117,11 @@
       bind:value={searchInput}
     />
 
-    <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
-      {deleteMode ? "Готово" : "Удалить"}
-    </button>
+    {#if canManage}
+      <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
+        {deleteMode ? "Готово" : "Удалить"}
+      </button>
+    {/if}
   </div>
 
 

@@ -11,6 +11,8 @@
   export let documents: Document[] = []
   export let selectedIds: string[] = []
   export let customFieldSettings: CardCustomFieldSetting[] = []
+  export let canEdit = false
+  export let isAdmin = false
 
   type TextFilter = {
     mode: "text"
@@ -387,6 +389,7 @@
     .map(customColumnFromField)
 
   $: visibleColumns = [...systemColumns, ...orderedCustomColumns]
+    .filter((column) => canEdit || column.kind !== "select")
 
   $: {
     console.debug("[DocumentTable] customFieldSettings loaded:", customFieldSettings)
@@ -554,15 +557,17 @@
             {/if}
           {/each}
           <th class="add-property-cell">
-            <button
-              type="button"
-              class="add-property-btn"
-              aria-label="Добавить свойство"
-              title="Добавить свойство"
-              on:click={() => dispatch("addProperty")}
-            >
-              +
-            </button>
+            {#if isAdmin}
+              <button
+                type="button"
+                class="add-property-btn"
+                aria-label="Добавить свойство"
+                title="Добавить свойство"
+                on:click={() => dispatch("addProperty")}
+              >
+                +
+              </button>
+            {/if}
           </th>
         </tr>
       </thead>
@@ -575,6 +580,7 @@
                   <input
                     type="checkbox"
                     checked={selectedIds.includes(doc._id)}
+                    disabled={!canEdit}
                     on:change={() => dispatch("toggleSelect", { id: doc._id })}
                   />
                 </td>
@@ -732,7 +738,9 @@
       {/if}
       <div class="popup-row">
         <button class="secondary" on:click={() => dispatch("clearFieldFilter", { fieldName: openFilterField })}>Сбросить</button>
-        <button class="danger" on:click={() => handleDeleteProperty(openFilterField)}>Удалить свойство</button>
+        {#if isAdmin}
+          <button class="danger" on:click={() => handleDeleteProperty(openFilterField)}>Удалить свойство</button>
+        {/if}
         <button class="primary" on:click={() => dispatch("closeFilterPanel")}>Готово</button>
       </div>
     {/if}

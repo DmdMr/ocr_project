@@ -7,20 +7,25 @@ from pathlib import Path
 from typing import List, Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 from backend.app.auth import (
+    USER_ROLE_ADMIN,
+    USER_ROLE_EDITOR,
     clear_session_cookie,
     create_session,
+    get_auth_context,
     get_current_user,
     hash_password,
-    require_current_user,
+    require_admin_user,
+    require_editor_user,
     set_session_cookie,
     verify_password,
 )
 from backend.app.db.database import (
+    activity_logs_collection,
     app_settings_collection,
     documents_collection,
     sessions_collection,
@@ -187,14 +192,21 @@ def get_request_actor(request: Request):
     }
 
 
-def write_audit_log(request: Request, action: str, payload: dict):
+async def write_audit_log(request: Request, action: str, payload: dict, current_user: Optional[dict] = None):
     actor = get_request_actor(request)
+    if current_user:
+        actor["user_id"] = current_user.get("id")
+        actor["username"] = current_user.get("username")
+        actor["role"] = current_user.get("role")
     entry = {
         "timestamp": now_yekaterinburg().isoformat(),
+        "created_at": datetime.now(timezone.utc),
         "action": action,
         "actor": actor,
         "payload": payload,
     }
+
+    await activity_logs_collection.insert_one(entry)
     audit_logger.info(json.dumps(entry, ensure_ascii=False))
 
 
@@ -204,15 +216,59 @@ class AuthCredentials(BaseModel):
     password: str
 
 
+class CreateUserPayload(AuthCredentials):
+    role: str = USER_ROLE_EDITOR
+    is_active: bool = True
+
+
+class UserUpdatePayload(BaseModel):
+    username: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class UserPasswordUpdatePayload(BaseModel):
+    new_password: str
+
+
+def serialize_user(user: dict):
+    return {
+        "id": user["_id"],
+        "username": user["username"],
+        "role": user.get("role", USER_ROLE_EDITOR),
+        "created_at": user.get("created_at"),
+        "updated_at": user.get("updated_at"),
+        "is_active": user.get("is_active", True),
+    }
+
+
+def serialize_activity_log(log: dict):
+    return {
+        "id": str(log.get("_id")),
+        "timestamp": log.get("timestamp"),
+        "created_at": log.get("created_at"),
+        "action": log.get("action"),
+        "actor": log.get("actor", {}),
+        "payload": log.get("payload", {}),
+    }
+
+
 @router.post("/auth/register")
-async def register(payload: AuthCredentials, response: Response):
+async def register(
+    request: Request,
+    payload: CreateUserPayload,
+    current_user=Depends(require_admin_user),
+):
     username = (payload.username or "").strip()
     password = payload.password or ""
+    role = (payload.role or USER_ROLE_EDITOR).strip().lower()
 
     if len(username) < 3:
         raise HTTPException(status_code=400, detail="Имя пользователя должно содержать минимум 3 символа")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Пароль должен содержать минимум 6 символов")
+    if role not in {USER_ROLE_EDITOR, USER_ROLE_ADMIN}:
+        raise HTTPException(status_code=400, detail="Недопустимая роль пользователя")
 
     username_lower = username.lower()
     existing_user = await users_collection.find_one({"username_lower": username_lower})
@@ -227,18 +283,32 @@ async def register(payload: AuthCredentials, response: Response):
             "username": username,
             "username_lower": username_lower,
             "password_hash": hash_password(password),
+            "role": role,
             "created_at": now,
-            "is_active": True,
+            "updated_at": now,
+            "is_active": bool(payload.is_active),
         }
     )
+    created_user = {
+        "id": user_id,
+        "username": username,
+        "role": role,
+        "created_at": now,
+        "updated_at": now,
+        "is_active": bool(payload.is_active),
+    }
+    await write_audit_log(
+        request,
+        "user.create",
+        {"user_id": user_id, "username": username, "role": role, "is_active": bool(payload.is_active)},
+        current_user=current_user,
+    )
 
-    session_id, expires_at = await create_session(user_id)
-    set_session_cookie(response, session_id, expires_at)
-    return {"id": user_id, "username": username, "created_at": now, "is_active": True}
+    return {**created_user, "created_by": current_user["id"]}
 
 
 @router.post("/auth/login")
-async def login(payload: AuthCredentials, response: Response):
+async def login(request: Request, payload: AuthCredentials, response: Response):
     username = (payload.username or "").strip()
     password = payload.password or ""
     username_lower = username.lower()
@@ -249,14 +319,24 @@ async def login(payload: AuthCredentials, response: Response):
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="Пользователь деактивирован")
 
+    role = user.get("role", USER_ROLE_EDITOR)
+    if role not in {USER_ROLE_EDITOR, USER_ROLE_ADMIN}:
+        role = USER_ROLE_EDITOR
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"role": role, "updated_at": datetime.now(timezone.utc)}},
+        )
+
     session_id, expires_at = await create_session(user["_id"])
     set_session_cookie(response, session_id, expires_at)
-    return {
-        "id": user["_id"],
-        "username": user["username"],
-        "created_at": user.get("created_at"),
-        "is_active": user.get("is_active", True),
-    }
+    auth_user = serialize_user({**user, "role": role})
+    await write_audit_log(
+        request,
+        "auth.login",
+        {"user_id": auth_user["id"], "username": auth_user["username"], "role": auth_user["role"]},
+        current_user=auth_user,
+    )
+    return auth_user
 
 
 @router.post("/auth/logout")
@@ -268,10 +348,136 @@ async def logout(response: Response, current_user=Depends(get_current_user), ses
 
 
 @router.get("/auth/me")
-async def me(current_user=Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Требуется авторизация")
-    return current_user
+async def me(auth_context=Depends(get_auth_context)):
+    return auth_context
+
+
+@router.get("/users")
+async def list_users(current_user=Depends(require_admin_user)):
+    users = []
+    async for user in users_collection.find({}, {"password_hash": 0}).sort("created_at", -1):
+        users.append(serialize_user(user))
+    return {"users": users}
+
+
+@router.post("/users")
+async def create_user(request: Request, payload: CreateUserPayload, current_user=Depends(require_admin_user)):
+    return await register(request=request, payload=payload, current_user=current_user)
+
+
+@router.patch("/users/{user_id}")
+async def update_user(request: Request, user_id: str, payload: UserUpdatePayload, current_user=Depends(require_admin_user)):
+    user = await users_collection.find_one({"_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    update_data = {}
+    if payload.username is not None:
+        username = payload.username.strip()
+        if len(username) < 3:
+            raise HTTPException(status_code=400, detail="Имя пользователя должно содержать минимум 3 символа")
+        username_lower = username.lower()
+        existing = await users_collection.find_one({"username_lower": username_lower, "_id": {"$ne": user_id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Пользователь с таким именем уже существует")
+        update_data["username"] = username
+        update_data["username_lower"] = username_lower
+
+    if payload.role is not None:
+        role = payload.role.strip().lower()
+        if role not in {USER_ROLE_EDITOR, USER_ROLE_ADMIN}:
+            raise HTTPException(status_code=400, detail="Недопустимая роль пользователя")
+        if user.get("role") == USER_ROLE_ADMIN and role != USER_ROLE_ADMIN:
+            other_admin_exists = await users_collection.count_documents(
+                {"role": USER_ROLE_ADMIN, "is_active": True, "_id": {"$ne": user_id}},
+                limit=1,
+            )
+            if not other_admin_exists:
+                raise HTTPException(status_code=400, detail="Нельзя убрать роль последнего активного администратора")
+        update_data["role"] = role
+
+    if payload.is_active is not None:
+        if user.get("role") == USER_ROLE_ADMIN and not payload.is_active:
+            other_admin_exists = await users_collection.count_documents(
+                {"role": USER_ROLE_ADMIN, "is_active": True, "_id": {"$ne": user_id}},
+                limit=1,
+            )
+            if not other_admin_exists:
+                raise HTTPException(status_code=400, detail="Нельзя деактивировать последнего активного администратора")
+        update_data["is_active"] = bool(payload.is_active)
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Нет полей для обновления")
+
+    update_data["updated_at"] = datetime.now(timezone.utc)
+    await users_collection.update_one({"_id": user_id}, {"$set": update_data})
+    updated_user = await users_collection.find_one({"_id": user_id}, {"password_hash": 0})
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    await write_audit_log(
+        request,
+        "user.update",
+        {"user_id": user_id, "updated_fields": sorted(update_data.keys())},
+        current_user=current_user,
+    )
+    if "role" in update_data:
+        await write_audit_log(
+            request,
+            "user.role.change",
+            {"user_id": user_id, "new_role": update_data["role"]},
+            current_user=current_user,
+        )
+    if "is_active" in update_data:
+        await write_audit_log(
+            request,
+            "user.activate" if update_data["is_active"] else "user.deactivate",
+            {"user_id": user_id, "is_active": update_data["is_active"]},
+            current_user=current_user,
+        )
+    return serialize_user(updated_user)
+
+
+@router.patch("/users/{user_id}/password")
+async def reset_user_password(
+    request: Request,
+    user_id: str,
+    payload: UserPasswordUpdatePayload,
+    current_user=Depends(require_admin_user),
+):
+    user = await users_collection.find_one({"_id": user_id}, {"_id": 1, "username": 1})
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    new_password = payload.new_password or ""
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Пароль должен содержать минимум 6 символов")
+
+    await users_collection.update_one(
+        {"_id": user_id},
+        {"$set": {"password_hash": hash_password(new_password), "updated_at": datetime.now(timezone.utc)}},
+    )
+
+    await sessions_collection.delete_many({"user_id": user_id})
+    await write_audit_log(
+        request,
+        "user.password.reset",
+        {"user_id": user_id, "username": user.get("username")},
+        current_user=current_user,
+    )
+    return {"message": "Пароль обновлён"}
+
+
+@router.get("/activity-logs")
+async def get_activity_logs(
+    limit: int = 100,
+    current_user=Depends(require_admin_user),
+):
+    safe_limit = max(1, min(limit, 500))
+    logs = []
+    async for entry in activity_logs_collection.find().sort("created_at", -1).limit(safe_limit):
+        logs.append(serialize_activity_log(entry))
+    return {"logs": logs, "count": len(logs)}
 
 
 @router.post("/upload")
@@ -279,7 +485,7 @@ async def upload_image(
     request: Request,
     file: UploadFile = File(...),
     perform_ocr: bool = Form(True),
-    current_user=Depends(require_current_user),
+    current_user=Depends(require_editor_user),
 ):
 
     if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
@@ -339,7 +545,7 @@ async def upload_image(
 
     result = await documents_collection.insert_one(document_data)
     document_data["_id"] = str(result.inserted_id)
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.upload",
         {
@@ -347,12 +553,13 @@ async def upload_image(
             "filename": document_data["filename"],
             "perform_ocr": perform_ocr,
         },
+        current_user=current_user,
     )
 
     return {"message": "Файл успешно загружен", "document": document_data}
 
 @router.post("/documents/{doc_id}/gallery")
-async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_current_user)):
+async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -425,10 +632,11 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
         raise HTTPException(status_code=404, detail="Документ не найден")
 
     updated_doc = normalize_document(updated_doc)
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.gallery.upload",
         {"document_id": doc_id, "added_count": len(added_items), "skipped_files": skipped_files},
+        current_user=current_user,
     )
     return {
         "message": "Галерея обновлена",
@@ -439,7 +647,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
 
 @router.post("/documents/{doc_id}/attachments")
-async def upload_attachments_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_current_user)):
+async def upload_attachments_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -499,10 +707,11 @@ async def upload_attachments_to_document(request: Request, doc_id: str, files: L
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.attachment.upload",
         {"document_id": doc_id, "added_count": len(added_items), "skipped_files": skipped_files},
+        current_user=current_user,
     )
 
     return {
@@ -566,7 +775,7 @@ async def get_settings():
 
 
 @router.post("/settings/fields")
-async def create_settings_field(request: Request, payload: CustomFieldDefinition, current_user=Depends(require_current_user)):
+async def create_settings_field(request: Request, payload: CustomFieldDefinition, current_user=Depends(require_admin_user)):
     field_name = normalize_custom_field_name(payload.name)
     field_type = (payload.type or "").strip().lower()
 
@@ -589,12 +798,17 @@ async def create_settings_field(request: Request, payload: CustomFieldDefinition
         {"custom_fields." + field_name: {"$exists": False}},
         {"$set": {"custom_fields." + field_name: default_value_for_field_type(field_type)}},
     )
-    write_audit_log(request, "settings.field.create", {"field_name": field_name, "field_type": field_type})
+    await write_audit_log(
+        request,
+        "settings.field.create",
+        {"field_name": field_name, "field_type": field_type},
+        current_user=current_user,
+    )
     return {"message": "Поле добавлено", "field": field_data}
 
 
 @router.delete("/settings/fields/{name}")
-async def delete_settings_field(request: Request, name: str, current_user=Depends(require_current_user)):
+async def delete_settings_field(request: Request, name: str, current_user=Depends(require_admin_user)):
     field_name = normalize_custom_field_name(name)
     if not field_name:
         raise HTTPException(status_code=400, detail="Имя поля обязательно")
@@ -609,11 +823,11 @@ async def delete_settings_field(request: Request, name: str, current_user=Depend
         {"_id": SETTINGS_DOCUMENT_ID},
         {"$pull": {"fields_for_cards": {"name": field_name}}},
     )
-    write_audit_log(request, "settings.field.delete", {"field_name": field_name})
+    await write_audit_log(request, "settings.field.delete", {"field_name": field_name}, current_user=current_user)
     return {"message": "Поле удалено", "field_name": field_name}
 
 @router.put("/documents/{doc_id}")
-async def update_document(request: Request, doc_id: str, data: DocumentUpdate, current_user=Depends(require_current_user)):
+async def update_document(request: Request, doc_id: str, data: DocumentUpdate, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     update_data = {key: value for key, value in data.model_dump().items() if value is not None}
 
@@ -635,17 +849,18 @@ async def update_document(request: Request, doc_id: str, data: DocumentUpdate, c
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.update",
         {"document_id": doc_id, "updated_fields": sorted(update_data.keys())},
+        current_user=current_user,
     )
 
     return normalize_document(updated_doc)
 
 
 @router.patch("/documents/{doc_id}/fields")
-async def update_document_custom_fields(request: Request, doc_id: str, payload: DocumentCustomFieldsUpdate, current_user=Depends(require_current_user)):
+async def update_document_custom_fields(request: Request, doc_id: str, payload: DocumentCustomFieldsUpdate, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     existing_doc = await documents_collection.find_one({"_id": object_id})
     if not existing_doc:
@@ -675,17 +890,18 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.custom_fields.update",
         {"document_id": doc_id, "field_names": sorted(list((payload.custom_fields or {}).keys()))},
+        current_user=current_user,
     )
     return normalize_document(updated_doc)
 
 
 
 @router.put("/documents/{doc_id}/image")
-async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequest, current_user=Depends(require_current_user)):
+async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequest, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
 
     document = await documents_collection.find_one({"_id": object_id})
@@ -767,16 +983,17 @@ async def edit_document_image(request: Request, doc_id: str, data: ImageEditRequ
     updated_doc = normalize_document(updated_doc)
     updated_doc["applied_rotate_degrees"] = rotate_degrees
     updated_doc["edited_image_filename"] = target_filename
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.image.edit",
         {"document_id": doc_id, "image_filename": target_filename, "rotate_degrees": rotate_degrees},
+        current_user=current_user,
     )
     return updated_doc
 
 
 @router.delete("/documents/{doc_id}/gallery/{image_filename}")
-async def delete_gallery_image(request: Request, doc_id: str, image_filename: str, current_user=Depends(require_current_user)):
+async def delete_gallery_image(request: Request, doc_id: str, image_filename: str, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -819,17 +1036,18 @@ async def delete_gallery_image(request: Request, doc_id: str, image_filename: st
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.gallery.delete",
         {"document_id": doc_id, "image_filename": image_filename},
+        current_user=current_user,
     )
 
     return normalize_document(updated_doc)
 
 
 @router.delete("/documents/{doc_id}/attachments/{attachment_filename}")
-async def delete_attachment(request: Request, doc_id: str, attachment_filename: str, current_user=Depends(require_current_user)):
+async def delete_attachment(request: Request, doc_id: str, attachment_filename: str, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -852,10 +1070,11 @@ async def delete_attachment(request: Request, doc_id: str, attachment_filename: 
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.attachment.delete",
         {"document_id": doc_id, "attachment_filename": attachment_filename},
+        current_user=current_user,
     )
 
     return normalize_document(updated_doc)
@@ -866,7 +1085,7 @@ async def delete_attachment(request: Request, doc_id: str, attachment_filename: 
 UPLOAD_FOLDER = "backend/uploads"
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):
+async def delete_document(request: Request, doc_id: str, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -878,10 +1097,11 @@ async def delete_document(request: Request, doc_id: str, current_user=Depends(re
         {"_id": object_id},
         {"$set": {"is_archived": True, "archived_at": datetime.now(timezone.utc), "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.archive",
         {"document_id": doc_id},
+        current_user=current_user,
     )
     return {"message": "Карточка перемещена в архив"}
 
@@ -896,7 +1116,7 @@ async def get_archived_documents():
 
 
 @router.post("/documents/{doc_id}/restore")
-async def restore_archived_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):
+async def restore_archived_document(request: Request, doc_id: str, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -910,12 +1130,12 @@ async def restore_archived_document(request: Request, doc_id: str, current_user=
     if not restored_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
 
-    write_audit_log(request, "document.restore", {"document_id": doc_id})
+    await write_audit_log(request, "document.restore", {"document_id": doc_id}, current_user=current_user)
     return normalize_document(restored_doc)
 
 
 @router.delete("/documents/{doc_id}/permanent")
-async def permanently_delete_archived_document(request: Request, doc_id: str, current_user=Depends(require_current_user)):
+async def permanently_delete_archived_document(request: Request, doc_id: str, current_user=Depends(require_editor_user)):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -924,16 +1144,17 @@ async def permanently_delete_archived_document(request: Request, doc_id: str, cu
         raise HTTPException(status_code=400, detail="Сначала переместите карточку в архив")
 
     removed_files = await permanently_delete_document(document, documents_collection, UPLOAD_DIR)
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.permanent_delete",
         {"document_id": doc_id, "files_deleted": removed_files},
+        current_user=current_user,
     )
     return {"message": "Карточка удалена навсегда"}
 
 
 @router.post("/documents/archive/restore-bulk")
-async def restore_archived_documents_bulk(request: Request, payload: DocumentIdsRequest, current_user=Depends(require_current_user)):
+async def restore_archived_documents_bulk(request: Request, payload: DocumentIdsRequest, current_user=Depends(require_editor_user)):
     object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
     if not object_ids:
         raise HTTPException(status_code=400, detail="Список карточек пуст")
@@ -942,12 +1163,12 @@ async def restore_archived_documents_bulk(request: Request, payload: DocumentIds
         {"_id": {"$in": object_ids}, "is_archived": True},
         {"$set": {"is_archived": False, "archived_at": None, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
     )
-    write_audit_log(request, "document.bulk_restore", {"document_ids": payload.ids})
+    await write_audit_log(request, "document.bulk_restore", {"document_ids": payload.ids}, current_user=current_user)
     return {"message": "Карточки восстановлены"}
 
 
 @router.post("/documents/archive/permanent-delete-bulk")
-async def permanently_delete_archived_documents_bulk(request: Request, payload: DocumentIdsRequest, current_user=Depends(require_current_user)):
+async def permanently_delete_archived_documents_bulk(request: Request, payload: DocumentIdsRequest, current_user=Depends(require_editor_user)):
     object_ids = [object_id_or_404(doc_id) for doc_id in payload.ids]
     if not object_ids:
         raise HTTPException(status_code=400, detail="Список карточек пуст")
@@ -960,10 +1181,11 @@ async def permanently_delete_archived_documents_bulk(request: Request, payload: 
         deleted_ids.append(str(document["_id"]))
         deleted_files.extend(removed_files)
 
-    write_audit_log(
+    await write_audit_log(
         request,
         "document.bulk_permanent_delete",
         {"document_ids": deleted_ids, "files_deleted": deleted_files},
+        current_user=current_user,
     )
     return {"message": "Карточки удалены навсегда", "deleted_count": len(deleted_ids)}
 
@@ -971,7 +1193,7 @@ async def permanently_delete_archived_documents_bulk(request: Request, payload: 
 
 
 @router.get("/documents/{doc_id}")
-async def get_document(doc_id: str, current_user=Depends(require_current_user)):
+async def get_document(doc_id: str):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -1004,7 +1226,7 @@ class TagRequest(BaseModel):
     tag: str
 
 @router.post("/tags")
-async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_current_user)):
+async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_admin_user)):
     tag = request.tag.strip().lower()
 
     existing_tag = await tags_collection.find_one({"tag": tag})
@@ -1013,11 +1235,11 @@ async def create_tag(http_request: Request, request: TagRequest, current_user=De
 
     new_tag = {"tag": tag, "created_at": now_yekaterinburg()}
     await tags_collection.insert_one(new_tag)
-    write_audit_log(http_request, "tag.create", {"tag": tag})
+    await write_audit_log(http_request, "tag.create", {"tag": tag}, current_user=current_user)
     return {"message": "Тег добавлен", "tag": new_tag}
 
 @router.delete("/tags/{tag}")
-async def delete_tag(request: Request, tag: str, current_user=Depends(require_current_user)):
+async def delete_tag(request: Request, tag: str, current_user=Depends(require_admin_user)):
     normalized = tag.strip().lower()
 
     if not normalized:
@@ -1029,7 +1251,7 @@ async def delete_tag(request: Request, tag: str, current_user=Depends(require_cu
         raise HTTPException(status_code=404, detail="Тег не найден")
 
     await documents_collection.update_many({"tags": normalized}, {"$pull": {"tags": normalized}})
-    write_audit_log(request, "tag.delete", {"tag": normalized})
+    await write_audit_log(request, "tag.delete", {"tag": normalized}, current_user=current_user)
 
     return {"message": "Тег удалён", "tag": normalized}
 
