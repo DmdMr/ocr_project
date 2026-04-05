@@ -10,6 +10,7 @@
   import SettingsPage from './SettingsPage.svelte'
   import LoginPage from './LoginPage.svelte'
   import RegisterPage from './RegisterPage.svelte'
+  import DocumentEditorPage from './DocumentEditorPage.svelte'
   import { authReady, currentUser, initAuth } from './lib/auth'
 
   const publicRoutes = new Set(['/login', '/register'])
@@ -21,7 +22,9 @@
     '/archive': ArchivePage,
     '/settings': SettingsPage,
     '/login': LoginPage,
-    '/register': RegisterPage
+    '/register': RegisterPage,
+    '/documents/:id': DocumentEditorPage,
+    '/documents/:id/editor': DocumentEditorPage
   }
 
   function getCurrentPath() {

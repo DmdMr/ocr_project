@@ -1,25 +1,15 @@
 <script lang="ts">
     import { createEventDispatcher } from "svelte"
     import type { Document } from "../types"
-    import CardPreview from "./CardPreview.svelte"
     import { tagHue } from "../tagColors"
-    import {
-        deleteDocument,
-        updateDocument,
-        uploadImagesToDocument,
-        UPLOADS_URL
-    } from "../api"
-
-    let showPreview = false
+    import { UPLOADS_URL } from "../api"
 
     export let doc: Document
     export let search = ""
     export let selected = false
     export let selectionActive = false
 
-    let editing = false
     let editedText = doc.recognized_text
-    let galleryUploading = false
 
     function escapeRegExp(value: string) {
         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -50,7 +40,7 @@
             return
         }
 
-        showPreview = true
+        window.location.hash = `#/documents/${doc._id}`
     }
 
     function handleRowClick() {
@@ -59,7 +49,7 @@
             return
         }
 
-        showPreview = true
+        window.location.hash = `#/documents/${doc._id}`
     }
 
     function handleCheckboxClick(event: MouseEvent) {
@@ -74,68 +64,8 @@
         }
     }
 
-    function applyDocumentUpdate(updated: Document) {
-        doc = updated
-        editedText = updated.recognized_text
-        dispatch("updated", { document: updated })
-    }
-
     function cardImageSrc(currentDoc: Document) {
         return `${UPLOADS_URL}/${currentDoc.filename}?v=${encodeURIComponent(currentDoc.image_version ?? currentDoc.created_at ?? "")}`
-    }
-
-    async function save() {
-        const updated = await updateDocument(doc._id, {
-            recognized_text: editedText
-        })
-
-        applyDocumentUpdate(updated)
-        editing = false
-    }
-
-    async function saveFilename(event: CustomEvent<{ display_filename: string }>) {
-        const updated = await updateDocument(doc._id, {
-            display_filename: event.detail.display_filename
-        })
-
-        applyDocumentUpdate(updated)
-    }
-
-    async function uploadToCard(event: CustomEvent<{ files: File[] }>) {
-        const files = event.detail.files
-        if (!files.length) return
-
-        galleryUploading = true
-
-        try {
-            const result = await uploadImagesToDocument(doc._id, files)
-
-            if (!result.document) {
-                throw new Error("Сервер не вернул обновленные данные карточки")
-            }
-
-            applyDocumentUpdate(result.document)
-
-            const addedCount = Number(result.added_count ?? 0)
-            if (addedCount > 0) {
-                alert(`Добавлено ${addedCount} изображений ${addedCount > 1 ? "s" : ""}`)
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Не удалось добавить изображения в карточку"
-            alert(message)
-            console.error("Не удалось загрузить изображения в галерею", error)
-        } finally {
-            galleryUploading = false
-        }
-    }
-
-    function handleDocumentUpdated(event: CustomEvent<{ document: Document }>) {
-        applyDocumentUpdate(event.detail.document)
-    }
-
-    async function remove() {
-        await deleteDocument(doc._id)
-        dispatch("deleted", { id: doc._id })
     }
 
     function handleTagClick(event: CustomEvent<{ tag: string }>) {
@@ -173,7 +103,7 @@
             class="row-thumb"
             src={cardImageSrc(doc)}
             alt=""
-            on:click={() => showPreview = true}
+            on:click={() => window.location.hash = `#/documents/${doc._id}`}
         />
 
         <button
@@ -196,6 +126,10 @@
             )}
         </div>
 
+    <div class="row-links">
+        <a href={`#/documents/${doc._id}`} on:click|stopPropagation>Open document</a>
+    </div>
+
         <div class="row-tags">
             {#if doc.tags?.length}
                 {#each doc.tags as tag}
@@ -210,23 +144,6 @@
             {/if}
         </div>
     </div>
-
-    {#if showPreview}
-        <CardPreview
-            {doc}
-            bind:editedText
-            {editing}
-            on:close={() => showPreview = false}
-            on:save={save}
-            on:saveFilename={saveFilename}
-            on:delete={remove}
-            on:editToggle={() => editing = !editing}
-            on:tagClick={handleTagClick}
-            on:documentUpdated={handleDocumentUpdated}
-            on:addImages={uploadToCard}
-            {galleryUploading}
-        />
-    {/if}
 </div>
 
 
@@ -373,4 +290,8 @@
 }
 
 
+
+.row-links { display:flex; gap:8px; margin-bottom: 6px; }
+.row-links a { font-size: .8rem; color: var(--muted); text-decoration: none; }
+.row-links a:hover { color: var(--text); }
 </style>
