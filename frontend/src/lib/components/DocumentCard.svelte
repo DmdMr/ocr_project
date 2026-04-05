@@ -1,5 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher } from "svelte"
+    import { push } from "svelte-spa-router"
     import type { Document } from "../types"
     import { tagHue } from "../tagColors"
     import { UPLOADS_URL } from "../api"
@@ -363,3 +364,4 @@ img {
 .doc-links a:hover { color: var(--text); }
 
 </style>
+
