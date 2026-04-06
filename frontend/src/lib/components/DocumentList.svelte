@@ -5,6 +5,7 @@
     //import SettingsPage from "../SettingsPage.svelte";
     import DocumentCard from "./DocumentCard.svelte"
     import DocumentTable from "./DocumentTable.svelte"
+    import FolderView from "./FolderView.svelte"
     import { 
         normalizeTag,
         setDocumentTags,
@@ -15,13 +16,14 @@
     } from "../api"
 
     export let refreshKey: number
-    export let viewMode: "grid" | "list" = "grid"
+    export let viewMode: "grid" | "list" | "folders" = "grid"
     export let columnCount = 5
     export let canEdit = false
     export let isAdmin = false
     const dispatch = createEventDispatcher<{
-        viewModeChange: { mode: "grid" | "list" }
+        viewModeChange: { mode: "grid" | "list" | "folders" }
         toggleSidebar: void
+        folderChange: { folderId: string | null }
     }>()
 
     let documents: Document[] = []
@@ -66,7 +68,7 @@
         }
     }
 
-    function setViewMode(mode: "grid" | "list") {
+    function setViewMode(mode: "grid" | "list" | "folders") {
         viewMode = mode
         dispatch("viewModeChange", { mode })
     }
@@ -471,6 +473,10 @@
         load()
     }
 
+    $: if (viewMode !== "folders") {
+        dispatch("folderChange", { folderId: null })
+    }
+
  
     $: filtered = documents.filter(doc => {
         const displayName = doc.display_filename ?? doc.filename
@@ -613,11 +619,18 @@
             >
                 Таблица
             </button>
+            <button
+                class="secondary"
+                class:active={viewMode === "folders"}
+                on:click={() => setViewMode("folders")}
+            >
+                Папки
+            </button>
         </div>
     </div>
 </div>
 
-{#if canEdit && selectedIds.length > 0}
+{#if viewMode !== "folders" && canEdit && selectedIds.length > 0}
   <div class="bulk-actions-manager panel">
     <div class="bulk-left">
       Выбрано: {selectedIds.length}
@@ -634,7 +647,9 @@
 
 
 
-{#if viewMode === "grid"}
+{#if viewMode === "folders"}
+  <FolderView canEdit={canEdit} on:folderChange={(event) => dispatch("folderChange", event.detail)} />
+{:else if viewMode === "grid"}
   {#if masonryFailed}
     <div class="grid-fallback">
       {#each sortedDocuments as doc (doc._id)}

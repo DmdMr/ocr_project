@@ -14,3 +14,5 @@ activity_logs_collection = db["activity_logs"]
 
 
 
+folders_collection = db["folders"]
+

@@ -7,7 +7,7 @@
     deleteDocumentAttachment,
     deleteDocumentImage,
     editDocumentImage,
-    getDocuments,
+    getDocumentById,
     getSettings,
     getTags,
     setDocumentTags,
@@ -75,21 +75,30 @@
     await loadTags()
   })
 
+
+
+  function goToFolder(folderId: string | null | undefined) {
+    if (!folderId) {
+      push("/")
+      return
+    }
+    push(`/?folder=${encodeURIComponent(folderId)}`)
+  }
+
   async function loadDocument() {
     loading = true
     error = ""
     try {
-      const [documents, settings] = await Promise.all([getDocuments(), getSettings()])
-      const found = documents.find((item: Document) => item._id === params.id)
-      if (!found) {
+      const [found, settings] = await Promise.all([getDocumentById(params.id), getSettings()])
+      if (!found?._id) {
         error = "Документ не найден"
         return
       }
-      doc = found
+      doc = found as Document
       editedText = found.recognized_text ?? ""
       filenameDraft = found.display_filename ?? found.filename
       customFieldSettings = settings.fields_for_cards ?? []
-      syncDraftFromDocument(found)
+      syncDraftFromDocument(found as Document)
     } catch (err) {
       error = err instanceof Error ? err.message : "Не удалось загрузить документ"
     } finally {
@@ -371,13 +380,6 @@
     syncDraftFromDocument(updated)
   }
 
-  function goBack() {
-    if (window.history.length > 1) {
-      window.history.back()
-      return
-    }
-    push("/")
-  }
 </script>
 
 {#if loading}
@@ -387,8 +389,16 @@
 {:else}
   <div class="page">
     <div class="page-top-row">
-      <button class="back-btn" on:click={goBack}>← Back</button>
+      <button class="back-btn" on:click={() => goToFolder(doc.folder_id)}>← Back to folder</button>
     </div>
+
+    <nav class="doc-breadcrumbs" aria-label="Путь документа">
+      <button class="crumb" on:click={() => goToFolder(null)}>Root</button>
+      {#each doc.folder_path ?? [] as crumb}
+        <span>/</span>
+        <button class="crumb" on:click={() => goToFolder(crumb.id)}>{crumb.name}</button>
+      {/each}
+    </nav>
 
     <DocumentHeader
       {doc}
@@ -522,6 +532,8 @@
 <style>
   .page { padding: 18px; max-width: 1400px; margin: 0 auto 40px; }
   .page-top-row { display: flex; justify-content: flex-start; margin-bottom: 10px; }
+  .doc-breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+  .crumb { border: 0; background: transparent; padding: 0; text-decoration: underline; color: var(--text-muted); }
   .back-btn { min-height: 36px; padding: 8px 14px; border-radius: 10px; }
   .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
   .left-column { display: grid; gap: 10px; position: sticky; top: 10px; }
