@@ -4,10 +4,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
 from bson import ObjectId
+from dotenv import load_dotenv
+from pathlib import Path
 from fastapi import Cookie, Depends, HTTPException, Response
 from passlib.context import CryptContext
 
 from backend.app.db.database import sessions_collection, users_collection
+
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 SESSION_COOKIE_NAME = "session_id"
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "7"))
@@ -17,6 +22,10 @@ PASSWORD_HASH_SCHEME = os.getenv("PASSWORD_HASH_SCHEME", "pbkdf2_sha256")
 PASSWORD_HASH_ROUNDS = int(os.getenv("PASSWORD_HASH_ROUNDS", "390000"))
 BOOTSTRAP_ADMIN_USERNAME = os.getenv("BOOTSTRAP_ADMIN_USERNAME")
 BOOTSTRAP_ADMIN_PASSWORD = os.getenv("BOOTSTRAP_ADMIN_PASSWORD")
+
+print("ENV PATH:", env_path)
+print("ADMIN USER:", os.getenv("BOOTSTRAP_ADMIN_USERNAME"))
+print("ADMIN PASS:", os.getenv("BOOTSTRAP_ADMIN_PASSWORD"))
 
 USER_ROLE_EDITOR = "editor"
 USER_ROLE_ADMIN = "admin"

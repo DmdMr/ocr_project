@@ -191,6 +191,8 @@ def get_request_actor(request: Request):
         "user_agent": request.headers.get("user-agent") or "unknown",
     }
 
+from datetime import datetime, date
+from bson import ObjectId
 
 async def write_audit_log(request: Request, action: str, payload: dict, current_user: Optional[dict] = None):
     actor = get_request_actor(request)
@@ -198,18 +200,25 @@ async def write_audit_log(request: Request, action: str, payload: dict, current_
         actor["user_id"] = current_user.get("id")
         actor["username"] = current_user.get("username")
         actor["role"] = current_user.get("role")
+
+    created_at = datetime.now(timezone.utc)
+
     entry = {
         "timestamp": now_yekaterinburg().isoformat(),
-        "created_at": datetime.now(timezone.utc),
+        "created_at": created_at,
         "action": action,
         "actor": actor,
         "payload": payload,
     }
 
     await activity_logs_collection.insert_one(entry)
-    audit_logger.info(json.dumps(entry, ensure_ascii=False))
 
+    log_entry = {
+        **entry,
+        "created_at": created_at.isoformat(),
+    }
 
+    audit_logger.info(json.dumps(log_entry, ensure_ascii=False, default=str))
 
 class AuthCredentials(BaseModel):
     username: str
