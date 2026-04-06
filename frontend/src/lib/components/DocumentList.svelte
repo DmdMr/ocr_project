@@ -1,404 +1,644 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from "svelte"
-  import { push } from "svelte-spa-router"
-  import DocumentCard from "./DocumentCard.svelte"
-  import {
-    createFolder,
-    deleteDocument,
-    deleteFolder,
-    getFolderContents,
-    getFolderTree,
-    moveDocumentToFolder,
-    moveFolder,
-    renameFolder
-  } from "../api"
-  import type { Document, Folder, FolderPathItem } from "../types"
+    import { createEventDispatcher, onMount } from "svelte"
+    import { getDocuments, getSettings, getTags } from "../api"
+    import type { CardCustomFieldSetting, Document } from "../types"
+    //import SettingsPage from "../SettingsPage.svelte";
+    import DocumentCard from "./DocumentCard.svelte"
+    import DocumentTable from "./DocumentTable.svelte"
+    import FolderView from "./FolderView.svelte"
+    import { 
+        normalizeTag,
+        setDocumentTags,
+        deleteDocument,
+        createCardField,
+        deleteCardField
+    
+    } from "../api"
 
-  export let refreshKey: number
-  export let viewMode: "grid" | "list" = "grid"
-  export let canEdit = false
-  export let activeTag: string | null = null
-  export let sidebarOpen = true
+    export let refreshKey: number
+    export let viewMode: "grid" | "list" | "folders" = "grid"
+    export let columnCount = 5
+    export let canEdit = false
+    export let isAdmin = false
+    const dispatch = createEventDispatcher<{
+        viewModeChange: { mode: "grid" | "list" | "folders" }
+        toggleSidebar: void
+        folderChange: { folderId: string | null }
+    }>()
 
-  const dispatch = createEventDispatcher<{
-    viewModeChange: { mode: "grid" | "list" }
-    toggleSidebar: void
-    folderChange: { folderId: string | null }
-  }>()
+    let documents: Document[] = []
+    let search = ""
+    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc" = "date_desc"
+    export let activeTag: string | null = null
+    let selectedIds: string[] = []
+    let customFieldSettings: CardCustomFieldSetting[] = []
+    let openFilterField: string | null = null
+    let filenameFilterText = ""
+    let filenameSort: "none" | "asc" | "desc" = "none"
+    let createdAtSort: "none" | "newest" | "oldest" = "none"
+    let createdAtRange: "all" | "today" | "last_7_days" | "this_month" = "all"
+    export let sidebarOpen = true
 
-  type DragItem = {
-    type: "document" | "folder"
-    id: string
-    currentParentId?: string | null
-    isSystem?: boolean
-  }
-
-  let search = ""
-  let loading = true
-  let error = ""
-
-  let folders: Folder[] = []
-  let documents: Document[] = []
-  let currentFolder: Folder | null = null
-  let currentFolderId: string | null = null
-  let breadcrumbs: FolderPathItem[] = []
-  let unsortedFolderId: string | null = null
-  let allFoldersFlat: Folder[] = []
-
-  let dragItem: DragItem | null = null
-  let dropTargetFolderId: string | null = null
-  let rootDropActive = false
-  let moving = false
-
-  let moveDialogOpen = false
-  let moveDialogItem: DragItem | null = null
-  let moveTargetId = ""
-
-  function setViewMode(mode: "grid" | "list") {
-    viewMode = mode
-    dispatch("viewModeChange", { mode })
-  }
-
-  function getFolderIdFromHash() {
-    const rawHash = window.location.hash || "#/"
-    const hashWithoutPrefix = rawHash.startsWith("#") ? rawHash.slice(1) : rawHash
-    const [pathPart, queryPart] = hashWithoutPrefix.split("?")
-    if ((pathPart || "/") !== "/") return null
-    const params = new URLSearchParams(queryPart || "")
-    return params.get("folder")
-  }
-
-  function setFolderInHash(folderId: string | null) {
-    const nextHash = folderId ? `#/?folder=${encodeURIComponent(folderId)}` : "#/"
-    if (window.location.hash !== nextHash) {
-      window.location.hash = nextHash
-    }
-  }
-
-  function flattenTree(tree: Folder[]): Folder[] {
-    const stack = [...tree]
-    const flat: Folder[] = []
-    while (stack.length) {
-      const item = stack.shift()
-      if (!item) continue
-      flat.push(item)
-      if (item.children?.length) {
-        stack.unshift(...item.children)
-      }
-    }
-    return flat
-  }
-
-  function topLevelFolders(tree: Folder[]) {
-    return tree.filter((item) => !item.parent_id)
-  }
-
-  function folderById(folderId: string | null | undefined) {
-    if (!folderId) return null
-    return allFoldersFlat.find((item) => item.id === folderId) ?? null
-  }
-
-  function isDescendant(ancestorFolderId: string, candidateFolderId: string) {
-    let current = folderById(candidateFolderId)
-    const visited = new Set<string>()
-    while (current?.parent_id) {
-      if (visited.has(current.id)) return false
-      visited.add(current.id)
-      if (current.parent_id === ancestorFolderId) return true
-      current = folderById(current.parent_id)
-    }
-    return false
-  }
-
-  function canDropOnFolder(targetFolderId: string) {
-    if (!dragItem) return false
-
-    if (dragItem.type === "document") {
-      return dragItem.currentParentId !== targetFolderId
+    type TextFilter = {
+        mode: "text"
+        selectedValues: string[]
+        sort: "none" | "asc" | "desc"
     }
 
-    if (dragItem.type === "folder") {
-      if (dragItem.isSystem) return false
-      if (dragItem.id === targetFolderId) return false
-      if (isDescendant(dragItem.id, targetFolderId)) return false
-      return true
+    type NumberFilter = {
+        mode: "number"
+        sort: "none" | "asc" | "desc"
+        operator: "none" | "equals" | "greater_than" | "less_than" | "between"
+        value1: string
+        value2: string
     }
 
-    return false
-  }
+    type CustomFieldFilter = TextFilter | NumberFilter
+    let customFieldFilters: Record<string, CustomFieldFilter> = {}
+    let masonryColumns: Document[][] = []
+    let masonryFailed = false
+    let viewportWidth = 1280
 
-  function canDropToRoot() {
-    if (!dragItem) return false
-
-    if (dragItem.type === "document") {
-      return Boolean(unsortedFolderId) && dragItem.currentParentId !== unsortedFolderId
+    function toggleCardSelection(id: string) {
+        if (!canEdit) return
+        if (selectedIds.includes(id)) {
+            selectedIds = selectedIds.filter(item => item !== id)
+        } else {
+            selectedIds = [...selectedIds, id]
+        }
     }
 
-    if (dragItem.type === "folder") {
-      return !dragItem.isSystem && dragItem.currentParentId !== null
+    function setViewMode(mode: "grid" | "list" | "folders") {
+        viewMode = mode
+        dispatch("viewModeChange", { mode })
     }
 
-    return false
-  }
-
-  async function executeMove(item: DragItem, targetFolderId: string | null) {
-    if (moving) return
-    moving = true
-    error = ""
-
-    try {
-      if (item.type === "document") {
-        const destinationId = targetFolderId || unsortedFolderId
-        if (!destinationId) throw new Error("Папка Unsorted не найдена")
-        await moveDocumentToFolder(item.id, destinationId)
-      } else {
-        await moveFolder(item.id, targetFolderId)
-      }
-
-      await load(currentFolderId)
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Не удалось переместить"
-    } finally {
-      moving = false
-      dragItem = null
-      dropTargetFolderId = null
-      rootDropActive = false
+    function clearSelection() {
+        selectedIds = []
     }
-  }
 
-  async function load(folderOverride?: string | null) {
-    loading = true
-    error = ""
-    try {
-      const treeResponse = await getFolderTree()
-      const treeFolders = (treeResponse?.folders ?? []) as Folder[]
-      allFoldersFlat = flattenTree(treeFolders)
+    async function bulkDelete() {
+        if (!canEdit) return
+        if (!selectedIds.length) return
 
-      const unsorted = allFoldersFlat.find((folder) => folder.system_key === "unsorted")
-      unsortedFolderId = unsorted?.id ?? null
+        const confirmed = confirm(`Удалить ${selectedIds.length} карточек?`)
+        if (!confirmed) return
 
-      const requestedFolderId = folderOverride ?? currentFolderId ?? getFolderIdFromHash() ?? unsortedFolderId
+        await Promise.all(selectedIds.map(id => deleteDocument(id)))
 
-      if (!requestedFolderId) {
-        currentFolderId = null
-        currentFolder = null
-        breadcrumbs = []
-        folders = topLevelFolders(treeFolders)
-        documents = []
-      } else {
-        const contents = await getFolderContents(requestedFolderId)
-        currentFolder = contents.folder ?? null
-        currentFolderId = contents.folder?.id ?? requestedFolderId
-        breadcrumbs = currentFolder?.path ?? []
-        folders = (contents.subfolders ?? []) as Folder[]
-        documents = (contents.documents ?? []) as Document[]
-      }
-
-      dispatch("folderChange", { folderId: currentFolderId ?? unsortedFolderId ?? null })
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Не удалось загрузить содержимое"
-    } finally {
-      loading = false
+        documents = documents.filter(doc => !selectedIds.includes(doc._id))
+        clearSelection()
     }
-  }
 
-  function openFolder(folderId: string | null) {
-    currentFolderId = folderId
-    setFolderInHash(folderId)
-    void load(folderId)
-  }
+    async function bulkAddTag() {
+        if (!canEdit) return
 
-  async function handleCreateFolder() {
-    if (!canEdit) return
-    const name = prompt("Название папки")?.trim()
-    if (!name) return
-    try {
-      await createFolder(name, currentFolderId)
-      await load(currentFolderId)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Не удалось создать папку")
+        const availableTags = await getTags()
+
+        if (!selectedIds.length) return
+
+        const entered = prompt(`Введите тег для выбранных карточек:\n${availableTags.join(", ")}`)
+        if (!entered) return
+
+        const normalized = normalizeTag(entered)
+
+        const selectedDocs = documents.filter(doc => selectedIds.includes(doc._id))
+
+        const updatedDocs = await Promise.all(
+            selectedDocs.map(async (doc) => {
+            const currentTags = doc.tags ?? []
+            const nextTags = currentTags.includes(normalized)
+                ? currentTags
+                : [...currentTags, normalized]
+
+            return await setDocumentTags(doc._id, nextTags)
+            })
+        )
+
+        documents = documents.map(doc => {
+            const updated = updatedDocs.find(item => item._id === doc._id)
+            return updated ?? doc
+        })
+
+        clearSelection()
     }
-  }
 
-  async function handleRenameFolder(folder: Folder) {
-    if (!canEdit || folder.is_system) return
-    const nextName = prompt("Новое имя папки", folder.name)?.trim()
-    if (!nextName || nextName === folder.name) return
-    try {
-      await renameFolder(folder.id, nextName)
-      await load(currentFolderId)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Не удалось переименовать папку")
+    async function load() {
+        documents = await getDocuments()
+        const settings = await getSettings()
+        customFieldSettings = settings.fields_for_cards ?? []
+        console.debug("[DocumentList] fields_for_cards from backend:", settings.fields_for_cards)
+        console.debug("[DocumentList] customFieldSettings state:", customFieldSettings)
+        console.debug("[DocumentList] first document custom_fields:", documents[0]?.custom_fields ?? null)
+        for (const field of customFieldSettings) {
+            if (customFieldFilters[field.name]) continue
+            customFieldFilters[field.name] = field.type === "number"
+                ? {
+                    mode: "number",
+                    sort: "none",
+                    operator: "none",
+                    value1: "",
+                    value2: ""
+                }
+                : {
+                    mode: "text",
+                    selectedValues: [],
+                    sort: "none"
+                }
+        }
     }
-  }
 
-  async function handleDeleteFolder(folder: Folder) {
-    if (!canEdit || folder.is_system) return
-    const confirmed = confirm(`Удалить папку «${folder.name}»?`)
-    if (!confirmed) return
-    try {
-      await deleteFolder(folder.id)
-      await load(currentFolderId)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Не удалось удалить папку")
+    function removeFromList(id: string) {
+        documents = documents.filter(doc => doc._id !== id)
     }
-  }
 
-  async function handleDeleteDocument(id: string) {
-    if (!canEdit) return
-    const confirmed = confirm("Удалить карточку?")
-    if (!confirmed) return
-    try {
-      await deleteDocument(id)
-      documents = documents.filter((doc) => doc._id !== id)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Не удалось удалить карточку")
+    function replaceDocumentInList(updatedDocument: Document) {
+        documents = documents.map(doc => doc._id === updatedDocument._id ? updatedDocument : doc)
     }
-  }
 
-  function openDocument(doc: Document) {
-    push(`/documents/${doc._id}`)
-  }
-
-  function openMoveDialog(item: DragItem) {
-    moveDialogItem = item
-    moveDialogOpen = true
-    moveTargetId = item.type === "document" ? (unsortedFolderId ?? "") : (item.currentParentId ?? "")
-  }
-
-  async function confirmMoveDialog() {
-    if (!moveDialogItem) return
-    const target = moveTargetId || null
-    await executeMove(moveDialogItem, target)
-    moveDialogOpen = false
-    moveDialogItem = null
-  }
-
-  function folderMatches(folder: Folder) {
-    if (!search.trim()) return true
-    return folder.name.toLowerCase().includes(search.trim().toLowerCase())
-  }
-
-  function documentMatches(doc: Document) {
-    const q = search.trim().toLowerCase()
-    if (!q) return true
-    return (
-      (doc.display_filename || doc.filename || "").toLowerCase().includes(q) ||
-      (doc.recognized_text || "").toLowerCase().includes(q) ||
-      (doc.tags || []).some((tag) => tag.toLowerCase().includes(q))
-    )
-  }
-
-  function dragStartDocument(event: DragEvent, doc: Document) {
-    dragItem = { type: "document", id: doc._id, currentParentId: currentFolderId }
-    event.dataTransfer?.setData("text/plain", doc._id)
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move"
-  }
-
-  function dragStartFolder(event: DragEvent, folder: Folder) {
-    dragItem = { type: "folder", id: folder.id, currentParentId: folder.parent_id, isSystem: folder.is_system }
-    event.dataTransfer?.setData("text/plain", folder.id)
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move"
-  }
-
-  function dragOverFolder(event: DragEvent, folderId: string) {
-    if (!canDropOnFolder(folderId)) return
-    event.preventDefault()
-    dropTargetFolderId = folderId
-    if (event.dataTransfer) event.dataTransfer.dropEffect = "move"
-  }
-
-  function dragLeaveFolder(folderId: string) {
-    if (dropTargetFolderId === folderId) dropTargetFolderId = null
-  }
-
-  async function dropOnFolder(event: DragEvent, folderId: string) {
-    if (!dragItem || !canDropOnFolder(folderId)) return
-    event.preventDefault()
-    const item = dragItem
-    await executeMove(item, folderId)
-  }
-
-  function dragOverRoot(event: DragEvent) {
-    if (!canDropToRoot()) return
-    event.preventDefault()
-    rootDropActive = true
-  }
-
-  function dragLeaveRoot() {
-    rootDropActive = false
-  }
-
-  async function dropOnRoot(event: DragEvent) {
-    if (!dragItem || !canDropToRoot()) return
-    event.preventDefault()
-    rootDropActive = false
-    const target = dragItem.type === "document" ? unsortedFolderId : null
-    await executeMove(dragItem, target)
-  }
-
-  function dragEnd() {
-    dragItem = null
-    dropTargetFolderId = null
-    rootDropActive = false
-  }
-
-  $: filteredFolders = folders.filter((folder) => folderMatches(folder))
-  $: filteredDocuments = documents.filter((doc) => {
-    const matchesTag = !activeTag || doc.tags?.includes(activeTag)
-    return matchesTag && documentMatches(doc)
-  })
-
-  $: moveCandidates = allFoldersFlat.filter((folder) => {
-    if (!moveDialogItem) return true
-    if (moveDialogItem.type === "document") return true
-    if (moveDialogItem.id === folder.id) return false
-    if (isDescendant(moveDialogItem.id, folder.id)) return false
-    return true
-  })
-
-  onMount(() => {
-    const hashFolder = getFolderIdFromHash()
-    void load(hashFolder)
-
-    const onHashChange = () => {
-      const nextFolderId = getFolderIdFromHash()
-      if (nextFolderId !== currentFolderId) {
-        currentFolderId = nextFolderId
-        void load(nextFolderId)
-      }
+    function getFieldRawValue(doc: Document, fieldName: string) {
+        return doc.custom_fields?.[fieldName]
     }
-    window.addEventListener("hashchange", onHashChange)
 
-    return () => window.removeEventListener("hashchange", onHashChange)
-  })
+    function getFieldTextValue(doc: Document, fieldName: string) {
+        const value = getFieldRawValue(doc, fieldName)
+        if (value === null || value === undefined || value === "") return "(пусто)"
+        return String(value)
+    }
 
-  $: if (refreshKey) {
-    void load(currentFolderId)
-  }
+    function getFieldNumberValue(doc: Document, fieldName: string) {
+        const value = getFieldRawValue(doc, fieldName)
+        if (value === null || value === undefined || value === "") return null
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : null
+    }
+
+    function fieldUniqueTextValues(fieldName: string) {
+        const values = new Set<string>()
+        for (const doc of documents) {
+            values.add(getFieldTextValue(doc, fieldName))
+        }
+        return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+    }
+
+    function toggleFilterPanel(fieldName: string) {
+        openFilterField = openFilterField === fieldName ? null : fieldName
+    }
+
+    function setFilenameFilterText(value: string) {
+        filenameFilterText = value
+    }
+
+    function setFilenameSort(sort: "none" | "asc" | "desc") {
+        filenameSort = sort
+    }
+
+    function clearFilenameFilter() {
+        filenameFilterText = ""
+        filenameSort = "none"
+    }
+
+    function setCreatedAtSort(sort: "none" | "newest" | "oldest") {
+        createdAtSort = sort
+    }
+
+    function setCreatedAtRange(range: "all" | "today" | "last_7_days" | "this_month") {
+        createdAtRange = range
+    }
+
+    function clearCreatedAtFilter() {
+        createdAtSort = "none"
+        createdAtRange = "all"
+    }
+
+    function isSameLocalDay(date: Date, reference: Date) {
+        return (
+            date.getFullYear() === reference.getFullYear() &&
+            date.getMonth() === reference.getMonth() &&
+            date.getDate() === reference.getDate()
+        )
+    }
+
+    function matchesCreatedAtRange(createdAt: string) {
+        if (createdAtRange === "all") return true
+        const created = new Date(createdAt)
+        if (Number.isNaN(created.getTime())) return false
+
+        const now = new Date()
+        if (createdAtRange === "today") {
+            return isSameLocalDay(created, now)
+        }
+
+        if (createdAtRange === "last_7_days") {
+            const threshold = new Date(now)
+            threshold.setDate(threshold.getDate() - 6)
+            threshold.setHours(0, 0, 0, 0)
+            return created.getTime() >= threshold.getTime()
+        }
+
+        if (createdAtRange === "this_month") {
+            return (
+                created.getFullYear() === now.getFullYear() &&
+                created.getMonth() === now.getMonth()
+            )
+        }
+
+        return true
+    }
+
+    function isFilenameFilterActive() {
+        return filenameSort !== "none" || filenameFilterText.trim().length > 0
+    }
+
+    function isCreatedAtFilterActive() {
+        return createdAtSort !== "none" || createdAtRange !== "all"
+    }
+
+    async function handleAddProperty() {
+        if (!isAdmin) return
+        const name = prompt("Название нового свойства")
+        if (!name || !name.trim()) return
+
+        const typePrompt = prompt("Тип свойства: text, number или people", "text")
+        if (!typePrompt) return
+        const normalizedType = typePrompt.trim().toLowerCase()
+        if (normalizedType !== "text" && normalizedType !== "number" && normalizedType !== "people") {
+            alert("Поддерживаются только типы: text, number или people")
+            return
+        }
+
+        try {
+            await createCardField(name.trim(), normalizedType as "text" | "number" | "people")
+            await load()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Не удалось создать свойство"
+            alert(message)
+        }
+    }
+
+    async function handleDeleteProperty(fieldName: string) {
+        if (!isAdmin) return
+        const field = customFieldSettings.find(item => item.name === fieldName)
+        if (!field) return
+
+        try {
+            await deleteCardField(fieldName)
+            customFieldSettings = customFieldSettings.filter(item => item.name !== fieldName)
+            documents = documents.map(doc => {
+                if (!doc.custom_fields || !(fieldName in doc.custom_fields)) return doc
+                const nextCustomFields = { ...doc.custom_fields }
+                delete nextCustomFields[fieldName]
+                return { ...doc, custom_fields: nextCustomFields }
+            })
+            const nextFilters = { ...customFieldFilters }
+            delete nextFilters[fieldName]
+            customFieldFilters = nextFilters
+            if (openFilterField === fieldName) {
+                openFilterField = null
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Не удалось удалить свойство"
+            alert(message)
+        }
+    }
+
+    function setTextSort(fieldName: string, sort: "none" | "asc" | "desc") {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, sort }
+        }
+    }
+
+    function setNumberSort(fieldName: string, sort: "none" | "asc" | "desc") {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "number") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, sort }
+        }
+    }
+
+    function toggleTextValue(fieldName: string, value: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        const hasValue = current.selectedValues.includes(value)
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: {
+                ...current,
+                selectedValues: hasValue
+                    ? current.selectedValues.filter(item => item !== value)
+                    : [...current.selectedValues, value]
+            }
+        }
+    }
+
+    function selectAllTextValues(fieldName: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, selectedValues: fieldUniqueTextValues(fieldName) }
+        }
+    }
+
+    function clearTextValues(fieldName: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "text") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, selectedValues: [] }
+        }
+    }
+
+    function setNumberOperator(fieldName: string, operator: NumberFilter["operator"]) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "number") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, operator }
+        }
+    }
+
+    function setNumberValue(fieldName: string, key: "value1" | "value2", value: string) {
+        const current = customFieldFilters[fieldName]
+        if (!current || current.mode !== "number") return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: { ...current, [key]: value }
+        }
+    }
+
+    function clearFieldFilter(fieldName: string) {
+        const field = customFieldSettings.find(item => item.name === fieldName)
+        if (!field) return
+        customFieldFilters = {
+            ...customFieldFilters,
+            [fieldName]: field.type === "number"
+                ? { mode: "number", sort: "none", operator: "none", value1: "", value2: "" }
+                : { mode: "text", sort: "none", selectedValues: [] }
+        }
+    }
+
+    function isFieldFilterActive(fieldName: string) {
+        const filter = customFieldFilters[fieldName]
+        if (!filter) return false
+        if (filter.mode === "text") {
+            return filter.sort !== "none" || filter.selectedValues.length > 0
+        }
+        return filter.sort !== "none" || filter.operator !== "none" || Boolean(filter.value1 || filter.value2)
+    }
+
+    function matchesNumberFilter(value: number | null, filter: NumberFilter) {
+        if (filter.operator === "none") return true
+        const first = Number(filter.value1)
+        const second = Number(filter.value2)
+
+        if (value === null) return false
+        if (filter.operator === "equals") return Number.isFinite(first) ? value === first : true
+        if (filter.operator === "greater_than") return Number.isFinite(first) ? value > first : true
+        if (filter.operator === "less_than") return Number.isFinite(first) ? value < first : true
+        if (filter.operator === "between") {
+            if (!Number.isFinite(first) || !Number.isFinite(second)) return true
+            const min = Math.min(first, second)
+            const max = Math.max(first, second)
+            return value >= min && value <= max
+        }
+        return true
+    }
+
+    function getActiveCustomSort() {
+        for (const field of customFieldSettings) {
+            const filter = customFieldFilters[field.name]
+            if (filter && filter.sort !== "none") {
+                return { fieldName: field.name, mode: filter.mode, direction: filter.sort }
+            }
+        }
+        return null
+    }
+
+    function estimateCardHeight(doc: Document) {
+        const filename = (doc.display_filename || doc.filename || "").length
+        const tags = doc.tags?.length ?? 0
+        const tagRows = Math.ceil(tags / 3)
+        return 280 + Math.min(120, filename * 1.8) + tagRows * 18
+    }
+
+    function getResponsiveColumnCount() {
+        if (viewportWidth < 420) return 1
+        if (viewportWidth < 640) return 2
+        if (viewportWidth < 880) return 3
+        if (viewportWidth < 1180) return 4
+        return Math.max(1, Math.min(columnCount || 5, 6))
+    }
+
+    function buildMasonryColumns(items: Document[], columnsCount: number) {
+        const count = Math.max(1, columnsCount)
+        const columns: Document[][] = Array.from({ length: count }, () => [])
+        const heights: number[] = Array.from({ length: count }, () => 0)
+
+        for (const item of items) {
+            let targetIndex = 0
+            let minHeight = heights[0]
+            for (let index = 1; index < heights.length; index++) {
+                if (heights[index] < minHeight) {
+                    minHeight = heights[index]
+                    targetIndex = index
+                }
+            }
+            columns[targetIndex].push(item)
+            heights[targetIndex] += estimateCardHeight(item)
+        }
+
+        return columns
+    }
+
+    function handleResize() {
+        viewportWidth = window.innerWidth
+    }
+
+
+
+
+    onMount(() => {
+        load()
+        handleResize()
+        window.addEventListener("resize", handleResize)
+        return () => window.removeEventListener("resize", handleResize)
+    })
+
+    $: if (refreshKey) {
+        load()
+    }
+
+    $: if (viewMode !== "folders") {
+        dispatch("folderChange", { folderId: null })
+    }
+
+ 
+    $: filtered = documents.filter(doc => {
+        const displayName = doc.display_filename ?? doc.filename
+        const filenameValue = (displayName || doc.filename || "").toLowerCase()
+        const matchesText =
+            displayName.toLowerCase().includes(search.toLowerCase()) ||
+            doc.filename.toLowerCase().includes(search.toLowerCase()) ||
+            doc.recognized_text.toLowerCase().includes(search.toLowerCase()) ||
+            doc.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
+        const matchesTag = !activeTag || doc.tags?.includes(activeTag)
+        const matchesFilenameText = !filenameFilterText.trim() || filenameValue.includes(filenameFilterText.trim().toLowerCase())
+        const matchesDateRange = matchesCreatedAtRange(doc.created_at)
+        if (!matchesText || !matchesTag || !matchesFilenameText || !matchesDateRange) return false
+
+        for (const field of customFieldSettings) {
+            const filter = customFieldFilters[field.name]
+            if (!filter) continue
+            if (filter.mode === "text" && filter.selectedValues.length) {
+                const value = getFieldTextValue(doc, field.name)
+                if (!filter.selectedValues.includes(value)) return false
+            }
+            if (filter.mode === "number") {
+                const numberValue = getFieldNumberValue(doc, field.name)
+                if (!matchesNumberFilter(numberValue, filter)) return false
+            }
+        }
+
+        return true
+    })
+
+
+    $: sortedDocuments = [...filtered].sort((a, b) => {
+        if (filenameSort !== "none") {
+            const aName = (a.display_filename || a.filename || "")
+            const bName = (b.display_filename || b.filename || "")
+            const compared = aName.localeCompare(bName, undefined, { sensitivity: "base" })
+            if (compared !== 0) return filenameSort === "asc" ? compared : -compared
+        }
+
+        if (createdAtSort !== "none") {
+            const dateA = new Date(a.created_at).getTime()
+            const dateB = new Date(b.created_at).getTime()
+            if (dateA !== dateB) {
+                return createdAtSort === "newest" ? dateB - dateA : dateA - dateB
+            }
+        }
+
+        const customSort = getActiveCustomSort()
+        if (customSort) {
+            const directionMultiplier = customSort.direction === "asc" ? 1 : -1
+            if (customSort.mode === "text") {
+                const aValue = getFieldTextValue(a, customSort.fieldName)
+                const bValue = getFieldTextValue(b, customSort.fieldName)
+                const compared = aValue.localeCompare(bValue, undefined, { sensitivity: "base" })
+                if (compared !== 0) return compared * directionMultiplier
+            } else {
+                const aValue = getFieldNumberValue(a, customSort.fieldName)
+                const bValue = getFieldNumberValue(b, customSort.fieldName)
+                const safeA = aValue ?? Number.NEGATIVE_INFINITY
+                const safeB = bValue ?? Number.NEGATIVE_INFINITY
+                if (safeA !== safeB) return (safeA - safeB) * directionMultiplier
+            }
+        }
+
+        const dateA = new Date(a.created_at).getTime() 
+        const dateB = new Date(b.created_at).getTime()
+
+        if (sortOrder === "date_asc") {
+            return dateA - dateB
+        }
+
+        if (sortOrder === "date_desc") {
+            return dateB - dateA
+        }
+
+        if (sortOrder === "name_asc") {
+            return (a.display_filename || a.filename || "").localeCompare(b.display_filename || b.filename || "")
+        }
+
+        if (sortOrder === "name_desc") {
+            return (b.display_filename || b.filename || "").localeCompare(a.display_filename || a.filename || "")
+        }
+
+        return 0
+    })
+
+    $: {
+        if (masonryFailed) {
+            masonryColumns = []
+        } else {
+            try {
+                masonryColumns = buildMasonryColumns(sortedDocuments, getResponsiveColumnCount())
+            } catch (error) {
+                console.error("Masonry layout fallback to grid", error)
+                masonryFailed = true
+                masonryColumns = []
+            }
+        }
+    }
+
+
+
+
+
 </script>
 
 <div class="search-manager panel">
-  <div class="controls-row compact-toolbar">
-    <button
-      type="button"
-      class="sidebar-toggle-inline"
-      class:active={sidebarOpen}
-      aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
-      title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
-      on:click={() => dispatch("toggleSidebar")}
-    >☰</button>
+    <div class="controls-row compact-toolbar">
+        <button
+            type="button"
+            class="sidebar-toggle-inline"
+            class:active={sidebarOpen}
+            aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+            title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+            on:click={() => dispatch("toggleSidebar")}
+        >
+            ☰
+        </button>
 
-    <input type="text" class="my-input compact-search" placeholder="Поиск в текущей папке" bind:value={search} />
+        <input
+            type="text"
+            class="my-input compact-search"
+            placeholder="Поиск документов"
+            bind:value={search}
+        />
 
-    <div class="view-toggle" role="group" aria-label="Режим отображения">
-      <button class="secondary" class:active={viewMode === "grid"} on:click={() => setViewMode("grid")}>Сетка</button>
-      <button class="secondary" class:active={viewMode === "list"} on:click={() => setViewMode("list")}>Таблица</button>
+        <div class="view-toggle" role="group" aria-label="Режим отображения">
+            <button
+                class="secondary"
+                class:active={viewMode === "grid"}
+                on:click={() => setViewMode("grid")}
+            >
+                Сетка
+            </button>
+            <button
+                class="secondary"
+                class:active={viewMode === "list"}
+                on:click={() => setViewMode("list")}
+            >
+                Таблица
+            </button>
+            <button
+                class="secondary"
+                class:active={viewMode === "folders"}
+                on:click={() => setViewMode("folders")}
+            >
+                Папки
+            </button>
+        </div>
     </div>
 
-    {#if canEdit}
-      <button class="primary" on:click={handleCreateFolder}>+ Папка</button>
-    {/if}
+{#if viewMode !== "folders" && canEdit && selectedIds.length > 0}
+  <div class="bulk-actions-manager panel">
+    <div class="bulk-left">
+      Выбрано: {selectedIds.length}
+    </div>
+
+    <div class="bulk-right">
+      <button on:click={bulkAddTag}>Добавить тег</button>
+      <button class="danger" on:click={bulkDelete}>Удалить</button>
+      <button on:click={clearSelection}>Отмена</button>
+    </div>
   </div>
 
   <nav class="breadcrumbs" aria-label="Путь папки">
@@ -440,45 +680,12 @@
   {/if}
 </div>
 
-{#if loading}
-  <div class="panel">Загрузка...</div>
-{:else if error}
-  <div class="panel error">{error}</div>
+{#if viewMode === "folders"}
+  <FolderView canEdit={canEdit} on:folderChange={(event) => dispatch("folderChange", event.detail)} />
 {:else if viewMode === "grid"}
-  <div class="grid-fallback">
-    {#each filteredFolders as folder (folder.id)}
-      <article
-        class="folder-card panel"
-        class:drop-target={dropTargetFolderId === folder.id}
-        draggable={canEdit && !folder.is_system}
-        on:dragstart={(event) => dragStartFolder(event, folder)}
-        on:dragend={dragEnd}
-        on:dragover={(event) => dragOverFolder(event, folder.id)}
-        on:dragleave={() => dragLeaveFolder(folder.id)}
-        on:drop={(event) => dropOnFolder(event, folder.id)}
-      >
-        <button class="folder-open" on:click={() => openFolder(folder.id)}>📁 {folder.name}</button>
-        <div class="folder-meta">
-          {#if folder.is_system}<span class="system-pill">system</span>{/if}
-          <span class="drag-tip">⇅</span>
-          {#if canEdit && !folder.is_system}
-            <button class="secondary tiny" on:click={() => openMoveDialog({ type: "folder", id: folder.id, currentParentId: folder.parent_id, isSystem: folder.is_system })}>Move to…</button>
-            <button class="secondary tiny" on:click={() => handleRenameFolder(folder)}>Rename</button>
-            <button class="danger tiny" on:click={() => handleDeleteFolder(folder)}>Delete</button>
-          {/if}
-        </div>
-      </article>
-    {/each}
-
-    {#each filteredDocuments as doc (doc._id)}
-      <div
-        class="doc-draggable"
-        draggable={canEdit}
-        role="group"
-        aria-label={`Document ${doc.display_filename || doc.filename}`}
-        on:dragstart={(event) => dragStartDocument(event, doc)}
-        on:dragend={dragEnd}
-      >
+  {#if masonryFailed}
+    <div class="grid-fallback">
+      {#each sortedDocuments as doc (doc._id)}
         <DocumentCard
           {doc}
           {canEdit}

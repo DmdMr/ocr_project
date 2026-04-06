@@ -12,7 +12,7 @@
     let refreshKey = 0
     let themeMode: ThemeMode = "system"
     let language: "en" | "ru" = "en"
-    let viewMode: "grid" | "list" = "grid"
+    let viewMode: "grid" | "list" | "folders" = "grid"
     let viewModeLoaded = false
     let columnCount = 5
     let columnsLoaded = false
@@ -78,7 +78,7 @@
         applyTheme(savedTheme)
         setLanguage(savedLanguage)
         const saved = localStorage.getItem("viewMode")
-        if (saved === "grid" || saved === "list") {
+        if (saved === "grid" || saved === "list" || saved === "folders") {
             viewMode = saved
         }
         const savedSidebar = localStorage.getItem("workspaceSidebarOpen")
