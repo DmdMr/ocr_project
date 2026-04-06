@@ -583,7 +583,6 @@
 
 </script>
 
-
 <div class="search-manager panel">
     <div class="controls-row compact-toolbar">
         <button
@@ -628,7 +627,6 @@
             </button>
         </div>
     </div>
-</div>
 
 {#if viewMode !== "folders" && canEdit && selectedIds.length > 0}
   <div class="bulk-actions-manager panel">
@@ -642,10 +640,45 @@
       <button on:click={clearSelection}>Отмена</button>
     </div>
   </div>
-{/if}
 
+  <nav class="breadcrumbs" aria-label="Путь папки">
+    <button class="crumb" on:click={() => openFolder(null)}>Root</button>
+    {#if unsortedFolderId}
+      <span>/</span>
+      <button class="crumb" on:click={() => openFolder(unsortedFolderId)}>Unsorted</button>
+    {/if}
+    {#if breadcrumbs.length}
+      {#each breadcrumbs as crumb}
+        {#if !unsortedFolderId || crumb.id !== unsortedFolderId}
+          <span>/</span>
+          <button class="crumb" on:click={() => openFolder(crumb.id)}>{crumb.name}</button>
+        {/if}
+      {/each}
+    {/if}
+  </nav>
 
+  <div
+    class="root-drop-zone"
+    class:active={rootDropActive}
+    class:disabled={!canDropToRoot()}
+    role="region"
+    aria-label="Drop zone"
+    on:dragover={dragOverRoot}
+    on:dragleave={dragLeaveRoot}
+    on:drop={dropOnRoot}
+  >
+    Drop here to move to {dragItem?.type === "folder" ? "Root" : "Unsorted"}
+  </div>
 
+  {#if currentFolder}
+    <div class="current-folder-row">
+      <strong>Текущая папка:</strong> {currentFolder.name}
+      {#if currentFolder.is_system}
+        <span class="system-pill">system</span>
+      {/if}
+    </div>
+  {/if}
+</div>
 
 {#if viewMode === "folders"}
   <FolderView canEdit={canEdit} on:folderChange={(event) => dispatch("folderChange", event.detail)} />
@@ -657,215 +690,148 @@
           {doc}
           {canEdit}
           search={search}
-          selected={selectedIds.includes(doc._id)}
-          selectionActive={selectedIds.length > 0}
-          on:toggleSelect={() => toggleCardSelection(doc._id)}
-          on:deleted={(e) => removeFromList(e.detail.id)}
-          on:updated={(e) => replaceDocumentInList(e.detail.document)}
+          selected={false}
+          selectionActive={false}
+          on:deleted={(e) => handleDeleteDocument(e.detail.id)}
         />
-      {/each}
-    </div>
-  {:else}
-    <div class="masonry-grid" style={`--masonry-columns: ${Math.max(1, masonryColumns.length)};`}>
-      {#each masonryColumns as column, index (index)}
-        <div class="masonry-column">
-          {#each column as doc (doc._id)}
-            <DocumentCard
-              {doc}
-              {canEdit}
-              search={search}
-              selected={selectedIds.includes(doc._id)}
-              selectionActive={selectedIds.length > 0}
-              on:toggleSelect={() => toggleCardSelection(doc._id)}
-              on:deleted={(e) => removeFromList(e.detail.id)}
-              on:updated={(e) => replaceDocumentInList(e.detail.document)}
-            />
-          {/each}
-        </div>
-      {/each}
-    </div>
-  {/if}
+        {#if canEdit}
+          <div class="doc-card-actions">
+            <button class="secondary tiny" on:click={() => openMoveDialog({ type: "document", id: doc._id, currentParentId: currentFolderId })}>Move to…</button>
+          </div>
+        {/if}
+      </div>
+    {/each}
+  </div>
 {:else}
-  <DocumentTable
-    documents={sortedDocuments}
-    {canEdit}
-    {isAdmin}
-    {selectedIds}
-    {customFieldSettings}
-    {customFieldFilters}
-    {openFilterField}
-    {fieldUniqueTextValues}
-    {isFieldFilterActive}
-    {filenameFilterText}
-    {filenameSort}
-    {createdAtSort}
-    {createdAtRange}
-    {isFilenameFilterActive}
-    {isCreatedAtFilterActive}
-    on:toggleSelect={(e) => toggleCardSelection(e.detail.id)}
-    on:addProperty={handleAddProperty}
-    on:toggleFilterPanel={(e) => toggleFilterPanel(e.detail.fieldName)}
-    on:setFilenameFilterText={(e) => setFilenameFilterText(e.detail.value)}
-    on:setFilenameSort={(e) => setFilenameSort(e.detail.sort)}
-    on:clearFilenameFilter={clearFilenameFilter}
-    on:setCreatedAtSort={(e) => setCreatedAtSort(e.detail.sort)}
-    on:setCreatedAtRange={(e) => setCreatedAtRange(e.detail.range)}
-    on:clearCreatedAtFilter={clearCreatedAtFilter}
-    on:setTextSort={(e) => setTextSort(e.detail.fieldName, e.detail.sort)}
-    on:setNumberSort={(e) => setNumberSort(e.detail.fieldName, e.detail.sort)}
-    on:toggleTextValue={(e) => toggleTextValue(e.detail.fieldName, e.detail.value)}
-    on:selectAllTextValues={(e) => selectAllTextValues(e.detail.fieldName)}
-    on:clearTextValues={(e) => clearTextValues(e.detail.fieldName)}
-    on:setNumberOperator={(e) => setNumberOperator(e.detail.fieldName, e.detail.operator)}
-    on:setNumberValue={(e) => setNumberValue(e.detail.fieldName, e.detail.key, e.detail.value)}
-    on:clearFieldFilter={(e) => clearFieldFilter(e.detail.fieldName)}
-    on:closeFilterPanel={() => openFilterField = null}
-    on:deleteProperty={(e) => handleDeleteProperty(e.detail.fieldName)}
-    on:deleted={(e) => removeFromList(e.detail.id)}
-    on:updated={(e) => replaceDocumentInList(e.detail.document)}
-  />
+  <div class="panel table-wrap">
+    <table class="mixed-table finder-like">
+      <thead>
+        <tr>
+          <th style="width: 44px"></th>
+          <th>Имя</th>
+          <th>Тип</th>
+          <th>Создано</th>
+          <th>Теги</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each filteredFolders as folder (folder.id)}
+          <tr
+            class="folder-row"
+            class:drop-target={dropTargetFolderId === folder.id}
+            draggable={canEdit && !folder.is_system}
+            on:dragstart={(event) => dragStartFolder(event, folder)}
+            on:dragend={dragEnd}
+            on:dragover={(event) => dragOverFolder(event, folder.id)}
+            on:dragleave={() => dragLeaveFolder(folder.id)}
+            on:drop={(event) => dropOnFolder(event, folder.id)}
+          >
+            <td class="drag-col">{#if canEdit && !folder.is_system}<span class="drag-tip">⋮⋮</span>{/if}</td>
+            <td>
+              <button class="linkish main-link" on:click={() => openFolder(folder.id)}>📁 {folder.name}</button>
+              {#if folder.is_system}<span class="system-pill">system</span>{/if}
+            </td>
+            <td><span class="type-pill folder">Folder</span></td>
+            <td>{folder.created_at ? new Date(folder.created_at).toLocaleString() : "—"}</td>
+            <td>—</td>
+            <td class="actions">
+              <button class="secondary tiny" on:click={() => openFolder(folder.id)}>Open</button>
+              {#if canEdit && !folder.is_system}
+                <button class="secondary tiny" on:click={() => openMoveDialog({ type: "folder", id: folder.id, currentParentId: folder.parent_id, isSystem: folder.is_system })}>Move to…</button>
+                <button class="secondary tiny" on:click={() => handleRenameFolder(folder)}>Rename</button>
+                <button class="danger tiny" on:click={() => handleDeleteFolder(folder)}>Delete</button>
+              {/if}
+            </td>
+          </tr>
+        {/each}
+
+        {#each filteredDocuments as doc (doc._id)}
+          <tr class="doc-row" draggable={canEdit} on:dragstart={(event) => dragStartDocument(event, doc)} on:dragend={dragEnd}>
+            <td class="drag-col">{#if canEdit}<span class="drag-tip">⋮⋮</span>{/if}</td>
+            <td><button class="linkish main-link" on:click={() => openDocument(doc)}>📄 {doc.display_filename || doc.filename}</button></td>
+            <td><span class="type-pill doc">Document</span></td>
+            <td>{doc.created_at ? new Date(doc.created_at).toLocaleString() : "—"}</td>
+            <td>{doc.tags?.join(", ") || "—"}</td>
+            <td class="actions">
+              <button class="secondary tiny" on:click={() => openDocument(doc)}>Open</button>
+              {#if canEdit}
+                <button class="secondary tiny" on:click={() => openMoveDialog({ type: "document", id: doc._id, currentParentId: currentFolderId })}>Move to…</button>
+                <button class="danger tiny" on:click={() => handleDeleteDocument(doc._id)}>Delete</button>
+              {/if}
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
 {/if}
 
-
+{#if moveDialogOpen && moveDialogItem}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="move-modal-backdrop" on:click={() => moveDialogOpen = false}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="move-modal panel" on:click|stopPropagation>
+      <h3>Move {moveDialogItem.type === "folder" ? "folder" : "document"}</h3>
+      <select bind:value={moveTargetId}>
+        {#if moveDialogItem.type === "folder"}
+          <option value="">Root</option>
+        {:else if unsortedFolderId}
+          <option value={unsortedFolderId}>Unsorted</option>
+        {/if}
+        {#each moveCandidates as folder (folder.id)}
+          <option value={folder.id}>{folder.name}</option>
+        {/each}
+      </select>
+      <div class="move-modal-actions">
+        <button class="primary" on:click={confirmMoveDialog} disabled={moving}>Move</button>
+        <button on:click={() => moveDialogOpen = false}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
+.search-manager { padding: 10px 12px; margin-bottom: 16px; text-align: left; }
+.controls-row { display: flex; justify-content: left; align-items: center; gap: 8px; flex-wrap: wrap; }
+.compact-search { min-width: min(340px, 100%); flex: 1 1 260px; }
+.sidebar-toggle-inline { width: 34px; min-width: 34px; height: 34px; padding: 0; border-radius: 10px; }
+.breadcrumbs { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.crumb { background: transparent; border: 0; padding: 0; text-decoration: underline; color: var(--text-muted); }
+.root-drop-zone { margin-top: 10px; border: 1px dashed var(--border); border-radius: 10px; padding: 8px 10px; color: var(--text-muted); }
+.root-drop-zone.active { border-color: var(--primary); background: color-mix(in srgb, var(--primary), transparent 88%); }
+.root-drop-zone.disabled { opacity: .6; }
+.current-folder-row { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+.grid-fallback { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.folder-card { padding: 14px; display: grid; gap: 10px; transition: border-color .12s ease, background .12s ease; }
+.folder-card.drop-target,
+tr.drop-target { border: 1px solid color-mix(in srgb, var(--primary), var(--border) 30%); background: color-mix(in srgb, var(--primary), transparent 90%); }
+.folder-open { text-align: left; font-weight: 700; }
+.folder-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.drag-tip { color: var(--text-muted); cursor: grab; }
+.system-pill { font-size: .72rem; border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; color: var(--text-muted); }
+.table-wrap { overflow-x: auto; }
+.mixed-table { width: 100%; border-collapse: collapse; }
+.mixed-table th, .mixed-table td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.finder-like tbody tr { transition: background .12s ease; }
+.finder-like tbody tr:hover { background: color-mix(in srgb, var(--surface), var(--primary) 6%); }
+.drag-col { width: 40px; text-align: center; }
+.main-link { font-weight: 500; }
+.type-pill { font-size: .72rem; border-radius: 999px; padding: 3px 8px; border: 1px solid var(--border); }
+.type-pill.folder { background: color-mix(in srgb, var(--primary), transparent 80%); }
+.type-pill.doc { background: color-mix(in srgb, #7cfc98, transparent 78%); }
+.linkish { border: 0; background: transparent; padding: 0; text-decoration: none; color: inherit; }
+.linkish:hover { text-decoration: underline; }
+.actions { white-space: nowrap; }
+.tiny { font-size: .78rem; padding: 5px 8px; }
+.error { color: var(--danger); }
+.doc-draggable { position: relative; }
+.doc-card-actions { margin-top: -6px; margin-bottom: 8px; display: flex; justify-content: flex-end; }
 
-.search-manager {
-    padding: 10px 12px;
-    margin-bottom: 16px;
-    text-align: left;
-}
-
-@media (max-width: 640px) {
-    .search-manager {
-        padding: 8px;
-        margin-bottom: 12px;
-        text-align: left;
-    }
-}
-
-
-.controls-row {
-    display: flex;
-    justify-content: left;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.compact-toolbar {
-    gap: 6px;
-}
-
-.compact-search {
-    min-width: min(340px, 100%);
-    flex: 1 1 260px;
-}
-
-.sidebar-toggle-inline {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    padding: 0;
-    border-radius: 10px;
-    border-color: transparent;
-    background: color-mix(in srgb, var(--surface), transparent 12%);
-    color: var(--text-muted);
-    line-height: 1;
-}
-
-.sidebar-toggle-inline:hover {
-    background: color-mix(in srgb, var(--surface), var(--bg-accent) 45%);
-    color: var(--text);
-}
-
-.sidebar-toggle-inline.active {
-    color: var(--text);
-}
-
-.view-toggle {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-}
-
-.view-toggle button {
-    padding-inline: 0.7rem;
-    min-height: 30px;
-}
-
-.view-toggle button.active {
-    border-color: color-mix(in srgb, var(--primary), white 20%);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 75%);
-    background: color-mix(in srgb, var(--surface), var(--primary) 10%);
-}
-
-@media (max-width: 640px) {
-    .controls-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        text-align: center;
-    }
-
-    .my-input {
-        flex: 0 1 auto;
-        width: auto;
-        min-width: 0;
-    }
-}
-
-
-
-
-
-
-.bulk-actions-manager {
-    padding: 14px;
-    margin-bottom: 16px;
-    text-align: left;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-@media (max-width: 640px) {
-    .bulk-actions-manager {
-        padding: 8px;
-        margin-bottom: 12px;
-        text-align: left;
-    }
-}
-
-
-
-
-/*
-
-.grid {
-    columns: 250px;
-}
-
-*/
-
-.masonry-grid {
-    display: grid;
-    grid-template-columns: repeat(var(--masonry-columns), minmax(0, 1fr));
-    gap: 10px;
-    align-items: start;
-}
-
-.masonry-column {
-    display: grid;
-    gap: 10px;
-    align-content: start;
-}
-
-.grid-fallback {
-    display: grid;
-    gap: 10px;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-
-
-
+.move-modal-backdrop { position: fixed; inset: 0; background: rgba(8, 11, 19, 0.44); display: grid; place-items: center; z-index: 1200; }
+.move-modal { width: min(480px, calc(100vw - 28px)); display: grid; gap: 12px; }
+.move-modal select { width: 100%; min-height: 38px; }
+.move-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 </style>
