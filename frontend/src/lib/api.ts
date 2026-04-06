@@ -28,10 +28,13 @@ export interface AppSettingsResponse {
     fields_for_cards: Array<{ name: string; type: "text" | "number" | "people"; created_at?: string }>
 }
 
-export async function uploadImage(file: File, performOcr = true) {
+export async function uploadImage(file: File, performOcr = true, folderId?: string | null) {
     const formData = new FormData()
     formData.append("file", file)
     formData.append("perform_ocr", String(performOcr))
+    if (folderId) {
+        formData.append("folder_id", folderId)
+    }
 
     const res = await apiFetch(`${API_URL}/upload`, {
         method: "POST",
@@ -479,4 +482,64 @@ export async function getActivityLogs(limit = 100): Promise<ActivityLogEntry[]> 
     const data = await response.json().catch(() => ({ logs: [] }))
     if (!response.ok) throw new Error(data.detail || "Failed to fetch activity logs")
     return data.logs ?? []
+}
+
+
+export async function getDocumentById(id: string) {
+    const response = await apiFetch(`${API_URL}/documents/${encodeURIComponent(id)}`)
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch document")
+    return data
+}
+
+export async function getFolderTree() {
+    const response = await apiFetch(`${API_URL}/folders/tree`)
+    const data = await response.json().catch(() => ({ folders: [] }))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch folder tree")
+    return data
+}
+
+export async function getFolderById(folderId: string) {
+    const response = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}`)
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch folder")
+    return data
+}
+
+export async function getFolderContents(folderId: string) {
+    const response = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}/contents`)
+    const data = await response.json().catch(() => ({ folder: null, subfolders: [], documents: [] }))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch folder contents")
+    return data
+}
+
+export async function createFolder(name: string, parentId: string | null = null) {
+    const response = await apiFetch(`${API_URL}/folders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, parent_id: parentId })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to create folder")
+    return data
+}
+
+export async function renameFolder(folderId: string, name: string) {
+    const response = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to rename folder")
+    return data
+}
+
+export async function deleteFolder(folderId: string) {
+    const response = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}`, {
+        method: "DELETE"
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to delete folder")
+    return data
 }
