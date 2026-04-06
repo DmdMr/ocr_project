@@ -20,6 +20,7 @@
     let sidebarStateLoaded = false
     let tags: string[] = []
     let activeTag: string | null = null
+    let currentFolderId: string | null = null
 
 
     onMount(() => {
@@ -133,7 +134,7 @@
         on:tagsChanged={(event) => tags = event.detail.tags}
       />
       {#if $canEditDocuments}
-        <Upload embedded on:uploaded={handleUpload} />
+        <Upload embedded folderId={currentFolderId} on:uploaded={handleUpload} />
       {:else}
         <div class="panel sign-in-hint">Sign in as editor/admin to upload and edit documents.</div>
       {/if}
@@ -149,10 +150,12 @@
         {sidebarOpen}
         {activeTag}
         canEdit={$canEditDocuments}
-        isAdmin={$isAdmin}
         on:toggleSidebar={toggleSidebar}
         on:viewModeChange={(event) => {
             viewMode = event.detail.mode
+        }}
+        on:folderChange={(event) => {
+            currentFolderId = event.detail.folderId
         }}
       />
     </div>

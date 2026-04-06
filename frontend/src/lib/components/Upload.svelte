@@ -4,6 +4,7 @@
 
     export let galleryUploading = false
     export let embedded = false
+    export let folderId: string | null = null
 
     const dispatch = createEventDispatcher()
 
@@ -59,7 +60,7 @@
                 item.progress = 30
                 items = [...items]
 
-                await uploadImage(item.file, mode === "with_ocr")
+                await uploadImage(item.file, mode === "with_ocr", folderId)
 
                 item.status = "processing"
                 item.progress = 70
