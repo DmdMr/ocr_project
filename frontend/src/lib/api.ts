@@ -543,3 +543,25 @@ export async function deleteFolder(folderId: string) {
     if (!response.ok) throw new Error(data.detail || "Failed to delete folder")
     return data
 }
+
+export async function moveDocumentToFolder(documentId: string, folderId: string) {
+    const response = await apiFetch(`${API_URL}/documents/${encodeURIComponent(documentId)}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_id: folderId })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to move document")
+    return data
+}
+
+export async function moveFolder(folderId: string, parentId: string | null) {
+    const response = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parent_id: parentId })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to move folder")
+    return data
+}

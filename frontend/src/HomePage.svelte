@@ -150,7 +150,6 @@
         {sidebarOpen}
         {activeTag}
         canEdit={$canEditDocuments}
-        isAdmin={$isAdmin}
         on:toggleSidebar={toggleSidebar}
         on:viewModeChange={(event) => {
             viewMode = event.detail.mode
