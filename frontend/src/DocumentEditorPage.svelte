@@ -7,6 +7,7 @@
     deleteDocumentAttachment,
     deleteDocumentImage,
     editDocumentImage,
+    getDocumentPath,
     getDocuments,
     getSettings,
     getTags,
@@ -65,6 +66,7 @@
   let tagsLoading = false
   let tagsError = ""
   let saveStatusTimer: ReturnType<typeof setTimeout> | null = null
+  let folderPath: Array<{ id: string; name: string }> = []
 
   $: galleryImages = (doc?.gallery_images?.length ? doc.gallery_images : doc ? [{ filename: doc.filename, image_version: doc.image_version }] : []) as GalleryImage[]
   $: selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0]
@@ -86,6 +88,12 @@
         return
       }
       doc = found
+      try {
+        const pathPayload = await getDocumentPath(found._id)
+        folderPath = pathPayload.folder_path ?? []
+      } catch {
+        folderPath = []
+      }
       editedText = found.recognized_text ?? ""
       filenameDraft = found.display_filename ?? found.filename
       customFieldSettings = settings.fields_for_cards ?? []
@@ -318,6 +326,11 @@
     selectedImageIndex = selectedImageIndex <= 0 ? galleryImages.length - 1 : selectedImageIndex - 1
   }
 
+  function openFilesLocation(folderId?: string) {
+    const query = folderId ? `?view=files&folder=${encodeURIComponent(folderId)}` : "?view=files"
+    push(`/${query}`)
+  }
+
   function showNextImage() {
     if (!galleryImages.length) return
     selectedImageIndex = selectedImageIndex >= galleryImages.length - 1 ? 0 : selectedImageIndex + 1
@@ -403,6 +416,20 @@
         filenameDraft = doc?.display_filename ?? doc?.filename ?? ""
       }}
     />
+
+    <section class="panel folder-path-panel">
+      <strong>Location:</strong>
+      <div class="path-items">
+        {#if folderPath.length}
+          {#each folderPath as item, index (item.id)}
+            <button class="path-link" on:click={() => openFilesLocation(item.id)}>{item.name}</button>
+            {#if index < folderPath.length - 1}<span>/</span>{/if}
+          {/each}
+        {:else}
+          <button class="path-link" on:click={() => openFilesLocation()}>Open in Files</button>
+        {/if}
+      </div>
+    </section>
 
     <div class="layout">
       <aside class="left-column">
@@ -524,6 +551,9 @@
   .page-top-row { display: flex; justify-content: flex-start; margin-bottom: 10px; }
   .back-btn { min-height: 36px; padding: 8px 14px; border-radius: 10px; }
   .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .folder-path-panel { margin-top: 10px; padding: 10px 14px; display: grid; gap: 4px; }
+  .path-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .path-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--text); }
   .left-column { display: grid; gap: 10px; position: sticky; top: 10px; }
   .images-section { margin-top: 14px; padding: 18px; }
   .hint { color: var(--muted); margin: 0 0 8px; }

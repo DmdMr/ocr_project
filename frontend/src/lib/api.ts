@@ -123,6 +123,92 @@ export async function getDocuments() {
     return await res.json()
 }
 
+export async function getDocumentById(id: string) {
+    const res = await apiFetch(`${API_URL}/documents/${encodeURIComponent(id)}`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch document")
+    return data
+}
+
+export async function getFolderTree() {
+    const res = await apiFetch(`${API_URL}/folders/tree`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch folder tree")
+    return data
+}
+
+export async function getFolderContents(folderId: string) {
+    const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}/contents`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch folder contents")
+    return data
+}
+
+export async function createFolder(name: string, parentId?: string | null) {
+    const res = await apiFetch(`${API_URL}/folders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, parent_id: parentId ?? null })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to create folder")
+    return data
+}
+
+export async function renameFolder(folderId: string, name: string) {
+    const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to rename folder")
+    return data
+}
+
+export async function deleteFolderById(folderId: string) {
+    const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}`, { method: "DELETE" })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to delete folder")
+    return data
+}
+
+export async function moveFolder(folderId: string, targetParentId?: string | null) {
+    const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_parent_id: targetParentId ?? null })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to move folder")
+    return data
+}
+
+export async function moveDocumentToFolder(documentId: string, targetFolderId: string) {
+    const res = await apiFetch(`${API_URL}/documents/${encodeURIComponent(documentId)}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_folder_id: targetFolderId })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to move document")
+    return data
+}
+
+export async function getFolderPath(folderId: string) {
+    const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}/path`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch folder path")
+    return data
+}
+
+export async function getDocumentPath(documentId: string) {
+    const res = await apiFetch(`${API_URL}/documents/${encodeURIComponent(documentId)}/path`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch document path")
+    return data
+}
+
 export async function deleteDocument(id: string) {
     const res = await apiFetch(`${API_URL}/documents/${id}`, {
         method: "DELETE"
