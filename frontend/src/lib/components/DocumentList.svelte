@@ -5,6 +5,7 @@
     //import SettingsPage from "../SettingsPage.svelte";
     import DocumentCard from "./DocumentCard.svelte"
     import DocumentTable from "./DocumentTable.svelte"
+    import FilesView from "./FilesView.svelte"
     import { 
         normalizeTag,
         setDocumentTags,
@@ -15,12 +16,13 @@
     } from "../api"
 
     export let refreshKey: number
-    export let viewMode: "grid" | "list" = "grid"
+    export let viewMode: "grid" | "list" | "files" = "grid"
+    export let initialFolderId: string | null = null
     export let columnCount = 5
     export let canEdit = false
     export let isAdmin = false
     const dispatch = createEventDispatcher<{
-        viewModeChange: { mode: "grid" | "list" }
+        viewModeChange: { mode: "grid" | "list" | "files" }
         toggleSidebar: void
     }>()
 
@@ -66,7 +68,7 @@
         }
     }
 
-    function setViewMode(mode: "grid" | "list") {
+    function setViewMode(mode: "grid" | "list" | "files") {
         viewMode = mode
         dispatch("viewModeChange", { mode })
     }
@@ -613,11 +615,18 @@
             >
                 Таблица
             </button>
+            <button
+                class="secondary"
+                class:active={viewMode === "files"}
+                on:click={() => setViewMode("files")}
+            >
+                Files
+            </button>
         </div>
     </div>
 </div>
 
-{#if canEdit && selectedIds.length > 0}
+{#if viewMode !== "files" && canEdit && selectedIds.length > 0}
   <div class="bulk-actions-manager panel">
     <div class="bulk-left">
       Выбрано: {selectedIds.length}
@@ -670,7 +679,7 @@
       {/each}
     </div>
   {/if}
-{:else}
+{:else if viewMode === "list"}
   <DocumentTable
     documents={sortedDocuments}
     {canEdit}
@@ -709,6 +718,8 @@
     on:deleted={(e) => removeFromList(e.detail.id)}
     on:updated={(e) => replaceDocumentInList(e.detail.document)}
   />
+{:else}
+  <FilesView {canEdit} {initialFolderId} />
 {/if}
 
 
