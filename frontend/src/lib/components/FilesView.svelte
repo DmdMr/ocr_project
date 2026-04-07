@@ -142,6 +142,23 @@
     loadingFolderContents.add(folderId)
     try {
       const data = await getFolderContents(folderId)
+      const childFolders = (data.folders ?? []).map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
+      if (childFolders.length) {
+        const nextFoldersById: FolderMap = { ...foldersById }
+        const nextChildren: FolderChildrenMap = { ...folderChildren }
+        nextChildren[folderId] = []
+        for (const child of childFolders) {
+          nextFoldersById[child.id] = { ...child, parent_id: folderId }
+          nextChildren[folderId].push(child.id)
+          if (!nextChildren[child.id]) {
+            nextChildren[child.id] = []
+          }
+        }
+        foldersById = nextFoldersById
+        folderChildren = nextChildren
+      } else if (!folderChildren[folderId]) {
+        folderChildren = { ...folderChildren, [folderId]: [] }
+      }
       docsByFolder = { ...docsByFolder, [folderId]: data.documents ?? [] }
       loadedFolderContents.add(folderId)
     } finally {
@@ -302,7 +319,7 @@
     <p class="error">{error}</p>
   {:else if loading}
     <p class="muted">Loading files…</p>
-  {:else if !sortedFolderIds(null).length}
+  {:else if !buildVisibleRows().length}
     <p class="muted">No folders yet.</p>
   {:else if selectedFolderId && !foldersById[selectedFolderId]}
     <p class="error">Selected folder no longer exists. Reload the page.</p>
@@ -365,6 +382,10 @@
         {/if}
       {/each}
     </div>
+
+    {#if selectedFolderId && loadedFolderContents.has(selectedFolderId) && !(folderChildren[selectedFolderId]?.length) && !(docsByFolder[selectedFolderId]?.length)}
+      <p class="muted">This folder is empty.</p>
+    {/if}
   {/if}
 
   {#if moveState}
