@@ -29,6 +29,7 @@
   let docsByFolder: DocsByFolderMap = {}
   let expanded = new Set<string>()
   let loadedFolderContents = new Set<string>()
+  let loadingFolderContents = new Set<string>()
   let selectedFolderId = ""
   let selectedDocument: Document | null = null
   let loading = false
@@ -41,6 +42,7 @@
 
   let moveState: MoveState = null
   let moveTargetFolderId = ""
+  let initialSelectionApplied = false
 
   const ROOT_ID = "__root__"
 
@@ -65,12 +67,17 @@
   }
 
   function indexTree(nodes: FolderNode[], parentId: string | null = null) {
+    const key = parentId ?? ROOT_ID
+    if (!folderChildren[key]) {
+      folderChildren[key] = []
+    }
     for (const node of nodes) {
       if (!node.id) continue
       foldersById[node.id] = { ...node, parent_id: node.parent_id ?? parentId }
-      const key = parentId ?? ROOT_ID
-      folderChildren[key] = [...(folderChildren[key] ?? []), node.id]
-      folderChildren[node.id] = (node.children ?? []).map((child) => child.id).filter(Boolean)
+      folderChildren[key].push(node.id)
+      if (!folderChildren[node.id]) {
+        folderChildren[node.id] = []
+      }
       indexTree(node.children ?? [], node.id)
     }
   }
@@ -103,9 +110,12 @@
       indexTree(normalized)
 
       const unsorted = Object.values(foldersById).find((node) => node.is_system && node.name === "Unsorted")
-      const initial = (initialFolderId && foldersById[initialFolderId]?.id) || selectedFolderId || unsorted?.id || sortedFolderIds(null)[0] || ""
+      const currentStillExists = selectedFolderId && foldersById[selectedFolderId]
+      const initial = (initialFolderId && foldersById[initialFolderId]?.id) || (currentStillExists ? selectedFolderId : "") || unsorted?.id || sortedFolderIds(null)[0] || ""
       selectedFolderId = initial
       selectedDocument = null
+      loadedFolderContents = new Set()
+      docsByFolder = {}
       if (initial) {
         expandAncestors(initial)
         await ensureFolderLoaded(initial)
@@ -128,10 +138,15 @@
   }
 
   async function ensureFolderLoaded(folderId: string) {
-    if (!folderId || loadedFolderContents.has(folderId)) return
-    const data = await getFolderContents(folderId)
-    docsByFolder = { ...docsByFolder, [folderId]: data.documents ?? [] }
-    loadedFolderContents.add(folderId)
+    if (!folderId || loadedFolderContents.has(folderId) || loadingFolderContents.has(folderId)) return
+    loadingFolderContents.add(folderId)
+    try {
+      const data = await getFolderContents(folderId)
+      docsByFolder = { ...docsByFolder, [folderId]: data.documents ?? [] }
+      loadedFolderContents.add(folderId)
+    } finally {
+      loadingFolderContents.delete(folderId)
+    }
   }
 
   async function toggleFolder(folderId: string) {
@@ -255,9 +270,10 @@
 
   onMount(async () => {
     await loadTree()
+    initialSelectionApplied = true
   })
 
-  $: if (initialFolderId && foldersById[initialFolderId] && initialFolderId !== selectedFolderId) {
+  $: if (initialSelectionApplied && initialFolderId && foldersById[initialFolderId] && initialFolderId !== selectedFolderId) {
     void selectFolder(initialFolderId)
   }
 </script>
@@ -286,6 +302,10 @@
     <p class="error">{error}</p>
   {:else if loading}
     <p class="muted">Loading files…</p>
+  {:else if !sortedFolderIds(null).length}
+    <p class="muted">No folders yet.</p>
+  {:else if selectedFolderId && !foldersById[selectedFolderId]}
+    <p class="error">Selected folder no longer exists. Reload the page.</p>
   {:else}
     <div class="tree">
       {#if creatingUnderParentId === null}
