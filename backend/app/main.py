@@ -6,7 +6,8 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.routes import router
 from backend.app.auth import bootstrap_first_admin
-from backend.app.db.database import activity_logs_collection, sessions_collection, users_collection
+from backend.app.db.database import activity_logs_collection, documents_collection, folders_collection, sessions_collection, users_collection
+from backend.app.services.folder_service import ensure_unsorted_folder, ensure_unsorted_indexes
 
 app = FastAPI()
 
@@ -31,6 +32,13 @@ async def setup_indexes():
     await activity_logs_collection.create_index("created_at")
     await activity_logs_collection.create_index("action")
     await activity_logs_collection.create_index("actor.user_id")
+    await documents_collection.create_index("folder_id")
+    await ensure_unsorted_indexes(folders_collection)
+    unsorted_id = await ensure_unsorted_folder(folders_collection)
+    await documents_collection.update_many(
+        {"$or": [{"folder_id": {"$exists": False}}, {"folder_id": None}]},
+        {"$set": {"folder_id": unsorted_id}},
+    )
     await bootstrap_first_admin()
 
 
