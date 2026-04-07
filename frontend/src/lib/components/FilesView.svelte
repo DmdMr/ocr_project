@@ -5,7 +5,6 @@
     createFolder,
     deleteFolderById,
     getFolderContents,
-    getFolderPath,
     getFolderTree,
     moveDocumentToFolder,
     moveFolder,
@@ -16,17 +15,34 @@
   export let canEdit = false
   export let initialFolderId: string | null = null
 
+  type FolderMap = Record<string, FolderNode>
+  type FolderChildrenMap = Record<string, string[]>
+  type DocsByFolderMap = Record<string, Document[]>
+  type MoveState = { type: "folder" | "document"; id: string; name: string } | null
   type FolderPathNode = { id: string; name: string }
-  type FlatFolderNode = FolderNode & { depth: number }
+  type TreeRow =
+    | { kind: "folder"; depth: number; folder: FolderNode }
+    | { kind: "document"; depth: number; folderId: string; document: Document }
 
-  let folderTree: FolderNode[] = []
-  let flatTree: FlatFolderNode[] = []
-  let currentFolderId = ""
-  let currentFolderPath: FolderPathNode[] = []
-  let childFolders: FolderNode[] = []
-  let folderDocuments: Document[] = []
+  let foldersById: FolderMap = {}
+  let folderChildren: FolderChildrenMap = {}
+  let docsByFolder: DocsByFolderMap = {}
+  let expanded = new Set<string>()
+  let loadedFolderContents = new Set<string>()
+  let selectedFolderId = ""
+  let selectedDocument: Document | null = null
   let loading = false
   let error = ""
+
+  let editingFolderId: string | null = null
+  let renameDraft = ""
+  let creatingUnderParentId: string | null = null
+  let createDraft = ""
+
+  let moveState: MoveState = null
+  let moveTargetFolderId = ""
+
+  const ROOT_ID = "__root__"
 
   function folderIdFrom(input: any): string {
     const raw = input?.id ?? input?._id ?? ""
@@ -48,242 +64,346 @@
     }
   }
 
-  function normalizeFolderPath(input: any[]): FolderPathNode[] {
-    return (input || [])
-      .map((item) => ({ id: folderIdFrom(item), name: item?.name ?? "" }))
-      .filter((item) => item.id)
-  }
-
-  onMount(async () => {
-    await refreshTree()
-    if (!currentFolderId) return
-    await refreshFolderData(currentFolderId)
-  })
-
-  $: if (initialFolderId && flatTree.length) {
-    const matched = flatTree.find((node) => node.id === initialFolderId)
-    if (matched && matched.id !== currentFolderId) {
-      void openFolder(matched.id)
-    }
-  }
-
-  function flattenTree(nodes: FolderNode[], depth = 0): FlatFolderNode[] {
-    const result: FlatFolderNode[] = []
+  function indexTree(nodes: FolderNode[], parentId: string | null = null) {
     for (const node of nodes) {
-      result.push({ ...node, depth })
-      if (node.children?.length) result.push(...flattenTree(node.children, depth + 1))
+      if (!node.id) continue
+      foldersById[node.id] = { ...node, parent_id: node.parent_id ?? parentId }
+      const key = parentId ?? ROOT_ID
+      folderChildren[key] = [...(folderChildren[key] ?? []), node.id]
+      folderChildren[node.id] = (node.children ?? []).map((child) => child.id).filter(Boolean)
+      indexTree(node.children ?? [], node.id)
     }
-    return result
   }
 
-  function findUnsorted(nodes: FolderNode[]): FolderNode | null {
-    for (const node of nodes) {
-      if (node.is_system && node.name === "Unsorted") return node
-      const nested = findUnsorted(node.children || [])
-      if (nested) return nested
-    }
-    return null
+  function sortedFolderIds(parentId: string | null) {
+    const ids = folderChildren[parentId ?? ROOT_ID] ?? []
+    return [...ids].sort((left, right) => (foldersById[left]?.name || "").localeCompare(foldersById[right]?.name || ""))
   }
 
-  async function refreshTree() {
+  function folderPath(folderId: string): FolderPathNode[] {
+    const path: FolderPathNode[] = []
+    let current = foldersById[folderId]
+    const visited = new Set<string>()
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id)
+      path.push({ id: current.id, name: current.name })
+      current = current.parent_id ? foldersById[current.parent_id] : null
+    }
+    return path.reverse()
+  }
+
+  async function loadTree() {
+    loading = true
+    error = ""
     try {
       const data = await getFolderTree()
-      folderTree = (data.folders ?? []).map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
-      flatTree = flattenTree(folderTree)
+      const normalized = (data.folders ?? []).map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
+      foldersById = {}
+      folderChildren = {}
+      indexTree(normalized)
 
-      const selected = initialFolderId
-        ? flatTree.find((node) => node.id === initialFolderId)?.id
-        : ""
-      currentFolderId = selected || currentFolderId || findUnsorted(folderTree)?.id || flatTree[0]?.id || ""
-      error = ""
+      const unsorted = Object.values(foldersById).find((node) => node.is_system && node.name === "Unsorted")
+      const initial = (initialFolderId && foldersById[initialFolderId]?.id) || selectedFolderId || unsorted?.id || sortedFolderIds(null)[0] || ""
+      selectedFolderId = initial
+      selectedDocument = null
+      if (initial) {
+        expandAncestors(initial)
+        await ensureFolderLoaded(initial)
+      }
     } catch (err) {
-      error = err instanceof Error ? err.message : "Не удалось загрузить дерево папок"
-    }
-  }
-
-  async function refreshFolderData(folderId: string) {
-    if (!folderId) return
-    loading = true
-    try {
-      const [contents, pathPayload] = await Promise.all([
-        getFolderContents(folderId),
-        getFolderPath(folderId)
-      ])
-      childFolders = (contents.folders ?? []).map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
-      folderDocuments = contents.documents ?? []
-      currentFolderPath = normalizeFolderPath(pathPayload.path ?? [])
-      currentFolderId = folderId
-      error = ""
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Не удалось загрузить содержимое папки"
+      error = err instanceof Error ? err.message : "Не удалось загрузить файловое дерево"
     } finally {
       loading = false
     }
   }
 
-  async function openFolder(folderId: string) {
-    await refreshFolderData(folderId)
+  function expandAncestors(folderId: string) {
+    let current = foldersById[folderId]
+    while (current?.parent_id) {
+      expanded.add(current.parent_id)
+      current = foldersById[current.parent_id]
+    }
+    expanded.add(folderId)
+    expanded = new Set(expanded)
   }
 
-  async function handleCreateFolder() {
-    if (!canEdit) return
-    const name = prompt("Название новой папки")
-    if (!name?.trim()) return
-    const createAtTopLevel = confirm("Создать в корне? Нажмите «Отмена», чтобы создать в текущей папке.")
+  async function ensureFolderLoaded(folderId: string) {
+    if (!folderId || loadedFolderContents.has(folderId)) return
+    const data = await getFolderContents(folderId)
+    docsByFolder = { ...docsByFolder, [folderId]: data.documents ?? [] }
+    loadedFolderContents.add(folderId)
+  }
+
+  async function toggleFolder(folderId: string) {
+    if (expanded.has(folderId)) {
+      expanded.delete(folderId)
+      expanded = new Set(expanded)
+      return
+    }
+    expanded.add(folderId)
+    expanded = new Set(expanded)
+    await ensureFolderLoaded(folderId)
+  }
+
+  async function selectFolder(folderId: string) {
+    selectedFolderId = folderId
+    selectedDocument = null
+    expandAncestors(folderId)
+    await ensureFolderLoaded(folderId)
+  }
+
+  async function openDocument(doc: Document) {
+    selectedDocument = doc
+    selectedFolderId = doc.folder_id || selectedFolderId
+    push(`/documents/${doc._id}`)
+  }
+
+  function beginCreate(parentId: string | null) {
+    creatingUnderParentId = parentId
+    createDraft = ""
+  }
+
+  async function submitCreate() {
+    if (!createDraft.trim()) return
     try {
-      await createFolder(name.trim(), createAtTopLevel ? null : currentFolderId || null)
-      await refreshTree()
-      if (currentFolderId) await refreshFolderData(currentFolderId)
+      await createFolder(createDraft.trim(), creatingUnderParentId)
+      creatingUnderParentId = null
+      createDraft = ""
+      await loadTree()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Не удалось создать папку")
     }
   }
 
-  async function handleRenameFolder(folderId: string, currentName: string) {
-    if (!canEdit) return
-    const name = prompt("Новое имя папки", currentName)
-    if (!name?.trim() || name.trim() === currentName) return
+  function beginRename(folderId: string, currentName: string) {
+    editingFolderId = folderId
+    renameDraft = currentName
+  }
+
+  async function submitRename(folderId: string) {
+    if (!renameDraft.trim()) return
     try {
-      await renameFolder(folderId, name.trim())
-      await refreshTree()
-      await refreshFolderData(currentFolderId)
+      await renameFolder(folderId, renameDraft.trim())
+      editingFolderId = null
+      renameDraft = ""
+      await loadTree()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Не удалось переименовать папку")
     }
   }
 
-  async function handleDeleteFolder(folderId: string) {
-    if (!canEdit) return
+  async function removeFolder(folderId: string) {
     if (!confirm("Удалить папку? Папка должна быть пустой.")) return
     try {
       await deleteFolderById(folderId)
-      await refreshTree()
-      if (!flatTree.find((node) => node.id === currentFolderId)) {
-        currentFolderId = findUnsorted(folderTree)?.id || flatTree[0]?.id || ""
-      }
-      if (currentFolderId) await refreshFolderData(currentFolderId)
+      await loadTree()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Не удалось удалить папку")
     }
   }
 
-  async function handleMoveFolder(folderId: string) {
-    if (!canEdit) return
-    const target = prompt("ID папки назначения (пусто = верхний уровень)", "")
+  function beginMoveFolder(folderId: string) {
+    const folder = foldersById[folderId]
+    if (!folder) return
+    moveState = { type: "folder", id: folderId, name: folder.name }
+    moveTargetFolderId = folder.parent_id ?? ""
+  }
+
+  function beginMoveDocument(doc: Document) {
+    moveState = { type: "document", id: doc._id, name: doc.display_filename || doc.filename }
+    moveTargetFolderId = doc.folder_id || selectedFolderId || ""
+  }
+
+  async function submitMove() {
+    if (!moveState) return
     try {
-      await moveFolder(folderId, target?.trim() ? target.trim() : null)
-      await refreshTree()
-      await refreshFolderData(currentFolderId)
+      if (moveState.type === "folder") {
+        await moveFolder(moveState.id, moveTargetFolderId || null)
+      } else {
+        if (!moveTargetFolderId) return
+        await moveDocumentToFolder(moveState.id, moveTargetFolderId)
+      }
+      moveState = null
+      moveTargetFolderId = ""
+      await loadTree()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Не удалось переместить папку")
+      alert(err instanceof Error ? err.message : "Не удалось переместить")
     }
   }
 
-  async function handleMoveDocument(documentId: string) {
-    if (!canEdit) return
-    const target = prompt("ID папки назначения для документа")
-    if (!target?.trim()) return
-    try {
-      await moveDocumentToFolder(documentId, target.trim())
-      await refreshFolderData(currentFolderId)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Не удалось переместить документ")
+  function folderOptions(excludeId?: string) {
+    return Object.values(foldersById)
+      .filter((folder) => folder.id !== excludeId)
+      .sort((left, right) => left.name.localeCompare(right.name))
+  }
+
+  function buildVisibleRows(parentId: string | null = null, depth = 0): TreeRow[] {
+    const rows: TreeRow[] = []
+    for (const folderId of sortedFolderIds(parentId)) {
+      const folder = foldersById[folderId]
+      if (!folder) continue
+      rows.push({ kind: "folder", depth, folder })
+      if (expanded.has(folderId)) {
+        rows.push(...buildVisibleRows(folderId, depth + 1))
+        for (const doc of docsByFolder[folderId] ?? []) {
+          rows.push({ kind: "document", depth: depth + 1, folderId, document: doc })
+        }
+      }
     }
+    return rows
+  }
+
+  onMount(async () => {
+    await loadTree()
+  })
+
+  $: if (initialFolderId && foldersById[initialFolderId] && initialFolderId !== selectedFolderId) {
+    void selectFolder(initialFolderId)
   }
 </script>
 
-<div class="files-layout">
-  <aside class="tree panel">
-    <h3>Folders</h3>
-    {#if flatTree.length === 0}
-      <p class="muted">Нет папок</p>
-    {:else}
-      <div class="tree-list">
-        {#each flatTree as node (node.id)}
-          <button
-            class="tree-item"
-            class:active={currentFolderId === node.id}
-            on:click={() => openFolder(node.id)}
-            style={`padding-left: ${10 + node.depth * 14}px;`}
-          >
-            {node.is_system ? "🛡️" : "📁"} {node.name}
-          </button>
+<div class="files-shell panel">
+  <div class="files-toolbar">
+    <div class="breadcrumbs">
+      <span class="crumb">Root</span>
+      {#if selectedFolderId}
+        {#each folderPath(selectedFolderId) as item (item.id)}
+          <span>/</span>
+          <button class="crumb-button" on:click={() => selectFolder(item.id)}>{item.name}</button>
         {/each}
-      </div>
-    {/if}
-  </aside>
-
-  <section class="contents panel">
-    <div class="top-bar">
-      <div class="breadcrumbs">
-        {#each currentFolderPath as item, index (item.id)}
-          <button class="crumb" on:click={() => openFolder(item.id)}>{item.name}</button>
-          {#if index < currentFolderPath.length - 1}<span>/</span>{/if}
-        {/each}
-      </div>
-      {#if canEdit}
-        <button on:click={handleCreateFolder}>+ Folder</button>
+      {/if}
+      {#if selectedDocument}
+        <span>/</span>
+        <span class="doc-crumb">{selectedDocument.display_filename || selectedDocument.filename}</span>
       {/if}
     </div>
-
-    {#if error}
-      <p class="error">{error}</p>
-    {:else if loading}
-      <p>Загрузка…</p>
-    {:else}
-      <div class="section">
-        <h4>Subfolders</h4>
-        {#if childFolders.length === 0}
-          <p class="muted">Нет подпапок</p>
-        {:else}
-          <ul>
-            {#each childFolders as folder (folder.id)}
-              <li>
-                <button class="link-like" on:click={() => openFolder(folder.id)}>📁 {folder.name}</button>
-                {#if canEdit && !folder.is_system}
-                  <button class="secondary" on:click={() => handleRenameFolder(folder.id, folder.name)}>Rename</button>
-                  <button class="secondary" on:click={() => handleMoveFolder(folder.id)}>Move</button>
-                  <button class="danger" on:click={() => handleDeleteFolder(folder.id)}>Delete</button>
-                {/if}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-
-      <div class="section">
-        <h4>Documents</h4>
-        {#if folderDocuments.length === 0}
-          <p class="muted">Нет документов</p>
-        {:else}
-          <ul>
-            {#each folderDocuments as doc (doc._id)}
-              <li>
-                <button class="link-like" on:click={() => push(`/documents/${doc._id}`)}>📄 {doc.display_filename || doc.filename}</button>
-                {#if canEdit}
-                  <button class="secondary" on:click={() => handleMoveDocument(doc._id)}>Move</button>
-                {/if}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
+    {#if canEdit}
+      <button class="new-folder" on:click={() => beginCreate(selectedFolderId || null)}>+ New folder</button>
     {/if}
-  </section>
+  </div>
+
+  {#if error}
+    <p class="error">{error}</p>
+  {:else if loading}
+    <p class="muted">Loading files…</p>
+  {:else}
+    <div class="tree">
+      {#if creatingUnderParentId === null}
+        <div class="inline-editor root-create">
+          <input bind:value={createDraft} placeholder="Folder name" on:keydown={(e) => e.key === "Enter" && submitCreate()} />
+          <button on:click={submitCreate}>Create</button>
+          <button class="secondary" on:click={() => creatingUnderParentId = "__cancel__"}>Cancel</button>
+        </div>
+      {/if}
+
+      {#each buildVisibleRows() as row (row.kind === "folder" ? `folder:${row.folder.id}` : `doc:${row.document._id}`)}
+        {#if row.kind === "folder"}
+          <div class="row" class:selected={selectedFolderId === row.folder.id} style={`--depth:${row.depth};`}>
+            <button class="toggle" on:click={() => toggleFolder(row.folder.id)}>{expanded.has(row.folder.id) ? "▾" : "▸"}</button>
+            <span class="icon">{row.folder.is_system ? "🛡️" : "📁"}</span>
+            {#if editingFolderId === row.folder.id}
+              <input class="inline-input" bind:value={renameDraft} on:keydown={(e) => e.key === "Enter" && submitRename(row.folder.id)} />
+            {:else}
+              <button class="name" on:click={() => selectFolder(row.folder.id)}>{row.folder.name}</button>
+            {/if}
+
+            {#if canEdit}
+              <div class="row-actions">
+                {#if editingFolderId === row.folder.id}
+                  <button class="mini" on:click={() => submitRename(row.folder.id)}>✓</button>
+                  <button class="mini" on:click={() => editingFolderId = null}>✕</button>
+                {:else}
+                  <button class="mini" title="New subfolder" on:click={() => beginCreate(row.folder.id)}>＋</button>
+                  {#if !row.folder.is_system}
+                    <button class="mini" title="Rename" on:click={() => beginRename(row.folder.id, row.folder.name)}>✎</button>
+                    <button class="mini" title="Move" on:click={() => beginMoveFolder(row.folder.id)}>↕</button>
+                    <button class="mini danger" title="Delete" on:click={() => removeFolder(row.folder.id)}>🗑</button>
+                  {/if}
+                {/if}
+              </div>
+            {/if}
+          </div>
+
+          {#if creatingUnderParentId === row.folder.id}
+            <div class="inline-editor child" style={`--depth:${row.depth + 1};`}>
+              <input bind:value={createDraft} placeholder="Folder name" on:keydown={(e) => e.key === "Enter" && submitCreate()} />
+              <button on:click={submitCreate}>Create</button>
+              <button class="secondary" on:click={() => creatingUnderParentId = "__cancel__"}>Cancel</button>
+            </div>
+          {/if}
+        {:else}
+          <div class="row file-row" class:selected={selectedDocument?._id === row.document._id} style={`--depth:${row.depth};`}>
+            <span class="toggle-placeholder"></span>
+            <span class="icon">📄</span>
+            <button class="name" on:click={() => openDocument(row.document)}>{row.document.display_filename || row.document.filename}</button>
+            {#if canEdit}
+              <div class="row-actions">
+                <button class="mini" title="Move" on:click={() => beginMoveDocument(row.document)}>↕</button>
+              </div>
+            {/if}
+          </div>
+        {/if}
+      {/each}
+    </div>
+  {/if}
+
+  {#if moveState}
+    <div class="move-modal-backdrop" on:click={() => moveState = null}>
+      <div class="move-modal panel" on:click|stopPropagation>
+        <h4>Move: {moveState.name}</h4>
+        <select bind:value={moveTargetFolderId}>
+          {#if moveState.type === "folder"}
+            <option value="">Top level</option>
+          {/if}
+          {#each folderOptions(moveState.type === "folder" ? moveState.id : undefined) as folder (folder.id)}
+            <option value={folder.id}>{folder.name}</option>
+          {/each}
+        </select>
+        <div class="move-actions">
+          <button on:click={submitMove}>Move</button>
+          <button class="secondary" on:click={() => moveState = null}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
-  .files-layout { display: grid; grid-template-columns: 280px 1fr; gap: 12px; }
-  .tree, .contents { padding: 12px; }
-  .tree-list { display: grid; gap: 4px; }
-  .tree-item { text-align: left; border-radius: 8px; }
-  .tree-item.active { background: color-mix(in srgb, var(--surface), var(--primary) 15%); }
-  .top-bar { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 8px; }
-  .breadcrumbs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .crumb, .link-like { background: none; border: 0; padding: 0; color: var(--text); text-decoration: underline; cursor: pointer; }
-  .section { margin-top: 12px; }
-  .section ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-  .section li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .files-shell { padding: 10px; }
+  .files-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.92rem; }
+  .crumb-button, .name { background: none; border: 0; padding: 0; text-align: left; color: var(--text); cursor: pointer; }
+  .crumb-button:hover, .name:hover { text-decoration: underline; }
+  .new-folder { min-height: 30px; padding: 0 10px; font-size: 0.85rem; }
+
+  .tree { display: grid; gap: 2px; }
+  .row { display: grid; grid-template-columns: 20px 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 28px; border-radius: 8px; padding: 2px 6px; padding-left: calc(6px + var(--depth, 0) * 16px); }
+  .row:hover { background: color-mix(in srgb, var(--surface), var(--primary) 8%); }
+  .row.selected { background: color-mix(in srgb, var(--surface), var(--primary) 13%); }
+  .toggle { width: 20px; min-width: 20px; height: 20px; border: 0; padding: 0; background: transparent; color: var(--text-muted); }
+  .toggle-placeholder { width: 20px; display: inline-block; }
+  .icon { font-size: 0.95rem; opacity: 0.9; }
+  .name { font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .row-actions { display: inline-flex; gap: 4px; opacity: 0; transition: opacity .12s ease; }
+  .row:hover .row-actions, .row.selected .row-actions { opacity: 1; }
+  .mini { border: 0; background: color-mix(in srgb, var(--surface), var(--bg-accent) 35%); width: 22px; height: 22px; border-radius: 6px; padding: 0; font-size: 0.75rem; }
+  .mini.danger { color: #c32626; }
+
+  .file-row { grid-template-columns: 20px 18px minmax(0, 1fr) auto; }
+
+  .inline-editor { display: flex; gap: 6px; align-items: center; margin: 4px 0 6px 26px; padding-left: calc(var(--depth, 0) * 16px); }
+  .inline-editor.root-create { margin-left: 0; }
+  .inline-editor input, .inline-input { height: 28px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 0 8px; }
+  .inline-input { width: 100%; }
+  .inline-editor button { min-height: 28px; padding: 0 8px; font-size: 0.8rem; }
+
+  .move-modal-backdrop { position: fixed; inset: 0; background: rgba(5, 10, 20, .35); display: grid; place-items: center; z-index: 60; }
+  .move-modal { width: min(420px, 94vw); padding: 12px; display: grid; gap: 10px; }
+  .move-modal h4 { margin: 0; font-size: 1rem; }
+  .move-modal select { min-height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 0 8px; }
+  .move-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+  .error { color: #c32626; }
   .muted { color: var(--text-muted); }
-  .error { color: #d12f2f; }
 </style>
