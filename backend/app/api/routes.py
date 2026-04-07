@@ -28,11 +28,13 @@ from backend.app.db.database import (
     activity_logs_collection,
     app_settings_collection,
     documents_collection,
+    folders_collection,
     sessions_collection,
     tags_collection,
     users_collection,
 )
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
+from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_unsorted_folder
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
 
@@ -101,6 +103,71 @@ def object_id_or_404(doc_id: str):
         raise HTTPException(status_code=404, detail="Документ не найден") from exc
     
 
+def folder_object_id_or_400(folder_id: str):
+    try:
+        return ObjectId(folder_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Некорректный идентификатор папки") from exc
+
+
+async def resolve_folder_id_or_unsorted(folder_id: Optional[str]):
+    unsorted_id = await ensure_unsorted_folder(folders_collection)
+    if folder_id is None or not str(folder_id).strip():
+        return unsorted_id
+
+    folder_object_id = folder_object_id_or_400(folder_id)
+    folder = await folders_collection.find_one({"_id": folder_object_id})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+    return folder["_id"]
+
+
+def serialize_folder(folder: dict):
+    return {
+        "id": str(folder["_id"]),
+        "name": folder.get("name", ""),
+        "parent_id": str(folder["parent_id"]) if folder.get("parent_id") else None,
+        "is_system": bool(folder.get("is_system", False)),
+        "created_at": folder.get("created_at"),
+        "updated_at": folder.get("updated_at"),
+        "created_by_user_id": folder.get("created_by_user_id"),
+        "created_by_username": folder.get("created_by_username"),
+    }
+
+
+async def build_folder_path(folder_id: ObjectId):
+    chain = []
+    current_id = folder_id
+    visited = set()
+    while current_id:
+        if current_id in visited:
+            raise HTTPException(status_code=400, detail="Обнаружен цикл в структуре папок")
+        visited.add(current_id)
+        folder = await folders_collection.find_one({"_id": current_id})
+        if not folder:
+            break
+        chain.append({"id": str(folder["_id"]), "name": folder.get("name", "")})
+        current_id = folder.get("parent_id")
+    chain.reverse()
+    return chain
+
+
+async def is_descendant_folder(candidate_parent_id: ObjectId, folder_id: ObjectId):
+    current_id = candidate_parent_id
+    visited = set()
+    while current_id:
+        if current_id in visited:
+            return True
+        visited.add(current_id)
+        if current_id == folder_id:
+            return True
+        parent = await folders_collection.find_one({"_id": current_id}, {"parent_id": 1})
+        if not parent:
+            return False
+        current_id = parent.get("parent_id")
+    return False
+
+
 def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: str, boxes: list):
     return {
         "filename": filename,
@@ -126,6 +193,8 @@ def build_attachment_item(*, filename: str, path: str, original_name: str, conte
 
 def normalize_document(doc: dict):
     doc["_id"] = str(doc["_id"])
+    if doc.get("folder_id") is not None and not isinstance(doc.get("folder_id"), str):
+        doc["folder_id"] = str(doc["folder_id"])
     if doc.get("is_archived") is None:
         doc["is_archived"] = False
     if "archived_at" not in doc:
@@ -494,6 +563,7 @@ async def upload_image(
     request: Request,
     file: UploadFile = File(...),
     perform_ocr: bool = Form(True),
+    folder_id: Optional[str] = Form(None),
     current_user=Depends(require_editor_user),
 ):
 
@@ -523,6 +593,7 @@ async def upload_image(
     )
 
     settings_doc = await get_or_create_settings()
+    resolved_folder_id = await resolve_folder_id_or_unsorted(folder_id)
     fields_for_cards = settings_doc.get("fields_for_cards") or []
     custom_fields = {
         normalize_custom_field_name(field.get("name", "")): default_value_for_field_type(field.get("type", "text"))
@@ -538,6 +609,7 @@ async def upload_image(
         "boxes": ocr_result["boxes"],         
         "file_hash": file_hash,
         "created_at": now_yekaterinburg(),
+        "folder_id": resolved_folder_id,
         "image_version": now_yekaterinburg().isoformat(),
         "tags": [],
         "is_archived": False,
@@ -775,6 +847,23 @@ class CustomFieldDefinition(BaseModel):
 
 class DocumentCustomFieldsUpdate(BaseModel):
     custom_fields: dict = Field(default_factory=dict)
+
+
+class FolderCreatePayload(BaseModel):
+    name: str
+    parent_id: Optional[str] = None
+
+
+class FolderUpdatePayload(BaseModel):
+    name: str
+
+
+class FolderMovePayload(BaseModel):
+    target_parent_id: Optional[str] = None
+
+
+class DocumentMovePayload(BaseModel):
+    target_folder_id: str
 
 
 @router.get("/settings")
@@ -1229,6 +1318,232 @@ async def search_documents(q: str):
 
 
 
+
+
+@router.get("/folders/tree")
+async def get_folder_tree(current_user=Depends(require_editor_user)):
+    await ensure_unsorted_folder(folders_collection)
+    folders = []
+    async for folder in folders_collection.find().sort("name", 1):
+        folders.append(folder)
+
+    by_parent = {}
+    for folder in folders:
+        parent_key = str(folder["parent_id"]) if folder.get("parent_id") else None
+        by_parent.setdefault(parent_key, []).append(folder)
+
+    def build_node(folder: dict):
+        folder_id = str(folder["_id"])
+        children = sorted(by_parent.get(folder_id, []), key=lambda item: item.get("name", "").lower())
+        return {**serialize_folder(folder), "children": [build_node(child) for child in children]}
+
+    roots = sorted(by_parent.get(None, []), key=lambda item: item.get("name", "").lower())
+    return {"folders": [build_node(root) for root in roots]}
+
+
+@router.get("/folders/{folder_id}/contents")
+async def get_folder_contents(folder_id: str, current_user=Depends(require_editor_user)):
+    folder_object_id = folder_object_id_or_400(folder_id)
+    folder = await folders_collection.find_one({"_id": folder_object_id})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+
+    child_folders = []
+    async for child in folders_collection.find({"parent_id": folder_object_id}).sort("name", 1):
+        child_folders.append(serialize_folder(child))
+
+    documents = []
+    async for doc in documents_collection.find(
+        {"folder_id": folder_object_id, "$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]}
+    ).sort("created_at", -1):
+        documents.append(normalize_document(doc))
+
+    return {"folder": serialize_folder(folder), "folders": child_folders, "documents": documents}
+
+
+@router.post("/folders")
+async def create_folder(request: Request, payload: FolderCreatePayload, current_user=Depends(require_editor_user)):
+    folder_name = (payload.name or "").strip()
+    if not folder_name:
+        raise HTTPException(status_code=400, detail="Имя папки обязательно")
+
+    parent_object_id = None
+    if payload.parent_id:
+        parent_object_id = folder_object_id_or_400(payload.parent_id)
+        parent_folder = await folders_collection.find_one({"_id": parent_object_id})
+        if not parent_folder:
+            raise HTTPException(status_code=404, detail="Родительская папка не найдена")
+
+    duplicate = await folders_collection.find_one({"name": folder_name, "parent_id": parent_object_id})
+    if duplicate:
+        raise HTTPException(status_code=400, detail="Папка с таким именем уже существует")
+
+    now = datetime.now(timezone.utc)
+    new_folder = {
+        "name": folder_name,
+        "parent_id": parent_object_id,
+        "is_system": False,
+        "created_at": now,
+        "updated_at": now,
+        "created_by_user_id": current_user["id"],
+        "created_by_username": current_user["username"],
+    }
+    inserted = await folders_collection.insert_one(new_folder)
+    created_folder = await folders_collection.find_one({"_id": inserted.inserted_id})
+    await write_audit_log(
+        request,
+        "folder.create",
+        {"folder_id": str(inserted.inserted_id), "parent_id": payload.parent_id, "name": folder_name},
+        current_user=current_user,
+    )
+    return {"folder": serialize_folder(created_folder)}
+
+
+@router.put("/folders/{folder_id}")
+async def rename_folder(request: Request, folder_id: str, payload: FolderUpdatePayload, current_user=Depends(require_editor_user)):
+    folder_object_id = folder_object_id_or_400(folder_id)
+    folder = await folders_collection.find_one({"_id": folder_object_id})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+    if folder.get("is_system"):
+        raise HTTPException(status_code=400, detail="Системную папку нельзя переименовать")
+
+    new_name = (payload.name or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Имя папки обязательно")
+
+    duplicate = await folders_collection.find_one(
+        {"_id": {"$ne": folder_object_id}, "name": new_name, "parent_id": folder.get("parent_id")}
+    )
+    if duplicate:
+        raise HTTPException(status_code=400, detail="Папка с таким именем уже существует")
+
+    await folders_collection.update_one(
+        {"_id": folder_object_id},
+        {"$set": {"name": new_name, "updated_at": datetime.now(timezone.utc)}},
+    )
+    updated_folder = await folders_collection.find_one({"_id": folder_object_id})
+    await write_audit_log(request, "folder.rename", {"folder_id": folder_id, "name": new_name}, current_user=current_user)
+    return {"folder": serialize_folder(updated_folder)}
+
+
+@router.delete("/folders/{folder_id}")
+async def delete_folder(request: Request, folder_id: str, current_user=Depends(require_editor_user)):
+    folder_object_id = folder_object_id_or_400(folder_id)
+    folder = await folders_collection.find_one({"_id": folder_object_id})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+    if folder.get("is_system"):
+        raise HTTPException(status_code=400, detail="Системную папку нельзя удалить")
+
+    child_count = await folders_collection.count_documents({"parent_id": folder_object_id}, limit=1)
+    if child_count:
+        raise HTTPException(status_code=400, detail="Нельзя удалить непустую папку")
+
+    doc_count = await documents_collection.count_documents(
+        {"folder_id": folder_object_id, "$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]},
+        limit=1,
+    )
+    if doc_count:
+        raise HTTPException(status_code=400, detail="Нельзя удалить непустую папку")
+
+    await folders_collection.delete_one({"_id": folder_object_id})
+    await write_audit_log(request, "folder.delete", {"folder_id": folder_id}, current_user=current_user)
+    return {"message": "Папка удалена"}
+
+
+@router.post("/folders/{folder_id}/move")
+async def move_folder(request: Request, folder_id: str, payload: FolderMovePayload, current_user=Depends(require_editor_user)):
+    folder_object_id = folder_object_id_or_400(folder_id)
+    folder = await folders_collection.find_one({"_id": folder_object_id})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+    if folder.get("is_system"):
+        raise HTTPException(status_code=400, detail="Системную папку нельзя перемещать")
+
+    target_parent_id = None
+    if payload.target_parent_id:
+        target_parent_id = folder_object_id_or_400(payload.target_parent_id)
+        parent_folder = await folders_collection.find_one({"_id": target_parent_id})
+        if not parent_folder:
+            raise HTTPException(status_code=404, detail="Папка назначения не найдена")
+        if target_parent_id == folder_object_id:
+            raise HTTPException(status_code=400, detail="Нельзя переместить папку в саму себя")
+        if await is_descendant_folder(target_parent_id, folder_object_id):
+            raise HTTPException(status_code=400, detail="Нельзя переместить папку в дочернюю папку")
+
+    duplicate = await folders_collection.find_one(
+        {"_id": {"$ne": folder_object_id}, "name": folder.get("name"), "parent_id": target_parent_id}
+    )
+    if duplicate:
+        raise HTTPException(status_code=400, detail="В папке назначения уже есть папка с таким именем")
+
+    await folders_collection.update_one(
+        {"_id": folder_object_id},
+        {"$set": {"parent_id": target_parent_id, "updated_at": datetime.now(timezone.utc)}},
+    )
+    updated_folder = await folders_collection.find_one({"_id": folder_object_id})
+    await write_audit_log(
+        request,
+        "folder.move",
+        {"folder_id": folder_id, "target_parent_id": payload.target_parent_id},
+        current_user=current_user,
+    )
+    return {"folder": serialize_folder(updated_folder)}
+
+
+@router.post("/documents/{doc_id}/move")
+async def move_document_to_folder(request: Request, doc_id: str, payload: DocumentMovePayload, current_user=Depends(require_editor_user)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    target_folder_id = await resolve_folder_id_or_unsorted(payload.target_folder_id)
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"folder_id": target_folder_id, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
+    )
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    await write_audit_log(
+        request,
+        "document.move",
+        {"document_id": doc_id, "target_folder_id": str(target_folder_id)},
+        current_user=current_user,
+    )
+    return normalize_document(updated_doc)
+
+
+@router.get("/folders/{folder_id}/path")
+async def get_folder_path(folder_id: str, current_user=Depends(require_editor_user)):
+    folder_object_id = folder_object_id_or_400(folder_id)
+    folder = await folders_collection.find_one({"_id": folder_object_id})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+    return {"path": await build_folder_path(folder_object_id)}
+
+
+@router.get("/documents/{doc_id}/path")
+async def get_document_path(doc_id: str, current_user=Depends(require_editor_user)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    if not document.get("folder_id"):
+        folder_id = await ensure_unsorted_folder(folders_collection)
+        await documents_collection.update_one({"_id": object_id}, {"$set": {"folder_id": folder_id}})
+    else:
+        folder_id = document["folder_id"]
+        if isinstance(folder_id, str):
+            folder_id = folder_object_id_or_400(folder_id)
+
+    path = await build_folder_path(folder_id)
+    return {
+        "document_id": doc_id,
+        "folder_path": path,
+        "document": {"id": doc_id, "name": document.get("display_filename") or document.get("filename")},
+    }
 
 
 class TagRequest(BaseModel):
