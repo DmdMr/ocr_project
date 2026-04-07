@@ -45,6 +45,8 @@
   let initialSelectionApplied = false
 
   const ROOT_ID = "__root__"
+  let currentFolders: FolderNode[] = []
+  let currentDocuments: Document[] = []
 
   function folderIdFrom(input: any): string {
     const raw = input?.id ?? input?._id ?? ""
@@ -142,24 +144,22 @@
     loadingFolderContents.add(folderId)
     try {
       const data = await getFolderContents(folderId)
-      const childFolders = (data.folders ?? []).map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
-      if (childFolders.length) {
-        const nextFoldersById: FolderMap = { ...foldersById }
-        const nextChildren: FolderChildrenMap = { ...folderChildren }
-        nextChildren[folderId] = []
-        for (const child of childFolders) {
-          nextFoldersById[child.id] = { ...child, parent_id: folderId }
-          nextChildren[folderId].push(child.id)
-          if (!nextChildren[child.id]) {
-            nextChildren[child.id] = []
-          }
+      const rawFolders = data.folders ?? data.subfolders ?? []
+      const rawDocuments = data.documents ?? data.docs ?? []
+      const childFolders = rawFolders.map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
+
+      const nextFoldersById: FolderMap = { ...foldersById }
+      const nextChildren: FolderChildrenMap = { ...folderChildren, [folderId]: [] }
+      for (const child of childFolders) {
+        nextFoldersById[child.id] = { ...child, parent_id: folderId }
+        nextChildren[folderId].push(child.id)
+        if (!nextChildren[child.id]) {
+          nextChildren[child.id] = []
         }
-        foldersById = nextFoldersById
-        folderChildren = nextChildren
-      } else if (!folderChildren[folderId]) {
-        folderChildren = { ...folderChildren, [folderId]: [] }
       }
-      docsByFolder = { ...docsByFolder, [folderId]: data.documents ?? [] }
+      foldersById = nextFoldersById
+      folderChildren = nextChildren
+      docsByFolder = { ...docsByFolder, [folderId]: rawDocuments }
       loadedFolderContents.add(folderId)
     } finally {
       loadingFolderContents.delete(folderId)
@@ -293,6 +293,12 @@
   $: if (initialSelectionApplied && initialFolderId && foldersById[initialFolderId] && initialFolderId !== selectedFolderId) {
     void selectFolder(initialFolderId)
   }
+
+  $: {
+    const childIds = selectedFolderId ? (folderChildren[selectedFolderId] ?? []) : []
+    currentFolders = childIds.map((id) => foldersById[id]).filter(Boolean)
+    currentDocuments = selectedFolderId ? (docsByFolder[selectedFolderId] ?? []) : []
+  }
 </script>
 
 <div class="files-shell panel">
@@ -319,7 +325,7 @@
     <p class="error">{error}</p>
   {:else if loading}
     <p class="muted">Loading files…</p>
-  {:else if !buildVisibleRows().length}
+  {:else if !buildVisibleRows().length && !currentFolders.length && !currentDocuments.length}
     <p class="muted">No folders yet.</p>
   {:else if selectedFolderId && !foldersById[selectedFolderId]}
     <p class="error">Selected folder no longer exists. Reload the page.</p>
@@ -383,7 +389,27 @@
       {/each}
     </div>
 
-    {#if selectedFolderId && loadedFolderContents.has(selectedFolderId) && !(folderChildren[selectedFolderId]?.length) && !(docsByFolder[selectedFolderId]?.length)}
+    {#if selectedFolderId}
+      <div class="current-contents">
+        <h4>Current folder contents</h4>
+        {#if currentFolders.length}
+          {#each currentFolders as folder (folder.id)}
+            <div class="content-row">
+              <button class="name" on:click={() => selectFolder(folder.id)}>📁 {folder.name}</button>
+            </div>
+          {/each}
+        {/if}
+        {#if currentDocuments.length}
+          {#each currentDocuments as doc (doc._id)}
+            <div class="content-row">
+              <button class="name" on:click={() => openDocument(doc)}>📄 {doc.display_filename || doc.filename}</button>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    {/if}
+
+    {#if selectedFolderId && loadedFolderContents.has(selectedFolderId) && !currentFolders.length && !currentDocuments.length}
       <p class="muted">This folder is empty.</p>
     {/if}
   {/if}
@@ -432,6 +458,9 @@
   .mini.danger { color: #c32626; }
 
   .file-row { grid-template-columns: 20px 18px minmax(0, 1fr) auto; }
+  .current-contents { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; display: grid; gap: 4px; }
+  .current-contents h4 { margin: 0 0 2px; font-size: .85rem; color: var(--text-muted); font-weight: 600; }
+  .content-row { min-height: 24px; display: flex; align-items: center; }
 
   .inline-editor { display: flex; gap: 6px; align-items: center; margin: 4px 0 6px 26px; padding-left: calc(var(--depth, 0) * 16px); }
   .inline-editor.root-create { margin-left: 0; }
