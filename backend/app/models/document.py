@@ -6,5 +6,6 @@ class DocumentModel(BaseModel):
     path: str
     recognized_text: str
     file_hash: str
+    folder_id: str
     created_at: datetime
     custom_fields: dict = Field(default_factory=dict)
