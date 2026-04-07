@@ -103,11 +103,24 @@ def object_id_or_404(doc_id: str):
         raise HTTPException(status_code=404, detail="Документ не найден") from exc
     
 
-def folder_object_id_or_400(folder_id: str):
-    try:
-        return ObjectId(folder_id)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Некорректный идентификатор папки") from exc
+def build_folder_id_candidates(folder_id: str):
+    normalized = (folder_id or "").strip()
+    if not normalized:
+        return []
+    candidates = [normalized]
+    if ObjectId.is_valid(normalized):
+        candidates.insert(0, ObjectId(normalized))
+    return candidates
+
+
+async def find_folder_by_public_id(folder_id: str):
+    candidates = build_folder_id_candidates(folder_id)
+    if not candidates:
+        raise HTTPException(status_code=400, detail="Некорректный идентификатор папки")
+    folder = await folders_collection.find_one({"_id": {"$in": candidates}})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+    return folder
 
 
 async def resolve_folder_id_or_unsorted(folder_id: Optional[str]):
@@ -115,10 +128,7 @@ async def resolve_folder_id_or_unsorted(folder_id: Optional[str]):
     if folder_id is None or not str(folder_id).strip():
         return unsorted_id
 
-    folder_object_id = folder_object_id_or_400(folder_id)
-    folder = await folders_collection.find_one({"_id": folder_object_id})
-    if not folder:
-        raise HTTPException(status_code=404, detail="Папка не найдена")
+    folder = await find_folder_by_public_id(folder_id)
     return folder["_id"]
 
 
@@ -1343,10 +1353,8 @@ async def get_folder_tree(current_user=Depends(require_editor_user)):
 
 @router.get("/folders/{folder_id}/contents")
 async def get_folder_contents(folder_id: str, current_user=Depends(require_editor_user)):
-    folder_object_id = folder_object_id_or_400(folder_id)
-    folder = await folders_collection.find_one({"_id": folder_object_id})
-    if not folder:
-        raise HTTPException(status_code=404, detail="Папка не найдена")
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
 
     child_folders = []
     async for child in folders_collection.find({"parent_id": folder_object_id}).sort("name", 1):
@@ -1369,10 +1377,8 @@ async def create_folder(request: Request, payload: FolderCreatePayload, current_
 
     parent_object_id = None
     if payload.parent_id:
-        parent_object_id = folder_object_id_or_400(payload.parent_id)
-        parent_folder = await folders_collection.find_one({"_id": parent_object_id})
-        if not parent_folder:
-            raise HTTPException(status_code=404, detail="Родительская папка не найдена")
+        parent_folder = await find_folder_by_public_id(payload.parent_id)
+        parent_object_id = parent_folder["_id"]
 
     duplicate = await folders_collection.find_one({"name": folder_name, "parent_id": parent_object_id})
     if duplicate:
@@ -1401,10 +1407,8 @@ async def create_folder(request: Request, payload: FolderCreatePayload, current_
 
 @router.put("/folders/{folder_id}")
 async def rename_folder(request: Request, folder_id: str, payload: FolderUpdatePayload, current_user=Depends(require_editor_user)):
-    folder_object_id = folder_object_id_or_400(folder_id)
-    folder = await folders_collection.find_one({"_id": folder_object_id})
-    if not folder:
-        raise HTTPException(status_code=404, detail="Папка не найдена")
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
     if folder.get("is_system"):
         raise HTTPException(status_code=400, detail="Системную папку нельзя переименовать")
 
@@ -1429,10 +1433,8 @@ async def rename_folder(request: Request, folder_id: str, payload: FolderUpdateP
 
 @router.delete("/folders/{folder_id}")
 async def delete_folder(request: Request, folder_id: str, current_user=Depends(require_editor_user)):
-    folder_object_id = folder_object_id_or_400(folder_id)
-    folder = await folders_collection.find_one({"_id": folder_object_id})
-    if not folder:
-        raise HTTPException(status_code=404, detail="Папка не найдена")
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
     if folder.get("is_system"):
         raise HTTPException(status_code=400, detail="Системную папку нельзя удалить")
 
@@ -1454,19 +1456,15 @@ async def delete_folder(request: Request, folder_id: str, current_user=Depends(r
 
 @router.post("/folders/{folder_id}/move")
 async def move_folder(request: Request, folder_id: str, payload: FolderMovePayload, current_user=Depends(require_editor_user)):
-    folder_object_id = folder_object_id_or_400(folder_id)
-    folder = await folders_collection.find_one({"_id": folder_object_id})
-    if not folder:
-        raise HTTPException(status_code=404, detail="Папка не найдена")
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
     if folder.get("is_system"):
         raise HTTPException(status_code=400, detail="Системную папку нельзя перемещать")
 
     target_parent_id = None
     if payload.target_parent_id:
-        target_parent_id = folder_object_id_or_400(payload.target_parent_id)
-        parent_folder = await folders_collection.find_one({"_id": target_parent_id})
-        if not parent_folder:
-            raise HTTPException(status_code=404, detail="Папка назначения не найдена")
+        parent_folder = await find_folder_by_public_id(payload.target_parent_id)
+        target_parent_id = parent_folder["_id"]
         if target_parent_id == folder_object_id:
             raise HTTPException(status_code=400, detail="Нельзя переместить папку в саму себя")
         if await is_descendant_folder(target_parent_id, folder_object_id):
@@ -1516,10 +1514,8 @@ async def move_document_to_folder(request: Request, doc_id: str, payload: Docume
 
 @router.get("/folders/{folder_id}/path")
 async def get_folder_path(folder_id: str, current_user=Depends(require_editor_user)):
-    folder_object_id = folder_object_id_or_400(folder_id)
-    folder = await folders_collection.find_one({"_id": folder_object_id})
-    if not folder:
-        raise HTTPException(status_code=404, detail="Папка не найдена")
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
     return {"path": await build_folder_path(folder_object_id)}
 
 
@@ -1536,7 +1532,8 @@ async def get_document_path(doc_id: str, current_user=Depends(require_editor_use
     else:
         folder_id = document["folder_id"]
         if isinstance(folder_id, str):
-            folder_id = folder_object_id_or_400(folder_id)
+            folder = await find_folder_by_public_id(folder_id)
+            folder_id = folder["_id"]
 
     path = await build_folder_path(folder_id)
     return {

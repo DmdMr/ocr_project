@@ -420,14 +420,18 @@
     <section class="panel folder-path-panel">
       <strong>Location:</strong>
       <div class="path-items">
+        <button class="path-link" on:click={() => openFilesLocation()}>Root</button>
+        <span>/</span>
         {#if folderPath.length}
-          {#each folderPath as item, index (item.id)}
+          {#each folderPath as item (item.id)}
             <button class="path-link" on:click={() => openFilesLocation(item.id)}>{item.name}</button>
-            {#if index < folderPath.length - 1}<span>/</span>{/if}
+            <span>/</span>
           {/each}
         {:else}
-          <button class="path-link" on:click={() => openFilesLocation()}>Open in Files</button>
+          <span>Unsorted</span>
+          <span>/</span>
         {/if}
+        <span>{doc.display_filename || doc.filename}</span>
       </div>
     </section>
 

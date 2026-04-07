@@ -28,11 +28,44 @@
   let loading = false
   let error = ""
 
+  function folderIdFrom(input: any): string {
+    const raw = input?.id ?? input?._id ?? ""
+    return typeof raw === "string" ? raw.trim() : ""
+  }
+
+  function normalizeFolderNode(input: any): FolderNode {
+    const id = folderIdFrom(input)
+    return {
+      id,
+      name: input?.name ?? "",
+      parent_id: (input?.parent_id ?? null) as string | null,
+      is_system: Boolean(input?.is_system),
+      created_at: input?.created_at,
+      updated_at: input?.updated_at,
+      created_by_user_id: input?.created_by_user_id,
+      created_by_username: input?.created_by_username,
+      children: Array.isArray(input?.children) ? input.children.map(normalizeFolderNode) : []
+    }
+  }
+
+  function normalizeFolderPath(input: any[]): FolderPathNode[] {
+    return (input || [])
+      .map((item) => ({ id: folderIdFrom(item), name: item?.name ?? "" }))
+      .filter((item) => item.id)
+  }
+
   onMount(async () => {
     await refreshTree()
     if (!currentFolderId) return
     await refreshFolderData(currentFolderId)
   })
+
+  $: if (initialFolderId && flatTree.length) {
+    const matched = flatTree.find((node) => node.id === initialFolderId)
+    if (matched && matched.id !== currentFolderId) {
+      void openFolder(matched.id)
+    }
+  }
 
   function flattenTree(nodes: FolderNode[], depth = 0): FlatFolderNode[] {
     const result: FlatFolderNode[] = []
@@ -55,7 +88,7 @@
   async function refreshTree() {
     try {
       const data = await getFolderTree()
-      folderTree = data.folders ?? []
+      folderTree = (data.folders ?? []).map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
       flatTree = flattenTree(folderTree)
 
       const selected = initialFolderId
@@ -69,15 +102,16 @@
   }
 
   async function refreshFolderData(folderId: string) {
+    if (!folderId) return
     loading = true
     try {
       const [contents, pathPayload] = await Promise.all([
         getFolderContents(folderId),
         getFolderPath(folderId)
       ])
-      childFolders = contents.folders ?? []
+      childFolders = (contents.folders ?? []).map(normalizeFolderNode).filter((node: FolderNode) => Boolean(node.id))
       folderDocuments = contents.documents ?? []
-      currentFolderPath = pathPayload.path ?? []
+      currentFolderPath = normalizeFolderPath(pathPayload.path ?? [])
       currentFolderId = folderId
       error = ""
     } catch (err) {
@@ -92,13 +126,14 @@
   }
 
   async function handleCreateFolder() {
-    if (!canEdit || !currentFolderId) return
+    if (!canEdit) return
     const name = prompt("Название новой папки")
     if (!name?.trim()) return
+    const createAtTopLevel = confirm("Создать в корне? Нажмите «Отмена», чтобы создать в текущей папке.")
     try {
-      await createFolder(name.trim(), currentFolderId)
+      await createFolder(name.trim(), createAtTopLevel ? null : currentFolderId || null)
       await refreshTree()
-      await refreshFolderData(currentFolderId)
+      if (currentFolderId) await refreshFolderData(currentFolderId)
     } catch (err) {
       alert(err instanceof Error ? err.message : "Не удалось создать папку")
     }
