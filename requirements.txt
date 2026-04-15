@@ -16,12 +16,10 @@ pillow>=10.3,<11.0
 opencv-python>=4.10,<5.0
 python-doctr[torch]>=0.8,<1.0
 easyocr>=1.7,<2.0
+paddlepaddle>=2.6,<3.0
+paddleocr>=2.8,<3.0
 transformers>=4.41,<5.0
 torch>=2.2,<3.0
 
 # Training/experiments helpers
 pandas>=2.2,<3.0
-
-
-# pip install paddlepaddle
-# pip install paddleocr
