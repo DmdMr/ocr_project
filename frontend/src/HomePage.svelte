@@ -12,8 +12,9 @@
     let refreshKey = 0
     let themeMode: ThemeMode = "system"
     let language: "en" | "ru" = "en"
-    let viewMode: "grid" | "list" = "grid"
+    let viewMode: "grid" | "list" | "files" = "grid"
     let viewModeLoaded = false
+    let initialFolderId: string | null = null
     let columnCount = 5
     let columnsLoaded = false
     let sidebarOpen = true
@@ -77,9 +78,18 @@
         applyTheme(savedTheme)
         setLanguage(savedLanguage)
         const saved = localStorage.getItem("viewMode")
-        if (saved === "grid" || saved === "list") {
+        if (saved === "grid" || saved === "list" || saved === "files") {
             viewMode = saved
         }
+        const hash = window.location.hash || "#/"
+        const [, rawQuery = ""] = hash.split("?")
+        const params = new URLSearchParams(rawQuery)
+        const viewParam = params.get("view")
+        if (viewParam === "grid" || viewParam === "list" || viewParam === "files") {
+            viewMode = viewParam
+        }
+        const folderParam = (params.get("folder") || "").trim()
+        initialFolderId = folderParam || null
         const savedSidebar = localStorage.getItem("workspaceSidebarOpen")
         if (savedSidebar === "true" || savedSidebar === "false") {
             sidebarOpen = savedSidebar === "true"
@@ -145,6 +155,7 @@
       <DocumentList
         {refreshKey}
         {viewMode}
+        {initialFolderId}
         {columnCount}
         {sidebarOpen}
         {activeTag}

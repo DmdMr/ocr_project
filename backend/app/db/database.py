@@ -11,7 +11,7 @@ app_settings_collection = db["app_settings"]
 users_collection = db["users"]
 sessions_collection = db["sessions"]
 activity_logs_collection = db["activity_logs"]
-
+folders_collection = db["folders"]
 
 
 folders_collection = db["folders"]

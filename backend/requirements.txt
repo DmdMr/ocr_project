@@ -10,4 +10,6 @@ motor
 pillow
 numpy
 python-doctr[torch]
+paddlepaddle
+paddleocr
 passlib

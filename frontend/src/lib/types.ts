@@ -34,6 +34,22 @@ export interface Document {
     created_by_username?: string
     updated_by_user_id?: string
     updated_by_username?: string
+    folder_id?: string
+}
+
+export interface FolderItem {
+    id: string
+    name: string
+    parent_id: string | null
+    is_system: boolean
+    created_at?: string
+    updated_at?: string
+    created_by_user_id?: string
+    created_by_username?: string
+}
+
+export interface FolderNode extends FolderItem {
+    children: FolderNode[]
 }
 
 export interface CardCustomFieldSetting {

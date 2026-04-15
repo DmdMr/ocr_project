@@ -34,7 +34,7 @@ from backend.app.db.database import (
     users_collection,
 )
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
-from backend.app.services.folder_service import UNSORTED_SYSTEM_KEY, ensure_unsorted_folder
+from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_unsorted_folder
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
 
@@ -170,13 +170,99 @@ async def is_descendant_folder(target_folder_id: str, candidate_parent_id: str):
 
     return False
 
-def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: str, boxes: list):
+def build_folder_id_candidates(folder_id: str):
+    normalized = (folder_id or "").strip()
+    if not normalized:
+        return []
+    candidates = [normalized]
+    if ObjectId.is_valid(normalized):
+        candidates.insert(0, ObjectId(normalized))
+    return candidates
+
+
+async def find_folder_by_public_id(folder_id: str):
+    candidates = build_folder_id_candidates(folder_id)
+    if not candidates:
+        raise HTTPException(status_code=400, detail="Некорректный идентификатор папки")
+    folder = await folders_collection.find_one({"_id": {"$in": candidates}})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Папка не найдена")
+    return folder
+
+
+async def resolve_folder_id_or_unsorted(folder_id: Optional[str]):
+    unsorted_id = await ensure_unsorted_folder(folders_collection)
+    if folder_id is None or not str(folder_id).strip():
+        return unsorted_id
+
+    folder = await find_folder_by_public_id(folder_id)
+    return folder["_id"]
+
+
+def serialize_folder(folder: dict):
+    return {
+        "id": str(folder["_id"]),
+        "name": folder.get("name", ""),
+        "parent_id": str(folder["parent_id"]) if folder.get("parent_id") else None,
+        "is_system": bool(folder.get("is_system", False)),
+        "created_at": folder.get("created_at"),
+        "updated_at": folder.get("updated_at"),
+        "created_by_user_id": folder.get("created_by_user_id"),
+        "created_by_username": folder.get("created_by_username"),
+    }
+
+
+async def build_folder_path(folder_id: ObjectId):
+    chain = []
+    current_id = folder_id
+    visited = set()
+    while current_id:
+        if current_id in visited:
+            raise HTTPException(status_code=400, detail="Обнаружен цикл в структуре папок")
+        visited.add(current_id)
+        folder = await folders_collection.find_one({"_id": current_id})
+        if not folder:
+            break
+        chain.append({"id": str(folder["_id"]), "name": folder.get("name", "")})
+        current_id = folder.get("parent_id")
+    chain.reverse()
+    return chain
+
+
+async def is_descendant_folder(candidate_parent_id: ObjectId, folder_id: ObjectId):
+    current_id = candidate_parent_id
+    visited = set()
+    while current_id:
+        if current_id in visited:
+            return True
+        visited.add(current_id)
+        if current_id == folder_id:
+            return True
+        parent = await folders_collection.find_one({"_id": current_id}, {"parent_id": 1})
+        if not parent:
+            return False
+        current_id = parent.get("parent_id")
+    return False
+
+
+def build_gallery_item(
+    *,
+    filename: str,
+    path: str,
+    file_hash: str,
+    ocr_text: str,
+    boxes: list,
+    top_code: Optional[str] = None,
+    ocr_lines: Optional[list] = None,
+):
     return {
         "filename": filename,
         "path": path,
         "file_hash": file_hash,
         "recognized_text": ocr_text,
         "boxes": boxes,
+        "top_code": top_code,
+        "ocr_lines": ocr_lines or [],
         "created_at": now_yekaterinburg(),
         "image_version": now_yekaterinburg().isoformat(),
     }
@@ -195,12 +281,16 @@ def build_attachment_item(*, filename: str, path: str, original_name: str, conte
 
 def normalize_document(doc: dict):
     doc["_id"] = str(doc["_id"])
-    if "folder_id" not in doc:
-        doc["folder_id"] = None
+    if doc.get("folder_id") is not None and not isinstance(doc.get("folder_id"), str):
+        doc["folder_id"] = str(doc["folder_id"])
     if doc.get("is_archived") is None:
         doc["is_archived"] = False
     if "archived_at" not in doc:
         doc["archived_at"] = None
+    if "top_code" not in doc:
+        doc["top_code"] = None
+    if not isinstance(doc.get("ocr_lines"), list):
+        doc["ocr_lines"] = []
     gallery = doc.get("gallery_images")
     if not gallery:
         doc["gallery_images"] = [
@@ -210,6 +300,8 @@ def normalize_document(doc: dict):
                 "file_hash": doc.get("file_hash"),
                 "recognized_text": doc.get("recognized_text", ""),
                 "boxes": doc.get("boxes", []),
+                "top_code": doc.get("top_code"),
+                "ocr_lines": doc.get("ocr_lines", []),
                 "created_at": doc.get("created_at", now_yekaterinburg()),
                 "image_version": doc.get("image_version"),
             }
@@ -803,9 +895,16 @@ async def upload_image(
     filename, file_path = save_upload_file(file, file_bytes)
     file_path = autocrop_whitespace(file_path)
     if perform_ocr:
-        ocr_result = recognize_text(file_path)
+        try:
+            ocr_result = recognize_text(file_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="OCR failure") from exc
     else:
-        ocr_result = {"text": "", "boxes": []}
+        ocr_result = {"text": "", "boxes": [], "top_code": None, "ocr_lines": []}
 
     gallery_item = build_gallery_item(
         filename=filename,
@@ -813,9 +912,12 @@ async def upload_image(
         file_hash=file_hash,
         ocr_text=ocr_result["text"],
         boxes=ocr_result["boxes"],
+        top_code=ocr_result.get("top_code"),
+        ocr_lines=ocr_result.get("ocr_lines", []),
     )
 
     settings_doc = await get_or_create_settings()
+    resolved_folder_id = await resolve_folder_id_or_unsorted(folder_id)
     fields_for_cards = settings_doc.get("fields_for_cards") or []
     custom_fields = {
         normalize_custom_field_name(field.get("name", "")): default_value_for_field_type(field.get("type", "text"))
@@ -831,8 +933,11 @@ async def upload_image(
         "path": file_path,
         "recognized_text": ocr_result["text"],  
         "boxes": ocr_result["boxes"],         
+        "top_code": ocr_result.get("top_code"),
+        "ocr_lines": ocr_result.get("ocr_lines", []),
         "file_hash": file_hash,
         "created_at": now_yekaterinburg(),
+        "folder_id": resolved_folder_id,
         "image_version": now_yekaterinburg().isoformat(),
         "tags": [],
         "is_archived": False,
@@ -861,7 +966,14 @@ async def upload_image(
         current_user=current_user,
     )
 
-    return {"message": "Файл успешно загружен", "document": document_data}
+    return {
+        "message": "Файл успешно загружен",
+        "document": document_data,
+        "filename": filename,
+        "recognized_text": document_data.get("recognized_text", ""),
+        "top_code": document_data.get("top_code"),
+        "ocr_lines": document_data.get("ocr_lines", []),
+    }
 
 @router.post("/documents/{doc_id}/gallery")
 async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_editor_user)):
@@ -878,6 +990,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
     added_items = []
     appended_texts: List[str] = []
+    appended_codes: List[str] = []
     skipped_files: List[str] = []
 
     for file in files:
@@ -897,7 +1010,17 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
         filename, file_path = save_upload_file(file, file_bytes)
         file_path = autocrop_whitespace(file_path)
-        ocr_result = recognize_text(file_path)
+        try:
+            ocr_result = recognize_text(file_path)
+        except ValueError:
+            skipped_files.append(f"{file.filename}: некорректное изображение")
+            continue
+        except RuntimeError:
+            skipped_files.append(f"{file.filename}: сервис OCR недоступен")
+            continue
+        except Exception:
+            skipped_files.append(f"{file.filename}: ошибка OCR")
+            continue
 
         item = build_gallery_item(
             filename=filename,
@@ -905,6 +1028,8 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
             file_hash=file_hash,
             ocr_text=ocr_result["text"],
             boxes=ocr_result["boxes"],
+            top_code=ocr_result.get("top_code"),
+            ocr_lines=ocr_result.get("ocr_lines", []),
         )
         added_items.append(item)
         existing_hashes.add(file_hash)
@@ -912,6 +1037,9 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
         recognized_text = (ocr_result.get("text") or "").strip()
         if recognized_text:
             appended_texts.append(recognized_text)
+        top_code = (ocr_result.get("top_code") or "").strip()
+        if top_code:
+            appended_codes.append(top_code)
 
     if not added_items:
         detail = "Не загружено ни одного нового корректного изображения"
@@ -923,12 +1051,19 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
     existing_text = (document.get("recognized_text") or "").strip()
     combined_text_parts = [part for part in [existing_text, *appended_texts] if part]
     combined_text = "\n\n".join(combined_text_parts)
+    existing_top_code = (document.get("top_code") or "").strip()
+    merged_top_code = existing_top_code or (appended_codes[0] if appended_codes else None)
 
     await documents_collection.update_one(
         {"_id": object_id},
         {
             "$push": {"gallery_images": {"$each": added_items}},
-            "$set": {"recognized_text": combined_text, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]},
+            "$set": {
+                "recognized_text": combined_text,
+                "top_code": merged_top_code,
+                "updated_by_user_id": current_user["id"],
+                "updated_by_username": current_user["username"],
+            },
         },
     )
 
@@ -1071,6 +1206,23 @@ class CustomFieldDefinition(BaseModel):
 
 class DocumentCustomFieldsUpdate(BaseModel):
     custom_fields: dict = Field(default_factory=dict)
+
+
+class FolderCreatePayload(BaseModel):
+    name: str
+    parent_id: Optional[str] = None
+
+
+class FolderUpdatePayload(BaseModel):
+    name: str
+
+
+class FolderMovePayload(BaseModel):
+    target_parent_id: Optional[str] = None
+
+
+class DocumentMovePayload(BaseModel):
+    target_folder_id: str
 
 
 @router.get("/settings")
@@ -1329,6 +1481,8 @@ async def delete_gallery_image(request: Request, doc_id: str, image_filename: st
                 "image_version": new_primary.get("image_version"),
                 "recognized_text": new_primary.get("recognized_text", ""),
                 "boxes": new_primary.get("boxes", []),
+                "top_code": new_primary.get("top_code"),
+                "ocr_lines": new_primary.get("ocr_lines", []),
             }
         )
 
@@ -1527,6 +1681,219 @@ async def search_documents(q: str):
 
 
 
+
+
+@router.get("/folders/tree")
+async def get_folder_tree(current_user=Depends(require_editor_user)):
+    await ensure_unsorted_folder(folders_collection)
+    folders = []
+    async for folder in folders_collection.find().sort("name", 1):
+        folders.append(folder)
+
+    by_parent = {}
+    for folder in folders:
+        parent_key = str(folder["parent_id"]) if folder.get("parent_id") else None
+        by_parent.setdefault(parent_key, []).append(folder)
+
+    def build_node(folder: dict):
+        folder_id = str(folder["_id"])
+        children = sorted(by_parent.get(folder_id, []), key=lambda item: item.get("name", "").lower())
+        return {**serialize_folder(folder), "children": [build_node(child) for child in children]}
+
+    roots = sorted(by_parent.get(None, []), key=lambda item: item.get("name", "").lower())
+    return {"folders": [build_node(root) for root in roots]}
+
+
+@router.get("/folders/{folder_id}/contents")
+async def get_folder_contents(folder_id: str, current_user=Depends(require_editor_user)):
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
+
+    child_folders = []
+    async for child in folders_collection.find({"parent_id": folder_object_id}).sort("name", 1):
+        child_folders.append(serialize_folder(child))
+
+    documents = []
+    async for doc in documents_collection.find(
+        {"folder_id": folder_object_id, "$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]}
+    ).sort("created_at", -1):
+        documents.append(normalize_document(doc))
+
+    return {"folder": serialize_folder(folder), "folders": child_folders, "documents": documents}
+
+
+@router.post("/folders")
+async def create_folder(request: Request, payload: FolderCreatePayload, current_user=Depends(require_editor_user)):
+    folder_name = (payload.name or "").strip()
+    if not folder_name:
+        raise HTTPException(status_code=400, detail="Имя папки обязательно")
+
+    parent_object_id = None
+    if payload.parent_id:
+        parent_folder = await find_folder_by_public_id(payload.parent_id)
+        parent_object_id = parent_folder["_id"]
+
+    duplicate = await folders_collection.find_one({"name": folder_name, "parent_id": parent_object_id})
+    if duplicate:
+        raise HTTPException(status_code=400, detail="Папка с таким именем уже существует")
+
+    now = datetime.now(timezone.utc)
+    new_folder = {
+        "name": folder_name,
+        "parent_id": parent_object_id,
+        "is_system": False,
+        "created_at": now,
+        "updated_at": now,
+        "created_by_user_id": current_user["id"],
+        "created_by_username": current_user["username"],
+    }
+    inserted = await folders_collection.insert_one(new_folder)
+    created_folder = await folders_collection.find_one({"_id": inserted.inserted_id})
+    await write_audit_log(
+        request,
+        "folder.create",
+        {"folder_id": str(inserted.inserted_id), "parent_id": payload.parent_id, "name": folder_name},
+        current_user=current_user,
+    )
+    return {"folder": serialize_folder(created_folder)}
+
+
+@router.put("/folders/{folder_id}")
+async def rename_folder(request: Request, folder_id: str, payload: FolderUpdatePayload, current_user=Depends(require_editor_user)):
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
+    if folder.get("is_system"):
+        raise HTTPException(status_code=400, detail="Системную папку нельзя переименовать")
+
+    new_name = (payload.name or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Имя папки обязательно")
+
+    duplicate = await folders_collection.find_one(
+        {"_id": {"$ne": folder_object_id}, "name": new_name, "parent_id": folder.get("parent_id")}
+    )
+    if duplicate:
+        raise HTTPException(status_code=400, detail="Папка с таким именем уже существует")
+
+    await folders_collection.update_one(
+        {"_id": folder_object_id},
+        {"$set": {"name": new_name, "updated_at": datetime.now(timezone.utc)}},
+    )
+    updated_folder = await folders_collection.find_one({"_id": folder_object_id})
+    await write_audit_log(request, "folder.rename", {"folder_id": folder_id, "name": new_name}, current_user=current_user)
+    return {"folder": serialize_folder(updated_folder)}
+
+
+@router.delete("/folders/{folder_id}")
+async def delete_folder(request: Request, folder_id: str, current_user=Depends(require_editor_user)):
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
+    if folder.get("is_system"):
+        raise HTTPException(status_code=400, detail="Системную папку нельзя удалить")
+
+    child_count = await folders_collection.count_documents({"parent_id": folder_object_id}, limit=1)
+    if child_count:
+        raise HTTPException(status_code=400, detail="Нельзя удалить непустую папку")
+
+    doc_count = await documents_collection.count_documents(
+        {"folder_id": folder_object_id, "$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]},
+        limit=1,
+    )
+    if doc_count:
+        raise HTTPException(status_code=400, detail="Нельзя удалить непустую папку")
+
+    await folders_collection.delete_one({"_id": folder_object_id})
+    await write_audit_log(request, "folder.delete", {"folder_id": folder_id}, current_user=current_user)
+    return {"message": "Папка удалена"}
+
+
+@router.post("/folders/{folder_id}/move")
+async def move_folder(request: Request, folder_id: str, payload: FolderMovePayload, current_user=Depends(require_editor_user)):
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
+    if folder.get("is_system"):
+        raise HTTPException(status_code=400, detail="Системную папку нельзя перемещать")
+
+    target_parent_id = None
+    if payload.target_parent_id:
+        parent_folder = await find_folder_by_public_id(payload.target_parent_id)
+        target_parent_id = parent_folder["_id"]
+        if target_parent_id == folder_object_id:
+            raise HTTPException(status_code=400, detail="Нельзя переместить папку в саму себя")
+        if await is_descendant_folder(target_parent_id, folder_object_id):
+            raise HTTPException(status_code=400, detail="Нельзя переместить папку в дочернюю папку")
+
+    duplicate = await folders_collection.find_one(
+        {"_id": {"$ne": folder_object_id}, "name": folder.get("name"), "parent_id": target_parent_id}
+    )
+    if duplicate:
+        raise HTTPException(status_code=400, detail="В папке назначения уже есть папка с таким именем")
+
+    await folders_collection.update_one(
+        {"_id": folder_object_id},
+        {"$set": {"parent_id": target_parent_id, "updated_at": datetime.now(timezone.utc)}},
+    )
+    updated_folder = await folders_collection.find_one({"_id": folder_object_id})
+    await write_audit_log(
+        request,
+        "folder.move",
+        {"folder_id": folder_id, "target_parent_id": payload.target_parent_id},
+        current_user=current_user,
+    )
+    return {"folder": serialize_folder(updated_folder)}
+
+
+@router.post("/documents/{doc_id}/move")
+async def move_document_to_folder(request: Request, doc_id: str, payload: DocumentMovePayload, current_user=Depends(require_editor_user)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    target_folder_id = await resolve_folder_id_or_unsorted(payload.target_folder_id)
+    await documents_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"folder_id": target_folder_id, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
+    )
+    updated_doc = await documents_collection.find_one({"_id": object_id})
+    await write_audit_log(
+        request,
+        "document.move",
+        {"document_id": doc_id, "target_folder_id": str(target_folder_id)},
+        current_user=current_user,
+    )
+    return normalize_document(updated_doc)
+
+
+@router.get("/folders/{folder_id}/path")
+async def get_folder_path(folder_id: str, current_user=Depends(require_editor_user)):
+    folder = await find_folder_by_public_id(folder_id)
+    folder_object_id = folder["_id"]
+    return {"path": await build_folder_path(folder_object_id)}
+
+
+@router.get("/documents/{doc_id}/path")
+async def get_document_path(doc_id: str, current_user=Depends(require_editor_user)):
+    object_id = object_id_or_404(doc_id)
+    document = await documents_collection.find_one({"_id": object_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    if not document.get("folder_id"):
+        folder_id = await ensure_unsorted_folder(folders_collection)
+        await documents_collection.update_one({"_id": object_id}, {"$set": {"folder_id": folder_id}})
+    else:
+        folder_id = document["folder_id"]
+        if isinstance(folder_id, str):
+            folder = await find_folder_by_public_id(folder_id)
+            folder_id = folder["_id"]
+
+    path = await build_folder_path(folder_id)
+    return {
+        "document_id": doc_id,
+        "folder_path": path,
+        "document": {"id": doc_id, "name": document.get("display_filename") or document.get("filename")},
+    }
 
 
 class TagRequest(BaseModel):
