@@ -21,3 +21,7 @@ torch>=2.2,<3.0
 
 # Training/experiments helpers
 pandas>=2.2,<3.0
+
+
+# pip install paddlepaddle
+# pip install paddleocr

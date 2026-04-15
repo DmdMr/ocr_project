@@ -173,9 +173,11 @@
         )}
     </div>
 
+    <!--
     <div class="doc-links">
         <a href={`#/documents/${doc._id}`} on:click|stopPropagation>Open document</a>
     </div>
+    -->
 
 
     <div class="card-tags">
