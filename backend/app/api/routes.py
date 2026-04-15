@@ -905,11 +905,17 @@ async def upload_image(
         try:
             ocr_result = recognize_text(file_path)
         except ValueError as exc:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except RuntimeError as exc:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         except Exception as exc:
-            raise HTTPException(status_code=500, detail="OCR failure") from exc
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"OCR failure: {exc}") from exc
     else:
         ocr_result = {"text": "", "boxes": [], "top_code": None, "ocr_lines": []}
 
@@ -917,8 +923,8 @@ async def upload_image(
         filename=filename,
         path=file_path,
         file_hash=file_hash,
-        ocr_text=ocr_result["text"],
-        boxes=ocr_result["boxes"],
+        ocr_text=ocr_result.get("text", ""),
+        boxes=ocr_result.get("boxes", []),
         top_code=ocr_result.get("top_code"),
         ocr_lines=ocr_result.get("ocr_lines", []),
     )
@@ -938,8 +944,8 @@ async def upload_image(
         "filename": filename,
         "display_filename": file.filename.strip() or file.filename,
         "path": file_path,
-        "recognized_text": ocr_result["text"],  
-        "boxes": ocr_result["boxes"],         
+        "recognized_text": ocr_result.get("text", ""),
+        "boxes": ocr_result.get("boxes", []),
         "top_code": ocr_result.get("top_code"),
         "ocr_lines": ocr_result.get("ocr_lines", []),
         "file_hash": file_hash,
@@ -1020,12 +1026,18 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
         try:
             ocr_result = recognize_text(file_path)
         except ValueError:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
             skipped_files.append(f"{file.filename}: некорректное изображение")
             continue
         except RuntimeError:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
             skipped_files.append(f"{file.filename}: сервис OCR недоступен")
             continue
         except Exception:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
             skipped_files.append(f"{file.filename}: ошибка OCR")
             continue
 
@@ -1033,8 +1045,8 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
             filename=filename,
             path=file_path,
             file_hash=file_hash,
-            ocr_text=ocr_result["text"],
-            boxes=ocr_result["boxes"],
+            ocr_text=ocr_result.get("text", ""),
+            boxes=ocr_result.get("boxes", []),
             top_code=ocr_result.get("top_code"),
             ocr_lines=ocr_result.get("ocr_lines", []),
         )
