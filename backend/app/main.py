@@ -40,6 +40,7 @@ async def setup_indexes():
         {"$set": {"folder_id": unsorted_id}},
     )
     await bootstrap_first_admin()
+    await ensure_unsorted_folder(folders_collection, documents_collection)
 
 
 app.include_router(router)
