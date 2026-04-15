@@ -33,14 +33,16 @@ async def setup_indexes():
     await activity_logs_collection.create_index("action")
     await activity_logs_collection.create_index("actor.user_id")
     await documents_collection.create_index("folder_id")
+
     await ensure_unsorted_indexes(folders_collection)
     unsorted_id = await ensure_unsorted_folder(folders_collection)
+   
     await documents_collection.update_many(
         {"$or": [{"folder_id": {"$exists": False}}, {"folder_id": None}]},
         {"$set": {"folder_id": unsorted_id}},
     )
     await bootstrap_first_admin()
-    await ensure_unsorted_folder(folders_collection, documents_collection)
+    #await ensure_unsorted_folder(folders_collection)
 
 
 app.include_router(router)

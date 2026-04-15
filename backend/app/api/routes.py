@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import traceback
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -10,6 +11,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
+from fastapi import HTTPException
 
 from backend.app.auth import (
     USER_ROLE_ADMIN,
@@ -34,9 +36,14 @@ from backend.app.db.database import (
     users_collection,
 )
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
-from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_unsorted_folder
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
+from backend.app.services.folder_service import (
+    UNSORTED_FOLDER_NAME,
+    UNSORTED_SYSTEM_KEY,
+    ensure_unsorted_folder,
+)
+
 
 router = APIRouter(prefix="/api")
 

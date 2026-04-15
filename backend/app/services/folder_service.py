@@ -4,6 +4,7 @@ from bson import ObjectId
 
 
 UNSORTED_FOLDER_NAME = "Unsorted"
+UNSORTED_SYSTEM_KEY = "unsorted"
 
 
 def now_utc():
