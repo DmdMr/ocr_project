@@ -1,86 +1,72 @@
-# ocr_service.py
-from doctr.models import ocr_predictor
-from PIL import Image
-#from transformers import TrOCRProcessor, VisionEncoderDecoderModel
-import torch
+from typing import Any, Dict
+
 import numpy as np
-import cv2
 
-# ----------------------------
-# Device setup for TrOCR
-# ----------------------------
-#DEVICE = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
+from backend.app.services.paddle_ocr_service import get_paddle_ocr_service, validate_image_file
 
-# ----------------------------
-# Load models once
-# ----------------------------
-# DocTR for typed/printed text
-doctr_model = ocr_predictor(pretrained=True)
 
-# TrOCR for handwritten text
-#processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
-#trocr_model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-handwritten").to(DEVICE)
+def _to_plain_python(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(k): _to_plain_python(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_plain_python(item) for item in value]
+    if isinstance(value, tuple):
+        return [_to_plain_python(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
 
-# ----------------------------
-# Helper: detect if handwritten
-# ----------------------------
-"""
 
-def is_handwritten(image_path: str, threshold: float = 0.02) -> bool:
-
-    Simple heuristic: lower edge density -> likely handwriting.
-
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    img = cv2.resize(img, (256, 256))
-    edges = cv2.Canny(img, 100, 200)
-    edge_density = np.sum(edges > 0) / edges.size
-    return edge_density < threshold
-"""
-# ----------------------------
-# OCR function
-# ----------------------------
-def recognize_text(image_path: str) -> dict:
-    """
-    Returns OCR result as a dictionary:
-        {
-            "text": "recognized text",
-            "boxes": []  # empty for now
-        }
-
-    if is_handwritten(image_path):
-        # Handwritten → TrOCR
-        image = Image.open(image_path).convert("RGB")
-        pixel_values = processor(images=image, return_tensors="pt").pixel_values.to(DEVICE)
-        output_ids = trocr_model.generate(
-            pixel_values,
-            num_beams=5,
-            max_length=256,
-            early_stopping=True
-        )
-        text = processor.batch_decode(output_ids, skip_special_tokens=True)[0]
-    """
-        # Typed/printed → DocTR
-    img = Image.open(image_path).convert("RGB")
-    img_array = np.array(img)
-    result = doctr_model([img_array])
-    lines = []
-    for page in result.pages:
-        for block in page.blocks:
-            for line in block.lines:
-                words = [word.value for word in line.words]
-                if words:
-                    lines.append(" ".join(words))
-    text = "\n".join(lines)
+def _normalize_ocr_result(raw_result: Dict[str, Any]) -> Dict[str, Any]:
+    safe_result = _to_plain_python(raw_result or {})
+    recognized_text = str(safe_result.get("recognized_text") or "")
+    top_code = safe_result.get("top_code")
+    ocr_lines = safe_result.get("ocr_lines")
+    if not isinstance(ocr_lines, list):
+        ocr_lines = []
+    confidence = safe_result.get("confidence")
+    if confidence is not None:
+        try:
+            confidence = float(confidence)
+        except (TypeError, ValueError):
+            confidence = None
+    top_region = safe_result.get("top_region")
+    if top_region is not None and not isinstance(top_region, dict):
+        top_region = None
 
     return {
-        "text": text,
-        "boxes": []  
+        "text": recognized_text,
+        "recognized_text": recognized_text,
+        "boxes": [],
+        "top_code": str(top_code) if top_code is not None else None,
+        "ocr_lines": ocr_lines,
+        "confidence": confidence,
+        "top_region": top_region,
     }
 
-# ----------------------------
-# Example usage
-# ----------------------------
-if __name__ == "__main__":
-    example_path = "example_image.png"
-    result = recognize_text(example_path)
-    print("Recognized text:\n", result["text"])
+
+def recognize_text(image_path: str) -> Dict[str, Any]:
+    """
+    Backward-compatible OCR wrapper used by routes.
+    Returns at minimum:
+      - text
+      - boxes
+    Extended fields:
+      - recognized_text
+      - top_code
+      - ocr_lines
+      - confidence
+    """
+    validate_image_file(image_path)
+    service = get_paddle_ocr_service()
+    result = service.run_ocr(image_path)
+    return _normalize_ocr_result(result)
+
+
+def recognize_top_code(image_path: str) -> Dict[str, Any]:
+    """Utility method for future field-based OCR calls."""
+    validate_image_file(image_path)
+    service = get_paddle_ocr_service()
+    return service.ocr_top_code_region(image_path)

@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import traceback
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -178,13 +179,24 @@ async def is_descendant_folder(candidate_parent_id: ObjectId, folder_id: ObjectI
     return False
 
 
-def build_gallery_item(*, filename: str, path: str, file_hash: str, ocr_text: str, boxes: list):
+def build_gallery_item(
+    *,
+    filename: str,
+    path: str,
+    file_hash: str,
+    ocr_text: str,
+    boxes: list,
+    top_code: Optional[str] = None,
+    ocr_lines: Optional[list] = None,
+):
     return {
         "filename": filename,
         "path": path,
         "file_hash": file_hash,
         "recognized_text": ocr_text,
         "boxes": boxes,
+        "top_code": top_code,
+        "ocr_lines": ocr_lines or [],
         "created_at": now_yekaterinburg(),
         "image_version": now_yekaterinburg().isoformat(),
     }
@@ -209,6 +221,10 @@ def normalize_document(doc: dict):
         doc["is_archived"] = False
     if "archived_at" not in doc:
         doc["archived_at"] = None
+    if "top_code" not in doc:
+        doc["top_code"] = None
+    if not isinstance(doc.get("ocr_lines"), list):
+        doc["ocr_lines"] = []
     gallery = doc.get("gallery_images")
     if not gallery:
         doc["gallery_images"] = [
@@ -218,6 +234,8 @@ def normalize_document(doc: dict):
                 "file_hash": doc.get("file_hash"),
                 "recognized_text": doc.get("recognized_text", ""),
                 "boxes": doc.get("boxes", []),
+                "top_code": doc.get("top_code"),
+                "ocr_lines": doc.get("ocr_lines", []),
                 "created_at": doc.get("created_at", now_yekaterinburg()),
                 "image_version": doc.get("image_version"),
             }
@@ -590,16 +608,31 @@ async def upload_image(
     filename, file_path = save_upload_file(file, file_bytes)
     file_path = autocrop_whitespace(file_path)
     if perform_ocr:
-        ocr_result = recognize_text(file_path)
+        try:
+            ocr_result = recognize_text(file_path)
+        except ValueError as exc:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except Exception as exc:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"OCR failure: {exc}") from exc
     else:
-        ocr_result = {"text": "", "boxes": []}
+        ocr_result = {"text": "", "boxes": [], "top_code": None, "ocr_lines": []}
 
     gallery_item = build_gallery_item(
         filename=filename,
         path=file_path,
         file_hash=file_hash,
-        ocr_text=ocr_result["text"],
-        boxes=ocr_result["boxes"],
+        ocr_text=ocr_result.get("text", ""),
+        boxes=ocr_result.get("boxes", []),
+        top_code=ocr_result.get("top_code"),
+        ocr_lines=ocr_result.get("ocr_lines", []),
     )
 
     settings_doc = await get_or_create_settings()
@@ -615,8 +648,10 @@ async def upload_image(
         "filename": filename,
         "display_filename": file.filename.strip() or file.filename,
         "path": file_path,
-        "recognized_text": ocr_result["text"],  
-        "boxes": ocr_result["boxes"],         
+        "recognized_text": ocr_result.get("text", ""),
+        "boxes": ocr_result.get("boxes", []),
+        "top_code": ocr_result.get("top_code"),
+        "ocr_lines": ocr_result.get("ocr_lines", []),
         "file_hash": file_hash,
         "created_at": now_yekaterinburg(),
         "folder_id": resolved_folder_id,
@@ -647,7 +682,14 @@ async def upload_image(
         current_user=current_user,
     )
 
-    return {"message": "Файл успешно загружен", "document": document_data}
+    return {
+        "message": "Файл успешно загружен",
+        "document": document_data,
+        "filename": filename,
+        "recognized_text": document_data.get("recognized_text", ""),
+        "top_code": document_data.get("top_code"),
+        "ocr_lines": document_data.get("ocr_lines", []),
+    }
 
 @router.post("/documents/{doc_id}/gallery")
 async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_editor_user)):
@@ -664,6 +706,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
     added_items = []
     appended_texts: List[str] = []
+    appended_codes: List[str] = []
     skipped_files: List[str] = []
 
     for file in files:
@@ -683,14 +726,32 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
         filename, file_path = save_upload_file(file, file_bytes)
         file_path = autocrop_whitespace(file_path)
-        ocr_result = recognize_text(file_path)
+        try:
+            ocr_result = recognize_text(file_path)
+        except ValueError:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
+            skipped_files.append(f"{file.filename}: некорректное изображение")
+            continue
+        except RuntimeError:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
+            skipped_files.append(f"{file.filename}: сервис OCR недоступен")
+            continue
+        except Exception:
+            print("=== OCR UPLOAD ERROR ===")
+            traceback.print_exc()
+            skipped_files.append(f"{file.filename}: ошибка OCR")
+            continue
 
         item = build_gallery_item(
             filename=filename,
             path=file_path,
             file_hash=file_hash,
-            ocr_text=ocr_result["text"],
-            boxes=ocr_result["boxes"],
+            ocr_text=ocr_result.get("text", ""),
+            boxes=ocr_result.get("boxes", []),
+            top_code=ocr_result.get("top_code"),
+            ocr_lines=ocr_result.get("ocr_lines", []),
         )
         added_items.append(item)
         existing_hashes.add(file_hash)
@@ -698,6 +759,9 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
         recognized_text = (ocr_result.get("text") or "").strip()
         if recognized_text:
             appended_texts.append(recognized_text)
+        top_code = (ocr_result.get("top_code") or "").strip()
+        if top_code:
+            appended_codes.append(top_code)
 
     if not added_items:
         detail = "Не загружено ни одного нового корректного изображения"
@@ -709,12 +773,19 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
     existing_text = (document.get("recognized_text") or "").strip()
     combined_text_parts = [part for part in [existing_text, *appended_texts] if part]
     combined_text = "\n\n".join(combined_text_parts)
+    existing_top_code = (document.get("top_code") or "").strip()
+    merged_top_code = existing_top_code or (appended_codes[0] if appended_codes else None)
 
     await documents_collection.update_one(
         {"_id": object_id},
         {
             "$push": {"gallery_images": {"$each": added_items}},
-            "$set": {"recognized_text": combined_text, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]},
+            "$set": {
+                "recognized_text": combined_text,
+                "top_code": merged_top_code,
+                "updated_by_user_id": current_user["id"],
+                "updated_by_username": current_user["username"],
+            },
         },
     )
 
@@ -1132,6 +1203,8 @@ async def delete_gallery_image(request: Request, doc_id: str, image_filename: st
                 "image_version": new_primary.get("image_version"),
                 "recognized_text": new_primary.get("recognized_text", ""),
                 "boxes": new_primary.get("boxes", []),
+                "top_code": new_primary.get("top_code"),
+                "ocr_lines": new_primary.get("ocr_lines", []),
             }
         )
 
