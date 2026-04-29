@@ -45,7 +45,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 AUDIT_LOG_DIR = "backend/logs"
 AUDIT_LOG_FILE = os.path.join(AUDIT_LOG_DIR, "audit.log")
 os.makedirs(AUDIT_LOG_DIR, exist_ok=True)
-
+UNSORTED_SYSTEM_KEY="unsorted"
 
 audit_logger = logging.getLogger("backend.audit")
 if not audit_logger.handlers:
@@ -107,7 +107,7 @@ async def get_unsorted_folder():
     folder = await folders_collection.find_one({"system_key": UNSORTED_SYSTEM_KEY})
     if folder:
         return folder
-    return await ensure_unsorted_folder(folders_collection, documents_collection)
+    return await ensure_unsorted_folder(folders_collection)
 
 
 def normalize_folder(folder: dict):
