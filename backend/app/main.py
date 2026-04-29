@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.routes import router
 from backend.app.auth import bootstrap_first_admin
-from backend.app.db.database import activity_logs_collection, documents_collection, folders_collection, sessions_collection, users_collection
+from backend.app.db.database import activity_logs_collection, documents_collection, folders_collection, sessions_collection, users_collection, init_db
 from backend.app.services.folder_service import ensure_unsorted_folder, ensure_unsorted_indexes
 
 app = FastAPI()
@@ -25,6 +25,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def setup_indexes():
+    init_db()
     await users_collection.create_index("username_lower", unique=True)
     await users_collection.create_index("role")
     await sessions_collection.create_index("session_id", unique=True)
