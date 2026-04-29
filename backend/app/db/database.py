@@ -4,12 +4,31 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
+
+
+from datetime import datetime, date, timezone
+import json
+
+def json_default(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
 from sqlalchemy import JSON, Boolean, DateTime, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 DB_PATH = os.getenv("SQLITE_DB_PATH", "backend/app/data/ocr_app.db")
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-engine = create_engine(f"sqlite:///{DB_PATH}", future=True)
+
+DATABASE_URL = "sqlite:///./ocr.db"
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    json_serializer=lambda obj: json.dumps(obj, default=json_default),
+)
+
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 
@@ -80,8 +99,14 @@ def _match(document: dict, query: dict) -> bool:
             continue
         current = document.get(k)
         if isinstance(v, dict):
-            if "$gt" in v and not (current is not None and current > v["$gt"]):
-                return False
+            if "$gt" in v:
+               compare_to = v["$gt"]
+               if isinstance(current, str) and isinstance(compare_to, datetime):
+                   current = datetime.fromisoformat(current)
+
+               if not (current is not None and current > compare_to):
+                   return False
+
             if "$in" in v and current not in v["$in"]:
                 return False
             if "$exists" in v:

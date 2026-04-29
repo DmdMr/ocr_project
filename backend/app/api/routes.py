@@ -102,10 +102,11 @@ def object_id_or_404(doc_id: str):
 
 
 async def get_unsorted_folder():
-    folder = await folders_collection.find_one({"system_key": UNSORTED_SYSTEM_KEY})
+    folder_id = await ensure_unsorted_folder(folders_collection)
+    folder = await folders_collection.find_one({"_id": folder_id})
     if folder:
         return folder
-    return await ensure_unsorted_folder(folders_collection)
+    raise HTTPException(status_code=500, detail="Unsorted folder was not created")
 
 
 def normalize_folder(folder: dict):
