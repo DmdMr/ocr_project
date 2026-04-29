@@ -3,7 +3,6 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
-from bson import ObjectId
 from dotenv import load_dotenv
 from pathlib import Path
 from fastapi import Cookie, Depends, HTTPException, Response
@@ -161,7 +160,7 @@ async def bootstrap_first_admin():
         return False
 
     now = utc_now()
-    user_id = str(ObjectId())
+    user_id = secrets.token_hex(12)
     await users_collection.insert_one(
         {
             "_id": user_id,

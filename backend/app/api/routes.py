@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
-from bson import ObjectId
 from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
@@ -97,10 +96,9 @@ async def get_or_create_settings():
 
 
 def object_id_or_404(doc_id: str):
-    try:
-        return ObjectId(doc_id)
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail="Документ не найден") from exc
+    if not doc_id:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return str(doc_id)
 
 
 async def get_unsorted_folder():
@@ -175,8 +173,6 @@ def build_folder_id_candidates(folder_id: str):
     if not normalized:
         return []
     candidates = [normalized]
-    if ObjectId.is_valid(normalized):
-        candidates.insert(0, ObjectId(normalized))
     return candidates
 
 
@@ -212,7 +208,7 @@ def serialize_folder(folder: dict):
     }
 
 
-async def build_folder_path(folder_id: ObjectId):
+async def build_folder_path(folder_id: str):
     chain = []
     current_id = folder_id
     visited = set()
@@ -229,7 +225,7 @@ async def build_folder_path(folder_id: ObjectId):
     return chain
 
 
-async def is_descendant_folder(candidate_parent_id: ObjectId, folder_id: ObjectId):
+async def is_descendant_folder(candidate_parent_id: str, folder_id: str):
     current_id = candidate_parent_id
     visited = set()
     while current_id:
@@ -355,7 +351,6 @@ def get_request_actor(request: Request):
     }
 
 from datetime import datetime, date
-from bson import ObjectId
 
 async def write_audit_log(request: Request, action: str, payload: dict, current_user: Optional[dict] = None):
     actor = get_request_actor(request)
@@ -465,7 +460,7 @@ async def register(
         raise HTTPException(status_code=400, detail="Пользователь с таким именем уже существует")
 
     now = datetime.now(timezone.utc)
-    user_id = str(ObjectId())
+    user_id = __import__("secrets").token_hex(12)
     await users_collection.insert_one(
         {
             "_id": user_id,
@@ -681,7 +676,7 @@ async def create_folder(request: Request, payload: FolderCreateRequest, current_
 
     now = now_yekaterinburg()
     folder = {
-        "_id": str(ObjectId()),
+        "_id": __import__("secrets").token_hex(12),
         "name": name,
         "parent_id": parent_id,
         "is_system": False,

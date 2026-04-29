@@ -106,3 +106,21 @@ Frontend будет доступен на `http://localhost:5173`.
 ### 4) Как останавливать
 - В каждом окне нажмите `Ctrl + C`.
 - Либо используйте `stop-local.bat`.
+## Local setup (SQLite, no MongoDB)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+In another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev -- --host 0.0.0.0
+```
+
+SQLite DB file is created automatically at `backend/app/data/ocr_app.db`.

@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
 
-from bson import ObjectId
-
 
 UNSORTED_FOLDER_NAME = "Unsorted"
 
@@ -30,7 +28,7 @@ async def ensure_unsorted_folder(folders_collection):
 
     now = now_utc()
     folder = {
-        "_id": ObjectId(),
+        "_id": __import__("uuid").uuid4().hex,
         "name": UNSORTED_FOLDER_NAME,
         "parent_id": None,
         "is_system": True,
