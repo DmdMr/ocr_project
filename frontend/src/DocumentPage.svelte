@@ -104,42 +104,46 @@
     {:else if doc}
       <article class="document-reading-layout">
       <header class="document-header card-like">
-        <div class="header-top-row">
-          <button class="back-button" on:click={() => push("/")}>← Back</button>
-          <div class="header-actions">
-            <button class="action-button" on:click={openEditor}>Edit</button>
-            <button class="action-button danger" on:click={openEditor}>Delete</button>
-          </div>
-        </div>
-        <h1>{displayName(doc)}</h1>
-        <div class="header-meta">
+        <button class="back-button" on:click={() => push("/")}>← Back to documents</button>
+        <div class="header-main">
+          <h1>{displayName(doc)}</h1>
+          <div class="header-meta">
           <span><strong>Created:</strong> {formatDate(doc.created_at)}</span>
           <span><strong>Updated:</strong> {formatDate((doc as any).updated_at)}</span>
           <span><strong>Author:</strong> {(doc as any).author || "—"}</span>
         </div>
+          </div>
+        <div class="header-actions">
+          <button class="action-button" on:click={openEditor}>Edit</button>
+          <button class="action-button danger" on:click={openEditor}>Delete</button>
+        </div>
       </header>
 
-      <div class="layout-columns">
-        <aside class="left-panel">
-          <section class="card-like">
-            <h2>File location</h2>
+      <section class="top-panel card-like">
+        <div class="top-panel-left">
+          <section>
+            <h2>Location</h2>
             <p class="muted">{doc.folder || "—"}</p>
           </section>
-
-          {#if doc.tags?.length}
-            <section class="card-like">
-              <h2>Tags</h2>
+          <button class="action-button" on:click={openEditor}>Add image</button>
+        </div>
+        <div class="top-panel-right">
+          <section>
+            <h2>Tags</h2>
+            {#if doc.tags?.length}
               <div class="tags">
                 {#each doc.tags as tag}
                   <span class="tag">{tag}</span>
                 {/each}
               </div>
-            </section>
-          {/if}
-
-          {#if doc.attachments?.length}
-            <section class="card-like">
-              <h2>Attached files</h2>
+            {:else}
+              <p class="muted">No tags assigned.</p>
+            {/if}
+            <button class="action-button" on:click={() => push('/archive')}>Manage tags</button>
+          </section>
+          <section>
+            <h2>Files</h2>
+            {#if doc.attachments?.length}
               <ul class="attachment-list">
                 {#each doc.attachments as attachment}
                   <li>
@@ -147,6 +151,30 @@
                   </li>
                 {/each}
               </ul>
+            {:else}
+              <p class="muted">No attached files.</p>
+            {/if}
+            <button class="action-button" on:click={openEditor}>Add file</button>
+          </section>
+        </div>
+      </section>
+
+      <section class="main-panel">
+        <aside class="main-left-panel">
+          {#if doc.gallery_images?.length}
+            <section class="card-like">
+              <h2>Images</h2>
+              <div class="gallery-grid">
+                {#each doc.gallery_images as image}
+                  <article class="image-card">
+                    <img src={imageUrl(image)} alt={image.filename} loading="lazy" />
+                    <div class="image-actions">
+                      <button class="action-button" on:click={openEditor}>Edit</button>
+                      <button class="action-button danger" on:click={openEditor}>Delete</button>
+                    </div>
+                  </article>
+                {/each}
+              </div>
             </section>
           {/if}
 
@@ -165,34 +193,15 @@
           {/if}
         </aside>
 
-        <main class="right-panel">
-          <section class="card-like">
-            <h2>Recognized text</h2>
-            {#if doc.recognized_text?.trim()}
-              <pre>{doc.recognized_text}</pre>
-            {:else}
-              <p class="muted">No recognized text available.</p>
-            {/if}
-          </section>
-
-          {#if doc.gallery_images?.length}
-            <section class="card-like">
-              <h2>Images</h2>
-              <div class="gallery-grid">
-                {#each doc.gallery_images as image}
-                  <article class="image-card">
-                    <img src={imageUrl(image)} alt={image.filename} loading="lazy" />
-                    <div class="image-actions">
-                      <button class="action-button" on:click={openEditor}>Edit</button>
-                      <button class="action-button danger" on:click={openEditor}>Delete</button>
-                    </div>
-                  </article>
-                {/each}
-              </div>
-            </section>
+        <main class="main-right-panel card-like">
+          <h2>Recognized text</h2>
+          {#if doc.recognized_text?.trim()}
+            <pre>{doc.recognized_text}</pre>
+          {:else}
+            <p class="muted">No recognized text available.</p>
           {/if}
         </main>
-      </div>
+      </section>
       </article>
     {/if}
   </div>
@@ -226,35 +235,44 @@
     gap: 16px;
   }
 
-  .layout-columns {
+  .top-panel {
     display: grid;
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
     gap: 16px;
     align-items: start;
   }
 
-  .left-panel,
-  .right-panel {
+  .top-panel-left,
+  .top-panel-right,
+  .main-left-panel {
     display: grid;
     gap: 16px;
   }
 
+  .main-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .main-right-panel {
+    height: 100%;
+    max-height: 70vh;
+    overflow: auto;
+  }
+
   .document-header {
     display: grid;
-    gap: 12px;
-  }
-
-  .header-top-row {
-    display: flex;
-    justify-content: space-between;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 12px;
+    gap: 12px 16px;
   }
 
-  .header-actions,
-  .image-actions {
-    display: flex;
-    gap: 8px;
+  .header-main {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
   }
 
   .document-header h1 {
@@ -268,6 +286,13 @@
     gap: 8px 16px;
     color: var(--text-muted);
   }
+
+  .header-actions,
+  .image-actions {
+    display: flex;
+    gap: 8px;
+  }
+
 
   .card-like,
   .state-card {
@@ -341,6 +366,14 @@
   .muted { color: var(--text-muted); margin: 0; }
 
   @media (max-width: 900px) {
+    .document-header {
+      grid-template-columns: 1fr;
+    }
+
+    .header-meta {
+      grid-column: auto;
+    }
+
     .document-page-shell {
       flex-direction: column;
     }
@@ -350,7 +383,8 @@
       width: 100%;
     }
 
-    .layout-columns {
+    .top-panel,
+    .main-panel {
       grid-template-columns: 1fr;
     }
   }
