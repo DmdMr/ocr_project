@@ -18,7 +18,7 @@
 </script>
 
 <div class="sidebar-block">
-    <div class="sidebar-section">
+    <section class="sidebar-section">
       <div class="sidebar-title">User Info</div>
       <div class="user-line">
         {#if isAuthenticated}
@@ -27,33 +27,61 @@
           Browsing as <strong>viewer</strong>
         {/if}
       </div>
-      <div class="sidebar-actions">
+      <div class="sidebar-actions compact">
         {#if isAuthenticated}
           <button on:click={() => dispatch("logout")}>Logout</button>
         {:else}
           <button on:click={() => dispatch("navigateLogin")}>Sign in</button>
         {/if}
       </div>
-    </div>
+    </section>
 
-    <div class="sidebar-section">
-      <div class="sidebar-title">Navigation</div>
+    <section class="sidebar-section">
+      <div class="sidebar-title">Primary Actions</div>
       <div class="sidebar-actions">
-        <button on:click={() => dispatch("navigateAbout")}>О проекте</button>
-        <button on:click={() => dispatch("navigateArchive")}>Архив</button>
         <button class="primary" on:click={() => dispatch("navigateAssistant")}>Чат-помощник</button>
+        <button on:click={() => dispatch("navigateAbout")}>О проекте</button>
+      </div>
+    </section>
+
+    <section class="sidebar-section">
+      <div class="sidebar-title">Documents</div>
+      <div class="sidebar-actions">
+        <button on:click={() => dispatch("navigateArchive")}>Архив</button>
         {#if role === "admin"}
           <button on:click={() => dispatch("navigateSettings")}>Настройки полей</button>
-          <button on:click={() => dispatch("navigateAdminUsers")}>Пользователи</button>
-          <button on:click={() => dispatch("navigateActivity")}>Активность</button>
         {/if}
       </div>
-    </div>
+    </section>
+
+    <section class="sidebar-section">
+      <div class="sidebar-title">Tags Block</div>
+      <div class="sidebar-actions">
+        <button on:click={() => dispatch("navigateArchive")}>Управление тегами</button>
+      </div>
+    </section>
+
+    {#if role === "admin"}
+      <section class="sidebar-section">
+        <div class="sidebar-title">Admin Panel</div>
+        <div class="sidebar-actions">
+          <button on:click={() => dispatch("navigateAdminUsers")}>Пользователи</button>
+          <button on:click={() => dispatch("navigateActivity")}>Активность</button>
+        </div>
+      </section>
+    {/if}
 </div>
 
 <style>
 .sidebar-block {
     text-align: left;
+    display: grid;
+    gap: 16px;
+}
+
+.sidebar-section {
+    display: grid;
+    gap: 8px;
 }
 
 .sidebar-section {
@@ -66,18 +94,21 @@
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    margin-bottom: 10px;
+    margin-bottom: 2px;
     color: var(--text-muted);
 }
 
 .user-line {
-    margin-bottom: 10px;
     font-size: 0.9rem;
 }
 
 .sidebar-actions {
     display: grid;
     gap: 8px;
+}
+
+.sidebar-actions.compact {
+    gap: 6px;
 }
 
 .sidebar-actions :global(button) {
