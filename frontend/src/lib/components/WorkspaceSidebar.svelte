@@ -84,6 +84,12 @@
     gap: 8px;
 }
 
+.sidebar-section {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
 .sidebar-title {
     font-size: 0.85rem;
     text-transform: uppercase;

@@ -364,8 +364,4 @@ img {
 }
 
 
-.doc-links { display:flex; gap:8px; padding: 0 4px; margin-bottom: 8px; }
-.doc-links a { font-size: .8rem; color: var(--muted); text-decoration: none; }
-.doc-links a:hover { color: var(--text); }
-
 </style>
