@@ -120,33 +120,43 @@
 
   <aside class="workspace-sidebar panel" class:open={sidebarOpen} aria-hidden={!sidebarOpen}>
     <div class="sidebar-scroll">
-      <WorkspaceSidebar
-        currentUsername={$currentUser?.username ?? null}
-        role={$currentUser.role}
-        isAuthenticated={$isAuthenticated}
-        on:logout={async () => {
-          await logout()
-          push('/')
-        }}
-        on:navigateLogin={() => push('/login')}
-        on:navigateAbout={() => push('/about')}
-        on:navigateArchive={() => push('/archive')}
-        on:navigateAssistant={() => push('/assistant')}
-        on:navigateSettings={() => push('/settings')}
-        on:navigateAdminUsers={() => push('/admin/users')}
-        on:navigateActivity={() => push('/admin/activity')}
-      />
-      <TagManager
-        initialTags={tags}
-        canManage={$isAdmin}
-        on:select={(event) => activeTag = event.detail.tag}
-        on:tagsChanged={(event) => tags = event.detail.tags}
-      />
-      {#if $canEditDocuments}
-        <Upload embedded on:uploaded={handleUpload} />
-      {:else}
-        <div class="panel sign-in-hint">Sign in as editor/admin to upload and edit documents.</div>
-      {/if}
+      <section class="sidebar-section-group">
+        <WorkspaceSidebar
+          currentUsername={$currentUser?.username ?? null}
+          role={$currentUser.role}
+          isAuthenticated={$isAuthenticated}
+          on:logout={async () => {
+            await logout()
+            push('/')
+          }}
+          on:navigateLogin={() => push('/login')}
+          on:navigateAbout={() => push('/about')}
+          on:navigateArchive={() => push('/archive')}
+          on:navigateAssistant={() => push('/assistant')}
+          on:navigateSettings={() => push('/settings')}
+          on:navigateAdminUsers={() => push('/admin/users')}
+          on:navigateActivity={() => push('/admin/activity')}
+        />
+      </section>
+
+      <section class="sidebar-section-group">
+        <div class="sidebar-section-label">Primary Actions</div>
+        {#if $canEditDocuments}
+          <Upload embedded on:uploaded={handleUpload} />
+        {:else}
+          <div class="panel sign-in-hint">Sign in as editor/admin to upload and edit documents.</div>
+        {/if}
+      </section>
+
+      <section class="sidebar-section-group">
+        <div class="sidebar-section-label">Tags Block</div>
+        <TagManager
+          initialTags={tags}
+          canManage={$isAdmin}
+          on:select={(event) => activeTag = event.detail.tag}
+          on:tagsChanged={(event) => tags = event.detail.tags}
+        />
+      </section>
     </div>
   </aside>
 
@@ -233,6 +243,20 @@
 .sidebar-scroll {
     max-height: calc(100vh - 4rem);
     overflow: auto;
+    display: grid;
+    gap: 16px;
+}
+
+.sidebar-section-group {
+    display: grid;
+    gap: 8px;
+}
+
+.sidebar-section-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
 }
 
 .workspace-main {
