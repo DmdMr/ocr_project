@@ -399,44 +399,54 @@
   <div class="page"><p>{error || "Документ не найден"}</p></div>
 {:else}
   <div class="page">
-    <div class="page-top-row">
+    <header class="workspace-header panel">
       <button class="back-btn" on:click={goBack}>← Back</button>
-    </div>
-
-    <DocumentHeader
-      {doc}
-      canEdit={$canEditDocuments}
-      bind:filenameDraft
-      {filenameEditing}
-      {filenameError}
-      onStartEdit={() => filenameEditing = true}
-      onSave={saveFilename}
-      onCancel={() => {
-        filenameEditing = false
-        filenameDraft = doc?.display_filename ?? doc?.filename ?? ""
-      }}
-    />
-
-    <section class="panel folder-path-panel">
-      <strong>Location:</strong>
-      <div class="path-items">
-        <button class="path-link" on:click={() => openFilesLocation()}>Root</button>
-        <span>/</span>
-        {#if folderPath.length}
-          {#each folderPath as item (item.id)}
-            <button class="path-link" on:click={() => openFilesLocation(item.id)}>{item.name}</button>
-            <span>/</span>
-          {/each}
-        {:else}
-          <span>Unsorted</span>
-          <span>/</span>
-        {/if}
-        <span>{doc.display_filename || doc.filename}</span>
+      <div class="header-center">
+        <DocumentHeader
+          {doc}
+          canEdit={$canEditDocuments}
+          bind:filenameDraft
+          {filenameEditing}
+          {filenameError}
+          onStartEdit={() => filenameEditing = true}
+          onSave={saveFilename}
+          onCancel={() => {
+            filenameEditing = false
+            filenameDraft = doc?.display_filename ?? doc?.filename ?? ""
+          }}
+        />
+        <div class="header-meta-line">
+          <span><strong>Created:</strong> {new Date(doc.created_at).toLocaleString()}</span>
+          <span><strong>Updated:</strong> {new Date((doc as any).updated_at || doc.created_at).toLocaleString()}</span>
+        </div>
       </div>
-    </section>
+      <div class="header-actions">
+        <button class="back-btn" on:click={() => filenameEditing = true} disabled={!$canEditDocuments}>Edit</button>
+        <button class="back-btn" on:click={removeDocumentNow} disabled={!$canEditDocuments}>Delete</button>
+      </div>
+    </header>
 
-    <div class="layout">
-      <aside class="left-column">
+    <section class="top-panel">
+      <section class="panel folder-path-panel top-left">
+        <strong>Location:</strong>
+        <div class="path-items">
+          <button class="path-link" on:click={() => openFilesLocation()}>Root</button>
+          <span>/</span>
+          {#if folderPath.length}
+            {#each folderPath as item (item.id)}
+              <button class="path-link" on:click={() => openFilesLocation(item.id)}>{item.name}</button>
+              <span>/</span>
+            {/each}
+          {:else}
+            <span>Unsorted</span>
+            <span>/</span>
+          {/if}
+          <span>{doc.display_filename || doc.filename}</span>
+        </div>
+        <button class="back-btn" on:click={() => document.getElementById('gallery-upload')?.click()} disabled={!$canEditDocuments}>Add image</button>
+      </section>
+
+      <div class="top-right">
         <DocumentMetadataSection
           {doc}
           canEdit={$canEditDocuments}
@@ -448,6 +458,32 @@
           on:deleteDoc={removeDocumentNow}
           on:addImages={handleGalleryUpload}
         />
+        <div class="visually-hidden-upload">
+          <input id="gallery-upload" type="file" accept="image/*" multiple on:change={(event) => handleGalleryUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []) } } as CustomEvent<{ files: File[] }>)} />
+        </div>
+
+        <section class="panel files-panel">
+          <h3>Files</h3>
+          <DocumentFilesSection
+            attachments={doc.attachments ?? []}
+            canEdit={$canEditDocuments}
+            uploading={attachmentsUploading}
+            uploadProgress={attachmentUploadProgress}
+            successMessage={attachmentUploadSuccess}
+            error={attachmentUploadError}
+            on:upload={handleAttachmentUpload}
+            on:remove={(event) => removeAttachment(event.detail.attachment)}
+          />
+          <button class="back-btn" on:click={() => document.getElementById('file-upload')?.click()} disabled={!$canEditDocuments}>Add file</button>
+          <div class="visually-hidden-upload">
+            <input id="file-upload" type="file" multiple on:change={(event) => handleAttachmentUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []) } } as CustomEvent<{ files: File[] }>)} />
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="main-panel">
+      <aside class="main-left">
 
         {#if galleryUploading}
           <div class="panel progress-panel">
@@ -461,27 +497,6 @@
         {#if galleryUploadError}
           <p class="error-inline">{galleryUploadError}</p>
         {/if}
-
-        <DocumentFilesSection
-          attachments={doc.attachments ?? []}
-          canEdit={$canEditDocuments}
-          uploading={attachmentsUploading}
-          uploadProgress={attachmentUploadProgress}
-          successMessage={attachmentUploadSuccess}
-          error={attachmentUploadError}
-          on:upload={handleAttachmentUpload}
-          on:remove={(event) => removeAttachment(event.detail.attachment)}
-        />
-      </aside>
-
-      <main class="center-column">
-        <DocumentContentEditor
-          bind:value={editedText}
-          canEdit={$canEditDocuments}
-          {editing}
-          onToggleEdit={() => editing = !editing}
-          onSave={saveText}
-        />
 
         <section class="panel images-section">
           <h2>Image blocks</h2>
@@ -500,8 +515,18 @@
             />
           {/each}
         </section>
+      </aside>
+
+      <main class="main-right panel">
+        <DocumentContentEditor
+          bind:value={editedText}
+          canEdit={$canEditDocuments}
+          {editing}
+          onToggleEdit={() => editing = !editing}
+          onSave={saveText}
+        />
       </main>
-    </div>
+    </section>
 
     {#if $canEditDocuments && tagPickerOpen}
       <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -552,14 +577,24 @@
 
 <style>
   .page { padding: 18px; max-width: 1400px; margin: 0 auto 40px; }
-  .page-top-row { display: flex; justify-content: flex-start; margin-bottom: 10px; }
+  .workspace-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; margin-bottom: 16px; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .header-center { min-width: 0; display: grid; gap: 10px; }
+  .header-meta-line { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 0.9rem; }
+  .header-actions { display: flex; gap: 8px; }
   .back-btn { min-height: 36px; padding: 8px 14px; border-radius: 10px; }
-  .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
-  .folder-path-panel { margin-top: 10px; padding: 10px 14px; display: grid; gap: 4px; }
+  .top-panel { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 18px; margin-bottom: 18px; }
+  .top-left { display: grid; gap: 12px; align-content: start; }
+  .top-right { display: grid; gap: 16px; }
+  .main-panel { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .main-left { display: grid; gap: 16px; }
+  .main-right { min-height: 0; max-height: 72vh; overflow: auto; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .folder-path-panel { padding: 12px 14px; display: grid; gap: 8px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .path-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .path-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--text); }
-  .left-column { display: grid; gap: 10px; position: sticky; top: 10px; }
-  .images-section { margin-top: 14px; padding: 18px; }
+  .images-section { padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .files-panel { display: grid; gap: 12px; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .files-panel h3 { margin: 0; }
+  .visually-hidden-upload { display: none; }
   .hint { color: var(--muted); margin: 0 0 8px; }
   .progress-panel { padding: 10px; }
   .progress-wrap { margin-top: 6px; height: 6px; background: var(--surface); border-radius: 999px; overflow: hidden; }
@@ -613,8 +648,9 @@
   }
 
   @media (max-width: 980px) {
-    .layout { grid-template-columns: 1fr; }
-    .left-column { position: static; }
+    .workspace-header,
+    .top-panel,
+    .main-panel { grid-template-columns: 1fr; }
     .tag-picker-modal { width: calc(100vw - 20px); }
     :global(.tag-picker-modal .picker-shell) { width: calc(100vw - 24px); }
   }
