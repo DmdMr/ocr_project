@@ -31,65 +31,74 @@
 </script>
 
 <section class="panel metadata">
-  <div class="section-head">
-    <h3>Теги</h3>
-    {#if canEdit}
-      <button on:click={() => dispatch("manageTags")}>Управлять</button>
-    {/if}
+  <div class="metadata-block">
+    <div class="section-head">
+      <h3>Теги</h3>
+      {#if canEdit}
+        <button on:click={() => dispatch("manageTags")}>Управлять</button>
+      {/if}
+    </div>
+    <div class="tags">
+      {#if doc.tags?.length}
+        {#each doc.tags as tag}
+          <span class="tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`}>{tag}</span>
+        {/each}
+      {:else}
+        <span class="muted">Нет тегов</span>
+      {/if}
+    </div>
   </div>
-  <div class="tags">
-    {#if doc.tags?.length}
-      {#each doc.tags as tag}
-        <span class="tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`}>{tag}</span>
+
+  <div class="metadata-block">
+    <div class="section-head">
+      <h3>Пользовательские поля</h3>
+      <span class="save-state" data-state={customFieldsStatus}>
+        {#if customFieldsStatus === "saving"}Saving...{/if}
+        {#if customFieldsStatus === "saved"}Saved{/if}
+        {#if customFieldsStatus === "error"}Error{/if}
+      </span>
+    </div>
+    <div class="fields-grid">
+      {#each customFieldSettings as field}
+        <label>
+          <span>{field.name}</span>
+          <input
+            type={field.type === "number" ? "number" : "text"}
+            disabled={!canEdit}
+            value={field.type === "people" ? peopleDraftValue(customFieldDraft[field.name]) : (customFieldDraft[field.name] ?? "")}
+            on:input={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value })}
+            on:blur={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value, saveNow: true })}
+          />
+        </label>
       {/each}
-    {:else}
-      <span class="muted">Нет тегов</span>
-    {/if}
+    </div>
   </div>
 
-  <div class="section-head">
-    <h3>Пользовательские поля</h3>
-    <span class="save-state" data-state={customFieldsStatus}>
-      {#if customFieldsStatus === "saving"}Saving...{/if}
-      {#if customFieldsStatus === "saved"}Saved{/if}
-      {#if customFieldsStatus === "error"}Error{/if}
-    </span>
-  </div>
-  <div class="fields-grid">
-    {#each customFieldSettings as field}
-      <label>
-        <span>{field.name}</span>
-        <input
-          type={field.type === "number" ? "number" : "text"}
-          disabled={!canEdit}
-          value={field.type === "people" ? peopleDraftValue(customFieldDraft[field.name]) : (customFieldDraft[field.name] ?? "")}
-          on:input={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value })}
-          on:blur={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value, saveNow: true })}
-        />
-      </label>
-    {/each}
+  <div class="metadata-block">
+    <div class="section-head">
+      <h3>Изображения</h3>
+      {#if canEdit}
+        <label class="upload-btn">
+          Добавить изображения
+          <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={emitSelectedImages} />
+        </label>
+      {/if}
+    </div>
   </div>
 
-  <div class="section-head">
-    <h3>Изображения</h3>
-    {#if canEdit}
-      <label class="upload-btn">
-        Добавить изображения
-        <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={emitSelectedImages} />
-      </label>
-    {/if}
-  </div>
-
-  <div class="section-head">
-    <h3>Действия</h3>
-    {#if canEdit}
-      <button class="danger" on:click={() => dispatch("deleteDoc")}>Удалить документ</button>
-    {/if}
+  <div class="metadata-block">
+    <div class="section-head">
+      <h3>Действия</h3>
+      {#if canEdit}
+        <button class="danger" on:click={() => dispatch("deleteDoc")}>Удалить документ</button>
+      {/if}
+    </div>
   </div>
 </section>
 
 <style>
   .metadata { padding: 14px; display: grid; gap: 12px; }
+  .metadata-block { display: grid; gap: 8px; }
   .section-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
   .tags { display: flex; flex-wrap: wrap; gap: 8px; }
   .fields-grid { display: grid; gap: 8px; }
