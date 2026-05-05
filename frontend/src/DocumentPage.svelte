@@ -2,8 +2,10 @@
   import { onMount } from "svelte"
   import { push } from "svelte-spa-router"
   import { getDocumentById, UPLOADS_URL } from "./lib/api"
+  import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
   import type { Document, GalleryImage, AttachmentFile } from "./lib/types"
   import { documentRoute, documentSlug } from "./lib/documentRoutes"
+  import { currentUser, isAuthenticated, logout } from "./lib/auth"
 
   export let params: { id?: string; slug?: string } = {}
 
@@ -72,15 +74,35 @@
 </script>
 
 <div class="document-page-shell">
-  {#if loading}
-    <p>Loading document…</p>
-  {:else if error}
-    <div class="state-card error">
-      <p>{error}</p>
-      <button on:click={() => push("/")}>Back to documents</button>
-    </div>
-  {:else if doc}
-    <article class="document-reading-layout">
+  <aside class="workspace-sidebar panel">
+    <WorkspaceSidebar
+      currentUsername={$currentUser?.username ?? null}
+      role={$currentUser.role}
+      isAuthenticated={$isAuthenticated}
+      on:logout={async () => {
+        await logout()
+        push('/')
+      }}
+      on:navigateLogin={() => push('/login')}
+      on:navigateAbout={() => push('/about')}
+      on:navigateArchive={() => push('/archive')}
+      on:navigateAssistant={() => push('/assistant')}
+      on:navigateSettings={() => push('/settings')}
+      on:navigateAdminUsers={() => push('/admin/users')}
+      on:navigateActivity={() => push('/admin/activity')}
+    />
+  </aside>
+
+  <div class="document-content">
+    {#if loading}
+      <p>Loading document…</p>
+    {:else if error}
+      <div class="state-card error">
+        <p>{error}</p>
+        <button on:click={() => push("/")}>Back to documents</button>
+      </div>
+    {:else if doc}
+      <article class="document-reading-layout">
       <header class="document-header card-like">
         <div class="header-top-row">
           <button class="back-button" on:click={() => push("/")}>← Back</button>
@@ -171,13 +193,29 @@
           {/if}
         </main>
       </div>
-    </article>
-  {/if}
+      </article>
+    {/if}
+  </div>
 </div>
 
 <style>
   .document-page-shell {
     padding: 20px 16px 48px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .workspace-sidebar {
+    width: min(320px, 100%);
+    flex-shrink: 0;
+    position: sticky;
+    top: 16px;
+  }
+
+  .document-content {
+    flex: 1;
+    min-width: 0;
     display: flex;
     justify-content: center;
   }
@@ -303,6 +341,15 @@
   .muted { color: var(--text-muted); margin: 0; }
 
   @media (max-width: 900px) {
+    .document-page-shell {
+      flex-direction: column;
+    }
+
+    .workspace-sidebar {
+      position: static;
+      width: 100%;
+    }
+
     .layout-columns {
       grid-template-columns: 1fr;
     }

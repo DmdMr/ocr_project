@@ -39,25 +39,20 @@
     <section class="sidebar-section">
       <div class="sidebar-title">Primary Actions</div>
       <div class="sidebar-actions">
-        <button class="primary" on:click={() => dispatch("navigateAssistant")}>Чат-помощник</button>
-        <button on:click={() => dispatch("navigateAbout")}>О проекте</button>
+        <button class="primary" on:click={() => dispatch("navigateAssistant")}>Upload with recognition</button>
+        <button on:click={() => dispatch("navigateAbout")}>Upload without recognition</button>
       </div>
     </section>
 
     <section class="sidebar-section">
       <div class="sidebar-title">Documents</div>
       <div class="sidebar-actions">
-        <button on:click={() => dispatch("navigateArchive")}>Архив</button>
+        <button on:click={() => dispatch("navigateArchive")}>Archive</button>
         {#if role === "admin"}
-          <button on:click={() => dispatch("navigateSettings")}>Настройки полей</button>
+          <button on:click={() => dispatch("navigateSettings")}>Fields settings</button>
         {/if}
-      </div>
-    </section>
-
-    <section class="sidebar-section">
-      <div class="sidebar-title">Tags Block</div>
-      <div class="sidebar-actions">
-        <button on:click={() => dispatch("navigateArchive")}>Управление тегами</button>
+        <button on:click={() => dispatch("navigateArchive")}>Tags block</button>
+        <button on:click={() => dispatch("navigateArchive")}>Create tag</button>
       </div>
     </section>
 
@@ -65,8 +60,8 @@
       <section class="sidebar-section">
         <div class="sidebar-title">Admin Panel</div>
         <div class="sidebar-actions">
-          <button on:click={() => dispatch("navigateAdminUsers")}>Пользователи</button>
-          <button on:click={() => dispatch("navigateActivity")}>Активность</button>
+          <button on:click={() => dispatch("navigateAdminUsers")}>Users</button>
+          <button on:click={() => dispatch("navigateActivity")}>Activity</button>
         </div>
       </section>
     {/if}
@@ -76,18 +71,12 @@
 .sidebar-block {
     text-align: left;
     display: grid;
-    gap: 16px;
+    gap: 18px;
 }
 
 .sidebar-section {
     display: grid;
-    gap: 8px;
-}
-
-.sidebar-section {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: 10px;
 }
 
 .sidebar-title {
