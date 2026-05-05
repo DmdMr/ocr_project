@@ -20,7 +20,6 @@
   <button class="image-click" on:click={() => dispatch("open", { filename: image.filename })}>
     <img src={imageSrc} alt={image.filename} />
   </button>
-  <div class="caption">![[{image.filename}]]</div>
   <div class="image-actions">
     {#if canEdit}
       <button on:click={() => dispatch("edit", { filename: image.filename })}>Edit image</button>
@@ -30,9 +29,8 @@
 </div>
 
 <style>
-  .image-block { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 16px; }
+  .image-block { border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
   .image-click { border: 0; padding: 0; background: transparent; width: 100%; cursor: zoom-in; }
   .image-click img { width: 100%; border-radius: 12px; display: block; }
-  .caption { margin-top: 8px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; }
-  .image-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .image-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 </style>
