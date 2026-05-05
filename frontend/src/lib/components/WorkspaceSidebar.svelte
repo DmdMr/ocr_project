@@ -18,15 +18,27 @@
 </script>
 
 <div class="sidebar-block">
-    <div class="sidebar-title">Рабочее пространство</div>
-    <div class="user-line">
-      {#if isAuthenticated}
-        Signed in as <strong>{currentUsername}</strong> · role: <strong>{role}</strong>
-      {:else}
-        Browsing as <strong>viewer</strong>
-      {/if}
+    <div class="sidebar-section">
+      <div class="sidebar-title">User Info</div>
+      <div class="user-line">
+        {#if isAuthenticated}
+          Signed in as <strong>{currentUsername}</strong> · role: <strong>{role}</strong>
+        {:else}
+          Browsing as <strong>viewer</strong>
+        {/if}
+      </div>
+      <div class="sidebar-actions">
+        {#if isAuthenticated}
+          <button on:click={() => dispatch("logout")}>Logout</button>
+        {:else}
+          <button on:click={() => dispatch("navigateLogin")}>Sign in</button>
+        {/if}
+      </div>
     </div>
-    <div class="sidebar-actions">
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Navigation</div>
+      <div class="sidebar-actions">
         <button on:click={() => dispatch("navigateAbout")}>О проекте</button>
         <button on:click={() => dispatch("navigateArchive")}>Архив</button>
         <button class="primary" on:click={() => dispatch("navigateAssistant")}>Чат-помощник</button>
@@ -35,17 +47,19 @@
           <button on:click={() => dispatch("navigateAdminUsers")}>Пользователи</button>
           <button on:click={() => dispatch("navigateActivity")}>Активность</button>
         {/if}
-        {#if isAuthenticated}
-          <button on:click={() => dispatch("logout")}>Logout</button>
-        {:else}
-          <button on:click={() => dispatch("navigateLogin")}>Sign in</button>
-        {/if}
+      </div>
     </div>
 </div>
 
 <style>
 .sidebar-block {
     text-align: left;
+}
+
+.sidebar-section {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
 .sidebar-title {
