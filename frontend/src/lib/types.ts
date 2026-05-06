@@ -1,6 +1,5 @@
 export interface GalleryImage {
     filename: string
-    path?: string
     file_hash?: string
     recognized_text?: string
     image_version?: string

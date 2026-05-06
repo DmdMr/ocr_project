@@ -86,6 +86,59 @@ def normalize_custom_field_name(name: str):
     return (name or "").strip().lower()
 
 
+def validate_custom_field_name(field_name: str):
+    if not field_name:
+        raise HTTPException(status_code=400, detail="Имя поля обязательно")
+    if "." in field_name or field_name.startswith("$"):
+        raise HTTPException(status_code=400, detail="Имя поля содержит недопустимые символы")
+
+
+def normalize_custom_field_definition(field: dict):
+    field_name = normalize_custom_field_name(field.get("name", ""))
+    field_type = (field.get("type") or "text").strip().lower()
+    if not field_name or field_type not in ALLOWED_CUSTOM_FIELD_TYPES:
+        return None
+    return {"name": field_name, "type": field_type}
+
+
+def normalize_custom_field_definitions(fields: list):
+    normalized_fields = []
+    seen_names = set()
+    for field in fields or []:
+        if not isinstance(field, dict):
+            continue
+        normalized = normalize_custom_field_definition(field)
+        if not normalized or normalized["name"] in seen_names:
+            continue
+        seen_names.add(normalized["name"])
+        normalized_fields.append(normalized)
+    return normalized_fields
+
+
+def normalize_custom_fields_payload(document: dict):
+    custom_fields = document.get("custom_fields")
+    if isinstance(custom_fields, str):
+        try:
+            parsed = json.loads(custom_fields)
+        except json.JSONDecodeError:
+            parsed = {}
+        custom_fields = parsed if isinstance(parsed, dict) else {}
+    elif not isinstance(custom_fields, dict):
+        custom_fields = {}
+    else:
+        custom_fields = dict(custom_fields)
+
+    invalid_keys = [key for key in list(document.keys()) if key.startswith("custom_fields.")]
+    for key in invalid_keys:
+        field_name = key.removeprefix("custom_fields.")
+        if field_name:
+            custom_fields[field_name] = document.get(key)
+        document.pop(key, None)
+
+    document["custom_fields"] = custom_fields
+    return custom_fields, invalid_keys
+
+
 def default_value_for_field_type(field_type: str):
     if field_type == "people":
         return []
@@ -95,12 +148,13 @@ def default_value_for_field_type(field_type: str):
 async def get_or_create_settings():
     settings_doc = await app_settings_collection.find_one({"_id": SETTINGS_DOCUMENT_ID})
     if settings_doc:
-        if not isinstance(settings_doc.get("fields_for_cards"), list):
+        normalized_fields = normalize_custom_field_definitions(settings_doc.get("fields_for_cards") or [])
+        if settings_doc.get("fields_for_cards") != normalized_fields:
             await app_settings_collection.update_one(
                 {"_id": SETTINGS_DOCUMENT_ID},
-                {"$set": {"fields_for_cards": []}},
+                {"$set": {"fields_for_cards": normalized_fields}},
             )
-            settings_doc["fields_for_cards"] = []
+        settings_doc["fields_for_cards"] = normalized_fields
         return settings_doc
 
     settings_doc = {"_id": SETTINGS_DOCUMENT_ID, "fields_for_cards": []}
@@ -255,27 +309,55 @@ async def is_descendant_folder(candidate_parent_id: str, folder_id: str):
     return False
 
 
+def upload_filename_from_path(value: Optional[str]):
+    if not value:
+        return None
+    return str(value).replace("\\", "/").rstrip("/").split("/")[-1]
+
+
 def build_gallery_item(
     *,
     filename: str,
-    path: str,
     file_hash: str,
     ocr_text: str,
     boxes: list,
     top_code: Optional[str] = None,
     ocr_lines: Optional[list] = None,
 ):
+    created_at = now_yekaterinburg()
     return {
-        "filename": filename,
-        "path": path,
+        "filename": upload_filename_from_path(filename) or filename,
         "file_hash": file_hash,
         "recognized_text": ocr_text,
         "boxes": boxes,
         "top_code": top_code,
         "ocr_lines": ocr_lines or [],
-        "created_at": now_yekaterinburg(),
-        "image_version": now_yekaterinburg().isoformat(),
+        "created_at": created_at,
+        "image_version": created_at.isoformat(),
     }
+
+
+def normalize_gallery_item(item: dict, document: dict):
+    source = item if isinstance(item, dict) else {}
+    filename = (
+        upload_filename_from_path(source.get("filename"))
+        or upload_filename_from_path(source.get("path"))
+        or upload_filename_from_path(document.get("filename"))
+        or upload_filename_from_path(document.get("path"))
+    )
+    normalized = {key: value for key, value in source.items() if key != "path"}
+    normalized["filename"] = filename
+    if not normalized.get("image_version"):
+        normalized["image_version"] = (
+            document.get("image_version")
+            or source.get("created_at")
+            or document.get("created_at")
+        )
+    if not isinstance(normalized.get("ocr_lines"), list):
+        normalized["ocr_lines"] = []
+    if not isinstance(normalized.get("boxes"), list):
+        normalized["boxes"] = []
+    return normalized
 
 
 def build_attachment_item(*, filename: str, path: str, original_name: str, content_type: str, size: int):
@@ -302,11 +384,10 @@ def normalize_document(doc: dict):
     if not isinstance(doc.get("ocr_lines"), list):
         doc["ocr_lines"] = []
     gallery = doc.get("gallery_images")
-    if not gallery:
-        doc["gallery_images"] = [
+    if not isinstance(gallery, list) or not gallery:
+        gallery = [
             {
                 "filename": doc.get("filename"),
-                "path": doc.get("path"),
                 "file_hash": doc.get("file_hash"),
                 "recognized_text": doc.get("recognized_text", ""),
                 "boxes": doc.get("boxes", []),
@@ -316,10 +397,10 @@ def normalize_document(doc: dict):
                 "image_version": doc.get("image_version"),
             }
         ]
+    doc["gallery_images"] = [normalize_gallery_item(item, doc) for item in gallery]
     if doc.get("attachments") is None:
         doc["attachments"] = []
-    if not isinstance(doc.get("custom_fields"), dict):
-        doc["custom_fields"] = {}
+    normalize_custom_fields_payload(doc)
     return doc
 
 
@@ -935,7 +1016,6 @@ async def upload_image(
 
     gallery_item = build_gallery_item(
         filename=filename,
-        path=file_path,
         file_hash=file_hash,
         ocr_text=ocr_result["text"],
         boxes=ocr_result["boxes"],
@@ -995,7 +1075,7 @@ async def upload_image(
 
     return {
         "message": "Файл успешно загружен",
-        "document": document_data,
+        "document": normalize_document(document_data),
         "filename": filename,
         "recognized_text": document_data.get("recognized_text", ""),
         "top_code": document_data.get("top_code"),
@@ -1012,7 +1092,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
     if not files:
         raise HTTPException(status_code=400, detail="Требуется хотя бы один файл")
 
-    gallery_items = document.get("gallery_images") or []
+    gallery_items = normalize_document(dict(document)).get("gallery_images") or []
     existing_hashes = {item.get("file_hash") for item in gallery_items if item.get("file_hash")}
 
     added_items = []
@@ -1051,7 +1131,6 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
         item = build_gallery_item(
             filename=filename,
-            path=file_path,
             file_hash=file_hash,
             ocr_text=ocr_result["text"],
             boxes=ocr_result["boxes"],
@@ -1081,11 +1160,13 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
     existing_top_code = (document.get("top_code") or "").strip()
     merged_top_code = existing_top_code or (appended_codes[0] if appended_codes else None)
 
+    updated_gallery_images = gallery_items + added_items
+
     await documents_collection.update_one(
         {"_id": object_id},
         {
-            "$push": {"gallery_images": {"$each": added_items}},
             "$set": {
+                "gallery_images": updated_gallery_images,
                 "recognized_text": combined_text,
                 "top_code": merged_top_code,
                 "updated_by_user_id": current_user["id"],
@@ -1258,13 +1339,18 @@ async def get_settings():
     return {"fields_for_cards": settings_doc.get("fields_for_cards", [])}
 
 
+@router.get("/settings/fields")
+async def get_settings_fields():
+    settings_doc = await get_or_create_settings()
+    return settings_doc.get("fields_for_cards", [])
+
+
 @router.post("/settings/fields")
 async def create_settings_field(request: Request, payload: CustomFieldDefinition, current_user=Depends(require_admin_user)):
     field_name = normalize_custom_field_name(payload.name)
     field_type = (payload.type or "").strip().lower()
 
-    if not field_name:
-        raise HTTPException(status_code=400, detail="Имя поля обязательно")
+    validate_custom_field_name(field_name)
     if field_type not in ALLOWED_CUSTOM_FIELD_TYPES:
         raise HTTPException(status_code=400, detail="Неподдерживаемый тип поля")
 
@@ -1273,15 +1359,20 @@ async def create_settings_field(request: Request, payload: CustomFieldDefinition
     if any(normalize_custom_field_name(item.get("name", "")) == field_name for item in fields):
         raise HTTPException(status_code=400, detail="Поле с таким именем уже существует")
 
-    field_data = {"name": field_name, "type": field_type, "created_at": now_yekaterinburg()}
+    field_data = {"name": field_name, "type": field_type}
     await app_settings_collection.update_one(
         {"_id": SETTINGS_DOCUMENT_ID},
         {"$push": {"fields_for_cards": field_data}},
     )
-    await documents_collection.update_many(
-        {"custom_fields." + field_name: {"$exists": False}},
-        {"$set": {"custom_fields." + field_name: default_value_for_field_type(field_type)}},
-    )
+    async for document in documents_collection.find({}):
+        custom_fields, invalid_keys = normalize_custom_fields_payload(document)
+        if field_name not in custom_fields:
+            custom_fields[field_name] = default_value_for_field_type(field_type)
+        unset_payload = {key: "" for key in invalid_keys}
+        update_payload = {"$set": {"custom_fields": custom_fields}}
+        if unset_payload:
+            update_payload["$unset"] = unset_payload
+        await documents_collection.update_one({"_id": document["_id"]}, update_payload)
     await write_audit_log(
         request,
         "settings.field.create",
@@ -1352,14 +1443,13 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
 
     settings_doc = await get_or_create_settings()
     fields_for_cards = settings_doc.get("fields_for_cards") or []
-    allowed_fields = {normalize_custom_field_name(field.get("name", "")): field.get("type", "text") for field in fields_for_cards}
+    allowed_fields = {field.get("name", ""): field.get("type", "text") for field in fields_for_cards if field.get("name")}
 
-    current_custom_fields = existing_doc.get("custom_fields") if isinstance(existing_doc.get("custom_fields"), dict) else {}
-    merged_fields = dict(current_custom_fields)
-
-    for field_name, field_type in allowed_fields.items():
-        if field_name and field_name not in merged_fields:
-            merged_fields[field_name] = default_value_for_field_type(field_type)
+    current_custom_fields, invalid_keys = normalize_custom_fields_payload(existing_doc)
+    merged_fields = {
+        field_name: current_custom_fields.get(field_name, default_value_for_field_type(field_type))
+        for field_name, field_type in allowed_fields.items()
+    }
 
     for key, value in (payload.custom_fields or {}).items():
         normalized_key = normalize_custom_field_name(key)
@@ -1367,10 +1457,18 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
             continue
         merged_fields[normalized_key] = value
 
-    await documents_collection.update_one(
-        {"_id": object_id},
-        {"$set": {"custom_fields": merged_fields, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
-    )
+    unset_payload = {key: "" for key in invalid_keys}
+    update_payload = {
+        "$set": {
+            "custom_fields": merged_fields,
+            "updated_by_user_id": current_user["id"],
+            "updated_by_username": current_user["username"],
+        }
+    }
+    if unset_payload:
+        update_payload["$unset"] = unset_payload
+
+    await documents_collection.update_one({"_id": object_id}, update_payload)
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")

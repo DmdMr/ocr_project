@@ -24,8 +24,13 @@ async function apiFetch(url: string, init: RequestInit = {}) {
     })
 }
 
+export interface CardFieldDefinition {
+    name: string
+    type: "text" | "number" | "people"
+}
+
 export interface AppSettingsResponse {
-    fields_for_cards: Array<{ name: string; type: "text" | "number" | "people"; created_at?: string }>
+    fields_for_cards: CardFieldDefinition[]
 }
 
 export async function uploadImage(file: File, performOcr = true) {
@@ -280,13 +285,18 @@ export async function updateDocument(id: string, data: any) {
     return response.json()
 }
 
-export async function getSettings() {
-    const response = await apiFetch(`${API_URL}/settings`)
-    const data: AppSettingsResponse = await response.json().catch(() => ({ fields_for_cards: [] }))
+export async function getCardFields() {
+    const response = await apiFetch(`${API_URL}/settings/fields`)
+    const data: CardFieldDefinition[] = await response.json().catch(() => [])
     if (!response.ok) {
-        throw new Error("Failed to fetch settings")
+        throw new Error("Failed to fetch custom fields")
     }
     return data
+}
+
+export async function getSettings() {
+    const fields = await getCardFields()
+    return { fields_for_cards: fields }
 }
 
 export async function createCardField(name: string, type: "text" | "number" | "people") {
