@@ -115,6 +115,30 @@ def normalize_custom_field_definitions(fields: list):
     return normalized_fields
 
 
+def normalize_custom_fields_payload(document: dict):
+    custom_fields = document.get("custom_fields")
+    if isinstance(custom_fields, str):
+        try:
+            parsed = json.loads(custom_fields)
+        except json.JSONDecodeError:
+            parsed = {}
+        custom_fields = parsed if isinstance(parsed, dict) else {}
+    elif not isinstance(custom_fields, dict):
+        custom_fields = {}
+    else:
+        custom_fields = dict(custom_fields)
+
+    invalid_keys = [key for key in list(document.keys()) if key.startswith("custom_fields.")]
+    for key in invalid_keys:
+        field_name = key.removeprefix("custom_fields.")
+        if field_name:
+            custom_fields[field_name] = document.get(key)
+        document.pop(key, None)
+
+    document["custom_fields"] = custom_fields
+    return custom_fields, invalid_keys
+
+
 def default_value_for_field_type(field_type: str):
     if field_type == "people":
         return []
@@ -376,8 +400,7 @@ def normalize_document(doc: dict):
     doc["gallery_images"] = [normalize_gallery_item(item, doc) for item in gallery]
     if doc.get("attachments") is None:
         doc["attachments"] = []
-    if not isinstance(doc.get("custom_fields"), dict):
-        doc["custom_fields"] = {}
+    normalize_custom_fields_payload(doc)
     return doc
 
 
@@ -1341,10 +1364,15 @@ async def create_settings_field(request: Request, payload: CustomFieldDefinition
         {"_id": SETTINGS_DOCUMENT_ID},
         {"$push": {"fields_for_cards": field_data}},
     )
-    await documents_collection.update_many(
-        {"custom_fields." + field_name: {"$exists": False}},
-        {"$set": {"custom_fields." + field_name: default_value_for_field_type(field_type)}},
-    )
+    async for document in documents_collection.find({}):
+        custom_fields, invalid_keys = normalize_custom_fields_payload(document)
+        if field_name not in custom_fields:
+            custom_fields[field_name] = default_value_for_field_type(field_type)
+        unset_payload = {key: "" for key in invalid_keys}
+        update_payload = {"$set": {"custom_fields": custom_fields}}
+        if unset_payload:
+            update_payload["$unset"] = unset_payload
+        await documents_collection.update_one({"_id": document["_id"]}, update_payload)
     await write_audit_log(
         request,
         "settings.field.create",
@@ -1417,7 +1445,7 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
     fields_for_cards = settings_doc.get("fields_for_cards") or []
     allowed_fields = {field.get("name", ""): field.get("type", "text") for field in fields_for_cards if field.get("name")}
 
-    current_custom_fields = existing_doc.get("custom_fields") if isinstance(existing_doc.get("custom_fields"), dict) else {}
+    current_custom_fields, invalid_keys = normalize_custom_fields_payload(existing_doc)
     merged_fields = {
         field_name: current_custom_fields.get(field_name, default_value_for_field_type(field_type))
         for field_name, field_type in allowed_fields.items()
@@ -1429,10 +1457,18 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
             continue
         merged_fields[normalized_key] = value
 
-    await documents_collection.update_one(
-        {"_id": object_id},
-        {"$set": {"custom_fields": merged_fields, "updated_by_user_id": current_user["id"], "updated_by_username": current_user["username"]}},
-    )
+    unset_payload = {key: "" for key in invalid_keys}
+    update_payload = {
+        "$set": {
+            "custom_fields": merged_fields,
+            "updated_by_user_id": current_user["id"],
+            "updated_by_username": current_user["username"],
+        }
+    }
+    if unset_payload:
+        update_payload["$unset"] = unset_payload
+
+    await documents_collection.update_one({"_id": object_id}, update_payload)
     updated_doc = await documents_collection.find_one({"_id": object_id})
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Документ не найден")

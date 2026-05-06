@@ -89,6 +89,19 @@ MODEL_MAP = {
 }
 
 
+def _pull_matches(item: Any, pattern: Any) -> bool:
+    if isinstance(item, dict) and isinstance(pattern, dict):
+        return all(item.get(key) == value for key, value in pattern.items())
+    return item == pattern
+
+
+def _push_items(value: Any) -> list[Any]:
+    if isinstance(value, dict) and "$each" in value:
+        items = value.get("$each")
+        return list(items) if isinstance(items, list) else []
+    return [value]
+
+
 def _match(document: dict, query: dict) -> bool:
     if not query:
         return True
@@ -201,10 +214,19 @@ class SQLiteCollection:
                 if _match(d, query):
                     if "$set" in update:
                         d.update(update["$set"])
+                    if "$push" in update:
+                        for key, value in update["$push"].items():
+                            arr = d.get(key, [])
+                            if not isinstance(arr, list):
+                                arr = []
+                            d[key] = [*arr, *_push_items(value)]
                     if "$pull" in update:
                         for key, value in update["$pull"].items():
                             arr = d.get(key, [])
-                            d[key] = [x for x in arr if x != value]
+                            d[key] = [x for x in arr if not _pull_matches(x, value)]
+                    if "$unset" in update:
+                        for key in update["$unset"]:
+                            d.pop(key, None)
                     r.data = {k: v for k, v in d.items() if k != "_id"}
                     if not multi:
                         s.commit(); return
