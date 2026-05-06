@@ -495,32 +495,32 @@
       </aside>
 
       <main class="editor-content">
-        <section class="panel images-section">
-          <h2>Image blocks</h2>
-          <p class="hint">Изображения рендерятся как блоки внизу документа. Идентификатор: filename.</p>
+        <section class="working-block">
           {#if !$canEditDocuments}
             <p class="hint">Sign in as editor/admin to modify images, tags, fields, files, or OCR text.</p>
           {/if}
-          {#each galleryImages as image}
-            <DocumentImageBlock
-              {image}
-              canEdit={$canEditDocuments}
-              canDelete={galleryImages.length > 1}
-              on:open={(event) => openImage(event.detail.filename)}
-              on:delete={(event) => removeImage(event.detail.filename)}
-              on:edit={(event) => openImageEditor(event.detail.filename)}
-            />
-          {/each}
-        </section>
+          <div class="document-blocks">
+            {#each galleryImages as image}
+              <DocumentImageBlock
+                {image}
+                canEdit={$canEditDocuments}
+                canDelete={galleryImages.length > 1}
+                on:open={(event) => openImage(event.detail.filename)}
+                on:delete={(event) => removeImage(event.detail.filename)}
+                on:edit={(event) => openImageEditor(event.detail.filename)}
+              />
+            {/each}
 
-        <section class="panel ocr-panel">
-          <DocumentContentEditor
-            bind:value={editedText}
-            canEdit={$canEditDocuments}
-            {editing}
-            onToggleEdit={() => editing = !editing}
-            onSave={saveText}
-          />
+            <section class="ocr-card">
+              <DocumentContentEditor
+                bind:value={editedText}
+                canEdit={$canEditDocuments}
+                {editing}
+                onToggleEdit={() => editing = !editing}
+                onSave={saveText}
+              />
+            </section>
+          </div>
         </section>
       </main>
     </section>
@@ -582,11 +582,12 @@
   .editor-layout { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
   .editor-sidebar { display: flex; flex-direction: column; gap: 12px; }
   .editor-content { display: flex; flex-direction: column; gap: 16px; }
-  .ocr-panel { min-height: 0; max-height: 72vh; overflow: auto; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .document-blocks { display: flex; flex-direction: column; gap: 16px; }
+  .working-block { display: flex; flex-direction: column; gap: 12px; }
+  .ocr-card :global(.content) { padding: 16px; }
   .folder-path-panel { padding: 12px 14px; display: grid; gap: 8px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .path-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .path-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--text); }
-  .images-section { padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .files-panel { display: grid; gap: 12px; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .files-panel h3 { margin: 0; }
   .visually-hidden-upload { display: none; }
