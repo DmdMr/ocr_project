@@ -59,8 +59,7 @@
   }
 
   function imageUrl(image: GalleryImage) {
-    const version = encodeURIComponent(image.image_version || image.created_at || "")
-    return `${UPLOADS_URL}/${image.filename}${version ? `?v=${version}` : ""}`
+    return `${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`
   }
 
   function attachmentUrl(file: AttachmentFile) {

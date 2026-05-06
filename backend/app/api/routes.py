@@ -255,27 +255,55 @@ async def is_descendant_folder(candidate_parent_id: str, folder_id: str):
     return False
 
 
+def upload_filename_from_path(value: Optional[str]):
+    if not value:
+        return None
+    return str(value).replace("\\", "/").rstrip("/").split("/")[-1]
+
+
 def build_gallery_item(
     *,
     filename: str,
-    path: str,
     file_hash: str,
     ocr_text: str,
     boxes: list,
     top_code: Optional[str] = None,
     ocr_lines: Optional[list] = None,
 ):
+    created_at = now_yekaterinburg()
     return {
-        "filename": filename,
-        "path": path,
+        "filename": upload_filename_from_path(filename) or filename,
         "file_hash": file_hash,
         "recognized_text": ocr_text,
         "boxes": boxes,
         "top_code": top_code,
         "ocr_lines": ocr_lines or [],
-        "created_at": now_yekaterinburg(),
-        "image_version": now_yekaterinburg().isoformat(),
+        "created_at": created_at,
+        "image_version": created_at.isoformat(),
     }
+
+
+def normalize_gallery_item(item: dict, document: dict):
+    source = item if isinstance(item, dict) else {}
+    filename = (
+        upload_filename_from_path(source.get("filename"))
+        or upload_filename_from_path(source.get("path"))
+        or upload_filename_from_path(document.get("filename"))
+        or upload_filename_from_path(document.get("path"))
+    )
+    normalized = {key: value for key, value in source.items() if key != "path"}
+    normalized["filename"] = filename
+    if not normalized.get("image_version"):
+        normalized["image_version"] = (
+            document.get("image_version")
+            or source.get("created_at")
+            or document.get("created_at")
+        )
+    if not isinstance(normalized.get("ocr_lines"), list):
+        normalized["ocr_lines"] = []
+    if not isinstance(normalized.get("boxes"), list):
+        normalized["boxes"] = []
+    return normalized
 
 
 def build_attachment_item(*, filename: str, path: str, original_name: str, content_type: str, size: int):
@@ -302,11 +330,10 @@ def normalize_document(doc: dict):
     if not isinstance(doc.get("ocr_lines"), list):
         doc["ocr_lines"] = []
     gallery = doc.get("gallery_images")
-    if not gallery:
-        doc["gallery_images"] = [
+    if not isinstance(gallery, list) or not gallery:
+        gallery = [
             {
                 "filename": doc.get("filename"),
-                "path": doc.get("path"),
                 "file_hash": doc.get("file_hash"),
                 "recognized_text": doc.get("recognized_text", ""),
                 "boxes": doc.get("boxes", []),
@@ -316,6 +343,7 @@ def normalize_document(doc: dict):
                 "image_version": doc.get("image_version"),
             }
         ]
+    doc["gallery_images"] = [normalize_gallery_item(item, doc) for item in gallery]
     if doc.get("attachments") is None:
         doc["attachments"] = []
     if not isinstance(doc.get("custom_fields"), dict):
@@ -935,7 +963,6 @@ async def upload_image(
 
     gallery_item = build_gallery_item(
         filename=filename,
-        path=file_path,
         file_hash=file_hash,
         ocr_text=ocr_result["text"],
         boxes=ocr_result["boxes"],
@@ -995,7 +1022,7 @@ async def upload_image(
 
     return {
         "message": "Файл успешно загружен",
-        "document": document_data,
+        "document": normalize_document(document_data),
         "filename": filename,
         "recognized_text": document_data.get("recognized_text", ""),
         "top_code": document_data.get("top_code"),
@@ -1012,7 +1039,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
     if not files:
         raise HTTPException(status_code=400, detail="Требуется хотя бы один файл")
 
-    gallery_items = document.get("gallery_images") or []
+    gallery_items = normalize_document(dict(document)).get("gallery_images") or []
     existing_hashes = {item.get("file_hash") for item in gallery_items if item.get("file_hash")}
 
     added_items = []
@@ -1051,7 +1078,6 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
         item = build_gallery_item(
             filename=filename,
-            path=file_path,
             file_hash=file_hash,
             ocr_text=ocr_result["text"],
             boxes=ocr_result["boxes"],
@@ -1081,11 +1107,13 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
     existing_top_code = (document.get("top_code") or "").strip()
     merged_top_code = existing_top_code or (appended_codes[0] if appended_codes else None)
 
+    updated_gallery_images = gallery_items + added_items
+
     await documents_collection.update_one(
         {"_id": object_id},
         {
-            "$push": {"gallery_images": {"$each": added_items}},
             "$set": {
+                "gallery_images": updated_gallery_images,
                 "recognized_text": combined_text,
                 "top_code": merged_top_code,
                 "updated_by_user_id": current_user["id"],
