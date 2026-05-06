@@ -85,15 +85,6 @@
       {/if}
     </div>
   </div>
-
-  <div class="metadata-block">
-    <div class="section-head">
-      <h3>Действия</h3>
-      {#if canEdit}
-        <button class="danger" on:click={() => dispatch("deleteDoc")}>Удалить документ</button>
-      {/if}
-    </div>
-  </div>
 </section>
 
 <style>
