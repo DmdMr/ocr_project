@@ -67,20 +67,8 @@
 </section>
 
 <style>
-  .files-section { padding: 14px; }
+  .files-section { padding: 16px; display: grid; gap: 12px; }
   .head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-  .upload-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 36px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface-strong);
-    cursor: pointer;
-    font-weight: 600;
-  }
   .upload-btn.disabled { opacity: 0.6; pointer-events: none; }
   .progress-wrap { margin-top: 8px; height: 6px; background: var(--surface); border-radius: 999px; overflow: hidden; }
   .progress { height: 100%; background: #3b82f6; transition: width .18s ease; }

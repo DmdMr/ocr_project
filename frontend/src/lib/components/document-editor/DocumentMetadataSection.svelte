@@ -88,7 +88,7 @@
 </section>
 
 <style>
-  .metadata { padding: 14px; display: grid; gap: 12px; }
+  .metadata { padding: 16px; display: grid; gap: 12px; }
   .metadata-block { display: grid; gap: 8px; }
   .section-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
   .tags { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -99,16 +99,4 @@
   .save-state[data-state="saving"] { color: #3b82f6; }
   .save-state[data-state="saved"] { color: #16a34a; }
   .save-state[data-state="error"] { color: #ef4444; }
-  .upload-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 36px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface-strong);
-    cursor: pointer;
-    font-weight: 600;
-  }
 </style>

@@ -398,7 +398,7 @@
 {:else if error || !doc}
   <div class="page"><p>{error || "Документ не найден"}</p></div>
 {:else}
-  <div class="page">
+  <div class="page document-editor-page">
     <header class="workspace-header panel">
       <button class="back-btn" on:click={goBack}>← Back</button>
       <div class="header-center">
@@ -573,25 +573,50 @@
 {/if}
 
 <style>
-  .page { padding: 18px; max-width: 1400px; margin: 0 auto 40px; }
-  .workspace-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; margin-bottom: 16px; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
-  .header-center { min-width: 0; display: grid; gap: 10px; }
-  .header-meta-line { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 0.9rem; }
-  .header-actions { display: flex; gap: 8px; }
-  .back-btn { min-height: 36px; padding: 8px 14px; border-radius: 10px; }
-  .editor-layout { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
-  .editor-sidebar { display: flex; flex-direction: column; gap: 12px; }
-  .editor-content { display: flex; flex-direction: column; gap: 16px; }
-  .ocr-panel { min-height: 0; max-height: 72vh; overflow: auto; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
-  .folder-path-panel { padding: 12px 14px; display: grid; gap: 8px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
-  .path-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .page {
+    --editor-page-padding: 16px;
+    --editor-gap-sm: 12px;
+    --editor-gap-md: 16px;
+    --editor-panel-padding: 16px;
+    --editor-radius: 12px;
+
+    padding: var(--editor-page-padding);
+    max-width: 1400px;
+    margin: 0 auto 40px;
+  }
+
+  :global(.document-editor-page .panel) { border-radius: var(--editor-radius); }
+  :global(.document-editor-page label.upload-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 8px 12px;
+    border-radius: var(--editor-radius);
+    border: 1px solid var(--border);
+    background: var(--surface-strong);
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .workspace-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--editor-gap-md); align-items: center; margin-bottom: var(--editor-gap-md); padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .header-center { min-width: 0; display: grid; gap: var(--editor-gap-sm); }
+  .header-meta-line { display: flex; flex-wrap: wrap; gap: var(--editor-gap-sm) var(--editor-gap-md); color: var(--muted); font-size: 0.9rem; }
+  .header-actions { display: flex; gap: var(--editor-gap-sm); }
+  .back-btn { min-height: 36px; padding: 8px 14px; border-radius: var(--editor-radius); }
+  .editor-layout { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: var(--editor-gap-md); align-items: start; }
+  .editor-sidebar { display: flex; flex-direction: column; gap: var(--editor-gap-sm); }
+  .editor-content { display: flex; flex-direction: column; gap: var(--editor-gap-md); }
+  .ocr-panel { min-height: 0; max-height: 72vh; overflow: auto; padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .folder-path-panel { padding: var(--editor-panel-padding); display: grid; gap: var(--editor-gap-sm); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .path-items { display: flex; gap: var(--editor-gap-sm); flex-wrap: wrap; align-items: center; }
   .path-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--text); }
-  .images-section { padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
-  .files-panel { display: grid; gap: 12px; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .images-section { padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .files-panel { display: grid; gap: var(--editor-gap-sm); padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .files-panel h3 { margin: 0; }
   .visually-hidden-upload { display: none; }
   .hint { color: var(--muted); margin: 0 0 8px; }
-  .progress-panel { padding: 10px; }
+  .progress-panel { padding: var(--editor-panel-padding); }
   .progress-wrap { margin-top: 6px; height: 6px; background: var(--surface); border-radius: 999px; overflow: hidden; }
   .progress { height: 100%; background: #3b82f6; transition: width .2s ease; }
   .success-inline { color: #16a34a; margin: 0; font-size: 0.85rem; }
@@ -620,7 +645,7 @@
     justify-content: center;
     align-items: flex-start;
     z-index: 1300;
-    padding: 34px 20px 20px;
+    padding: var(--editor-panel-padding);
   }
 
   .tag-picker-modal {
@@ -645,7 +670,7 @@
   @media (max-width: 980px) {
     .workspace-header,
     .editor-layout { grid-template-columns: 1fr; }
-    .tag-picker-modal { width: calc(100vw - 20px); }
+    .tag-picker-modal { width: calc(100vw - 32px); }
     :global(.tag-picker-modal .picker-shell) { width: calc(100vw - 24px); }
   }
 </style>
