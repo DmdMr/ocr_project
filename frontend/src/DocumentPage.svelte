@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte"
   import { push } from "svelte-spa-router"
-  import { getDocumentById, UPLOADS_URL } from "./lib/api"
+  import { getCardFields, getDocumentById, UPLOADS_URL } from "./lib/api"
   import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
-  import type { Document, GalleryImage, AttachmentFile } from "./lib/types"
+  import type { Document, GalleryImage, AttachmentFile, CardCustomFieldSetting } from "./lib/types"
   import { documentRoute, documentSlug } from "./lib/documentRoutes"
   import { currentUser, isAuthenticated, logout } from "./lib/auth"
 
@@ -13,6 +13,7 @@
   let doc: Document | null = null
   let loading = true
   let error = ""
+  let customFieldSettings: CardCustomFieldSetting[] = []
 
   $: nextId = (params?.id || "").trim()
   $: if (nextId && nextId !== documentId) {
@@ -31,8 +32,9 @@
     loading = true
     error = ""
     try {
-      const loadedDoc = await getDocumentById(id) as Document
+      const [loadedDoc, fields] = await Promise.all([getDocumentById(id) as Promise<Document>, getCardFields()])
       doc = loadedDoc
+      customFieldSettings = fields
 
       const expectedSlug = documentSlug(loadedDoc)
       const currentSlug = (params?.slug || "").trim()
@@ -64,6 +66,12 @@
 
   function attachmentUrl(file: AttachmentFile) {
     return `${UPLOADS_URL}/${file.filename}`
+  }
+
+  function customFieldDisplayValue(value: string | number | string[] | null | undefined) {
+    if (Array.isArray(value)) return value.length ? value.join(", ") : "—"
+    if (value === null || value === undefined || value === "") return "—"
+    return String(value)
   }
 
   function openEditor() {
@@ -177,14 +185,14 @@
             </section>
           {/if}
 
-          {#if doc.custom_fields && Object.keys(doc.custom_fields).length}
+          {#if customFieldSettings.length}
             <section class="card-like custom-fields">
               <h2>Custom fields</h2>
               <dl>
-                {#each Object.entries(doc.custom_fields) as [key, value]}
+                {#each customFieldSettings as field}
                   <div>
-                    <dt>{key}</dt>
-                    <dd>{value ?? "—"}</dd>
+                    <dt>{field.name}</dt>
+                    <dd>{customFieldDisplayValue(doc.custom_fields?.[field.name])}</dd>
                   </div>
                 {/each}
               </dl>

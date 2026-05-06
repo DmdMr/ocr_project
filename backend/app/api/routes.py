@@ -86,6 +86,35 @@ def normalize_custom_field_name(name: str):
     return (name or "").strip().lower()
 
 
+def validate_custom_field_name(field_name: str):
+    if not field_name:
+        raise HTTPException(status_code=400, detail="Имя поля обязательно")
+    if "." in field_name or field_name.startswith("$"):
+        raise HTTPException(status_code=400, detail="Имя поля содержит недопустимые символы")
+
+
+def normalize_custom_field_definition(field: dict):
+    field_name = normalize_custom_field_name(field.get("name", ""))
+    field_type = (field.get("type") or "text").strip().lower()
+    if not field_name or field_type not in ALLOWED_CUSTOM_FIELD_TYPES:
+        return None
+    return {"name": field_name, "type": field_type}
+
+
+def normalize_custom_field_definitions(fields: list):
+    normalized_fields = []
+    seen_names = set()
+    for field in fields or []:
+        if not isinstance(field, dict):
+            continue
+        normalized = normalize_custom_field_definition(field)
+        if not normalized or normalized["name"] in seen_names:
+            continue
+        seen_names.add(normalized["name"])
+        normalized_fields.append(normalized)
+    return normalized_fields
+
+
 def default_value_for_field_type(field_type: str):
     if field_type == "people":
         return []
@@ -95,12 +124,13 @@ def default_value_for_field_type(field_type: str):
 async def get_or_create_settings():
     settings_doc = await app_settings_collection.find_one({"_id": SETTINGS_DOCUMENT_ID})
     if settings_doc:
-        if not isinstance(settings_doc.get("fields_for_cards"), list):
+        normalized_fields = normalize_custom_field_definitions(settings_doc.get("fields_for_cards") or [])
+        if settings_doc.get("fields_for_cards") != normalized_fields:
             await app_settings_collection.update_one(
                 {"_id": SETTINGS_DOCUMENT_ID},
-                {"$set": {"fields_for_cards": []}},
+                {"$set": {"fields_for_cards": normalized_fields}},
             )
-            settings_doc["fields_for_cards"] = []
+        settings_doc["fields_for_cards"] = normalized_fields
         return settings_doc
 
     settings_doc = {"_id": SETTINGS_DOCUMENT_ID, "fields_for_cards": []}
@@ -1286,13 +1316,18 @@ async def get_settings():
     return {"fields_for_cards": settings_doc.get("fields_for_cards", [])}
 
 
+@router.get("/settings/fields")
+async def get_settings_fields():
+    settings_doc = await get_or_create_settings()
+    return settings_doc.get("fields_for_cards", [])
+
+
 @router.post("/settings/fields")
 async def create_settings_field(request: Request, payload: CustomFieldDefinition, current_user=Depends(require_admin_user)):
     field_name = normalize_custom_field_name(payload.name)
     field_type = (payload.type or "").strip().lower()
 
-    if not field_name:
-        raise HTTPException(status_code=400, detail="Имя поля обязательно")
+    validate_custom_field_name(field_name)
     if field_type not in ALLOWED_CUSTOM_FIELD_TYPES:
         raise HTTPException(status_code=400, detail="Неподдерживаемый тип поля")
 
@@ -1301,7 +1336,7 @@ async def create_settings_field(request: Request, payload: CustomFieldDefinition
     if any(normalize_custom_field_name(item.get("name", "")) == field_name for item in fields):
         raise HTTPException(status_code=400, detail="Поле с таким именем уже существует")
 
-    field_data = {"name": field_name, "type": field_type, "created_at": now_yekaterinburg()}
+    field_data = {"name": field_name, "type": field_type}
     await app_settings_collection.update_one(
         {"_id": SETTINGS_DOCUMENT_ID},
         {"$push": {"fields_for_cards": field_data}},
@@ -1380,14 +1415,13 @@ async def update_document_custom_fields(request: Request, doc_id: str, payload: 
 
     settings_doc = await get_or_create_settings()
     fields_for_cards = settings_doc.get("fields_for_cards") or []
-    allowed_fields = {normalize_custom_field_name(field.get("name", "")): field.get("type", "text") for field in fields_for_cards}
+    allowed_fields = {field.get("name", ""): field.get("type", "text") for field in fields_for_cards if field.get("name")}
 
     current_custom_fields = existing_doc.get("custom_fields") if isinstance(existing_doc.get("custom_fields"), dict) else {}
-    merged_fields = dict(current_custom_fields)
-
-    for field_name, field_type in allowed_fields.items():
-        if field_name and field_name not in merged_fields:
-            merged_fields[field_name] = default_value_for_field_type(field_type)
+    merged_fields = {
+        field_name: current_custom_fields.get(field_name, default_value_for_field_type(field_type))
+        for field_name, field_type in allowed_fields.items()
+    }
 
     for key, value in (payload.custom_fields or {}).items():
         normalized_key = normalize_custom_field_name(key)

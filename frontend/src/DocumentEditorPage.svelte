@@ -7,9 +7,9 @@
     deleteDocumentAttachment,
     deleteDocumentImage,
     editDocumentImage,
+    getCardFields,
+    getDocumentById,
     getDocumentPath,
-    getDocuments,
-    getSettings,
     getTags,
     setDocumentTags,
     updateDocument,
@@ -81,12 +81,7 @@
     loading = true
     error = ""
     try {
-      const [documents, settings] = await Promise.all([getDocuments(), getSettings()])
-      const found = documents.find((item: Document) => item._id === params.id)
-      if (!found) {
-        error = "Документ не найден"
-        return
-      }
+      const [found, fields] = await Promise.all([getDocumentById(params.id) as Promise<Document>, getCardFields()])
       doc = found
       try {
         const pathPayload = await getDocumentPath(found._id)
@@ -96,7 +91,7 @@
       }
       editedText = found.recognized_text ?? ""
       filenameDraft = found.display_filename ?? found.filename
-      customFieldSettings = settings.fields_for_cards ?? []
+      customFieldSettings = fields
       syncDraftFromDocument(found)
     } catch (err) {
       error = err instanceof Error ? err.message : "Не удалось загрузить документ"
@@ -195,14 +190,9 @@
     if (!$canEditDocuments) return
     if (!doc || !changedCustomFields.size) return
 
-    const payload: Record<string, string | number | string[] | null> = {}
-    for (const key of changedCustomFields) {
-      payload[key] = customFieldDraft[key] ?? null
-    }
-
     customFieldsStatus = "saving"
     try {
-      const updated = await updateDocumentCustomFields(doc._id, payload)
+      const updated = await updateDocumentCustomFields(doc._id, customFieldDraft)
       applyDocumentUpdate(updated)
       changedCustomFields = new Set<string>()
       customFieldsStatus = "saved"
