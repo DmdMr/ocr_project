@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { push } from 'svelte-spa-router'
-  import { createCardField, deleteCardField, getSettings } from './lib/api'
+  import { createCardField, deleteCardField, getCardFields } from './lib/api'
   import { isAdmin } from './lib/auth'
   import type { CardCustomFieldSetting } from './lib/types'
 
@@ -16,8 +16,7 @@
     loading = true
     error = ''
     try {
-      const data = await getSettings()
-      fields = data.fields_for_cards ?? []
+      fields = await getCardFields()
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to load settings'
     } finally {

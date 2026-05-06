@@ -67,6 +67,7 @@
             disabled={!canEdit}
             value={field.type === "people" ? peopleDraftValue(customFieldDraft[field.name]) : (customFieldDraft[field.name] ?? "")}
             on:input={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value })}
+            on:change={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value, saveNow: true })}
             on:blur={(event) => dispatch("customFieldInput", { fieldName: field.name, value: (event.target as HTMLInputElement).value, saveNow: true })}
           />
         </label>
