@@ -27,7 +27,7 @@
 </section>
 
 <style>
-  .content { padding: 20px; min-height: 320px; }
+  .content { padding: 16px; min-height: 320px; }
   .content-toolbar { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; }
   .actions { display: flex; gap: 8px; }
   .editor {
