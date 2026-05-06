@@ -495,32 +495,32 @@
       </aside>
 
       <main class="editor-content">
-        <section class="panel images-section">
-          <h2>Image blocks</h2>
-          <p class="hint">Изображения рендерятся как блоки внизу документа. Идентификатор: filename.</p>
+        <section class="working-block">
           {#if !$canEditDocuments}
             <p class="hint">Sign in as editor/admin to modify images, tags, fields, files, or OCR text.</p>
           {/if}
-          {#each galleryImages as image}
-            <DocumentImageBlock
-              {image}
-              canEdit={$canEditDocuments}
-              canDelete={galleryImages.length > 1}
-              on:open={(event) => openImage(event.detail.filename)}
-              on:delete={(event) => removeImage(event.detail.filename)}
-              on:edit={(event) => openImageEditor(event.detail.filename)}
-            />
-          {/each}
-        </section>
+          <div class="document-blocks">
+            {#each galleryImages as image}
+              <DocumentImageBlock
+                {image}
+                canEdit={$canEditDocuments}
+                canDelete={galleryImages.length > 1}
+                on:open={(event) => openImage(event.detail.filename)}
+                on:delete={(event) => removeImage(event.detail.filename)}
+                on:edit={(event) => openImageEditor(event.detail.filename)}
+              />
+            {/each}
 
-        <section class="panel ocr-panel">
-          <DocumentContentEditor
-            bind:value={editedText}
-            canEdit={$canEditDocuments}
-            {editing}
-            onToggleEdit={() => editing = !editing}
-            onSave={saveText}
-          />
+            <section class="ocr-card">
+              <DocumentContentEditor
+                bind:value={editedText}
+                canEdit={$canEditDocuments}
+                {editing}
+                onToggleEdit={() => editing = !editing}
+                onSave={saveText}
+              />
+            </section>
+          </div>
         </section>
       </main>
     </section>
