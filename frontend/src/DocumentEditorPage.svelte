@@ -68,7 +68,7 @@
   let saveStatusTimer: ReturnType<typeof setTimeout> | null = null
   let folderPath: Array<{ id: string; name: string }> = []
 
-  $: galleryImages = (doc?.gallery_images?.length ? doc.gallery_images : doc ? [{ filename: doc.filename, image_version: doc.image_version }] : []) as GalleryImage[]
+  $: galleryImages = (doc?.gallery_images ?? []) as GalleryImage[]
   $: selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0]
   $: selectedImageSrc = selectedImage ? `${UPLOADS_URL}/${selectedImage.filename}?v=${encodeURIComponent(selectedImage.image_version ?? "")}` : ""
 

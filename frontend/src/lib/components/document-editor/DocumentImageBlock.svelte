@@ -13,7 +13,13 @@
     edit: { filename: string }
   }>()
 
-  $: imageSrc = `${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`
+  //$: imageSrc = `${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`
+  // imageUtils.ts
+  export function getImageUrl(image: { filename: string; image_version?: string }) {
+    return `${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`
+  }
+  $: imageSrc = getImageUrl(image)
+
 </script>
 
 <div class="image-block" id={`image-${image.filename}`} data-image-id={image.filename}>

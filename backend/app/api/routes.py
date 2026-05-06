@@ -10,6 +10,9 @@ from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, Reque
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
 from backend.app.auth import (
     USER_ROLE_ADMIN,
     USER_ROLE_EDITOR,
@@ -37,9 +40,19 @@ from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_uns
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
 
+app = FastAPI()
+
 router = APIRouter(prefix="/api")
 
 UPLOAD_DIR = "backend/uploads"
+
+app.mount(
+    "/uploads", 
+    StaticFiles(directory="backend/uploads"), 
+    name="uploads"
+)
+
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 AUDIT_LOG_DIR = "backend/logs"
 AUDIT_LOG_FILE = os.path.join(AUDIT_LOG_DIR, "audit.log")
@@ -1555,7 +1568,7 @@ async def delete_attachment(request: Request, doc_id: str, attachment_filename: 
 
 
 
-UPLOAD_FOLDER = "backend/uploads"
+
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(request: Request, doc_id: str, current_user=Depends(require_editor_user)):
