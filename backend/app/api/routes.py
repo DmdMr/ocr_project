@@ -890,17 +890,35 @@ async def upload_image(
 
     filename, file_path = save_upload_file(file, file_bytes)
     file_path = autocrop_whitespace(file_path)
+    
     if perform_ocr:
         try:
+            print("\n===== OCR START =====")
+            print("FILE PATH:", file_path)
+
             ocr_result = recognize_text(file_path)
+
+            print("OCR RESULT:", ocr_result)
+            print("TEXT:", ocr_result.get("text"))
+            print("LINES:", ocr_result.get("ocr_lines"))
+            print("===== OCR END =====\n")
+
         except ValueError as exc:
+            print("OCR VALUE ERROR:", exc)
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
         except RuntimeError as exc:
+            print("OCR RUNTIME ERROR:", exc)
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+
         except Exception as exc:
+            print("OCR UNKNOWN ERROR:", exc)
             raise HTTPException(status_code=500, detail="OCR failure") from exc
     else:
         ocr_result = {"text": "", "boxes": [], "top_code": None, "ocr_lines": []}
+
+
+
 
     gallery_item = build_gallery_item(
         filename=filename,

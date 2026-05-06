@@ -139,8 +139,8 @@
         />
       </section>
 
-      <section class="sidebar-section-group">
-        <div class="sidebar-section-label">Primary Actions</div>
+      <section class="sidebar-section">
+        <div class="sidebar-title">Primary Actions</div>
         {#if $canEditDocuments}
           <Upload embedded on:uploaded={handleUpload} />
         {:else}
@@ -148,8 +148,8 @@
         {/if}
       </section>
 
-      <section class="sidebar-section-group">
-        <div class="sidebar-section-label">Tags Block</div>
+      <section class="sidebar-section">
+        <div class="sidebar-title">Tags Block</div>
         <TagManager
           initialTags={tags}
           canManage={$isAdmin}
@@ -157,6 +157,8 @@
           on:tagsChanged={(event) => tags = event.detail.tags}
         />
       </section>
+
+      
     </div>
   </aside>
 
@@ -244,18 +246,20 @@
     max-height: calc(100vh - 4rem);
     overflow: auto;
     display: grid;
-    gap: 16px;
+    gap: 18px;
+    text-align: left;
 }
 
-.sidebar-section-group {
+.sidebar-section {
     display: grid;
     gap: 8px;
 }
 
-.sidebar-section-label {
+.sidebar-title {
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    margin-bottom: 2px;
     color: var(--text-muted);
 }
 
@@ -295,4 +299,5 @@
         width: min(320px, 94vw);
     }
 }
+
 </style>

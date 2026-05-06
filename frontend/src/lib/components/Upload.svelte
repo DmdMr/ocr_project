@@ -107,7 +107,7 @@
 
 <div class="upload-manager" class:panel={!embedded} class:embedded={embedded}>
 <div
-    class="upload"
+    class="upload sidebar-title"
     on:drop={handleDrop}
     on:dragover={handleDragOver}
 >
@@ -189,8 +189,13 @@
 
 .upload-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    text-align: left;
     gap: 8px;
+}
+
+.upload-actions :global(button) {
+    width: 100%;
+    text-align: left;
 }
 
 .upload-action-btn {
@@ -280,6 +285,15 @@
     margin-top: 12px;
     font-weight: 600;
     color: #10b981;
+}
+
+
+.sidebar-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+    color: var(--text-muted);
 }
 
 </style>

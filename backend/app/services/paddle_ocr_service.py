@@ -64,8 +64,12 @@ class PaddleOcrService:
 
     def _ocr_image_array(self, image: np.ndarray) -> List[OcrLine]:
         engine = self._get_engine()
-        result = engine.ocr(image, cls=True)
+        print("BEFORE OCR CALL")
 
+        result = engine.ocr(image)
+
+        print("AFTER OCR CALL")
+        
         lines: List[OcrLine] = []
         for block in result or []:
             for entry in block or []:
@@ -130,6 +134,8 @@ class PaddleOcrService:
         }
 
     def run_ocr(self, image_path: str, crop_ratio: Optional[float] = None) -> Dict[str, Any]:
+        print("\n===== OCR START =====")
+        print("IMAGE PATH:", image_path)
         image = self._read_image(image_path)
 
         full_lines = self._ocr_image_array(image)
@@ -148,6 +154,9 @@ class PaddleOcrService:
             "confidence": full_confidence,
             "top_region": top_result,
         }
+    
+        print("RAW OCR RESULT:", result)
+        print("===== OCR END =====\n")
 
 
 def validate_image_file(image_path: str) -> None:

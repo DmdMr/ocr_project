@@ -16,7 +16,6 @@
         logout: void
     }>()
 </script>
-
 <div class="sidebar-block">
     <section class="sidebar-section">
       <div class="sidebar-title">User Info</div>
@@ -36,13 +35,6 @@
       </div>
     </section>
 
-    <section class="sidebar-section">
-      <div class="sidebar-title">Primary Actions</div>
-      <div class="sidebar-actions">
-        <button class="primary" on:click={() => dispatch("navigateAssistant")}>Upload with recognition</button>
-        <button on:click={() => dispatch("navigateAbout")}>Upload without recognition</button>
-      </div>
-    </section>
 
     <section class="sidebar-section">
       <div class="sidebar-title">Documents</div>
@@ -51,8 +43,6 @@
         {#if role === "admin"}
           <button on:click={() => dispatch("navigateSettings")}>Fields settings</button>
         {/if}
-        <button on:click={() => dispatch("navigateArchive")}>Tags block</button>
-        <button on:click={() => dispatch("navigateArchive")}>Create tag</button>
       </div>
     </section>
 
