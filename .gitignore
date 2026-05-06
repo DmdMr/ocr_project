@@ -13,4 +13,5 @@ frontend.log
 *.log
 backend/uploads
 test_env
-node_modules/
+node_modules/backend/models/
+*.safetensors
