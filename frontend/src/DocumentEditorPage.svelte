@@ -426,27 +426,27 @@
       </div>
     </header>
 
-    <section class="top-panel">
-      <section class="panel folder-path-panel top-left">
-        <strong>Location:</strong>
-        <div class="path-items">
-          <button class="path-link" on:click={() => openFilesLocation()}>Root</button>
-          <span>/</span>
-          {#if folderPath.length}
-            {#each folderPath as item (item.id)}
-              <button class="path-link" on:click={() => openFilesLocation(item.id)}>{item.name}</button>
-              <span>/</span>
-            {/each}
-          {:else}
-            <span>Unsorted</span>
+    <section class="editor-layout">
+      <aside class="editor-sidebar">
+        <section class="panel folder-path-panel">
+          <strong>Location:</strong>
+          <div class="path-items">
+            <button class="path-link" on:click={() => openFilesLocation()}>Root</button>
             <span>/</span>
-          {/if}
-          <span>{doc.display_filename || doc.filename}</span>
-        </div>
-        <button class="back-btn" on:click={() => document.getElementById('gallery-upload')?.click()} disabled={!$canEditDocuments}>Add image</button>
-      </section>
+            {#if folderPath.length}
+              {#each folderPath as item (item.id)}
+                <button class="path-link" on:click={() => openFilesLocation(item.id)}>{item.name}</button>
+                <span>/</span>
+              {/each}
+            {:else}
+              <span>Unsorted</span>
+              <span>/</span>
+            {/if}
+            <span>{doc.display_filename || doc.filename}</span>
+          </div>
+          <button class="back-btn" on:click={() => document.getElementById('gallery-upload')?.click()} disabled={!$canEditDocuments}>Add image</button>
+        </section>
 
-      <div class="top-right">
         <DocumentMetadataSection
           {doc}
           canEdit={$canEditDocuments}
@@ -479,11 +479,6 @@
             <input id="file-upload" type="file" multiple on:change={(event) => handleAttachmentUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []) } } as CustomEvent<{ files: File[] }>)} />
           </div>
         </section>
-      </div>
-    </section>
-
-    <section class="main-panel">
-      <aside class="main-left">
 
         {#if galleryUploading}
           <div class="panel progress-panel">
@@ -497,7 +492,9 @@
         {#if galleryUploadError}
           <p class="error-inline">{galleryUploadError}</p>
         {/if}
+      </aside>
 
+      <main class="editor-content">
         <section class="panel images-section">
           <h2>Image blocks</h2>
           <p class="hint">Изображения рендерятся как блоки внизу документа. Идентификатор: filename.</p>
@@ -515,16 +512,16 @@
             />
           {/each}
         </section>
-      </aside>
 
-      <main class="main-right panel">
-        <DocumentContentEditor
-          bind:value={editedText}
-          canEdit={$canEditDocuments}
-          {editing}
-          onToggleEdit={() => editing = !editing}
-          onSave={saveText}
-        />
+        <section class="panel ocr-panel">
+          <DocumentContentEditor
+            bind:value={editedText}
+            canEdit={$canEditDocuments}
+            {editing}
+            onToggleEdit={() => editing = !editing}
+            onSave={saveText}
+          />
+        </section>
       </main>
     </section>
 
@@ -582,12 +579,10 @@
   .header-meta-line { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 0.9rem; }
   .header-actions { display: flex; gap: 8px; }
   .back-btn { min-height: 36px; padding: 8px 14px; border-radius: 10px; }
-  .top-panel { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 18px; margin-bottom: 18px; }
-  .top-left { display: grid; gap: 12px; align-content: start; }
-  .top-right { display: grid; gap: 16px; }
-  .main-panel { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-  .main-left { display: grid; gap: 16px; }
-  .main-right { min-height: 0; max-height: 72vh; overflow: auto; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .editor-layout { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .editor-sidebar { display: flex; flex-direction: column; gap: 12px; }
+  .editor-content { display: flex; flex-direction: column; gap: 16px; }
+  .ocr-panel { min-height: 0; max-height: 72vh; overflow: auto; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .folder-path-panel { padding: 12px 14px; display: grid; gap: 8px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .path-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .path-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--text); }
@@ -649,8 +644,7 @@
 
   @media (max-width: 980px) {
     .workspace-header,
-    .top-panel,
-    .main-panel { grid-template-columns: 1fr; }
+    .editor-layout { grid-template-columns: 1fr; }
     .tag-picker-modal { width: calc(100vw - 20px); }
     :global(.tag-picker-modal .picker-shell) { width: calc(100vw - 24px); }
   }
