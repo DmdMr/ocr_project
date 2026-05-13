@@ -1085,7 +1085,13 @@ async def upload_image(
     }
 
 @router.post("/documents/{doc_id}/gallery")
-async def upload_images_to_document(request: Request, doc_id: str, files: List[UploadFile] = File(...), current_user=Depends(require_editor_user)):
+async def upload_images_to_document(
+    request: Request,
+    doc_id: str,
+    files: List[UploadFile] = File(...),
+    perform_ocr: bool = Form(True),
+    current_user=Depends(require_editor_user),
+):
     object_id = object_id_or_404(doc_id)
     document = await documents_collection.find_one({"_id": object_id})
     if not document:
@@ -1119,17 +1125,22 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
 
         filename, file_path = save_upload_file(file, file_bytes)
         file_path = autocrop_whitespace(file_path)
-        try:
-            ocr_result = recognize_text(file_path)
-        except ValueError:
-            skipped_files.append(f"{file.filename}: некорректное изображение")
-            continue
-        except RuntimeError:
-            skipped_files.append(f"{file.filename}: сервис OCR недоступен")
-            continue
-        except Exception:
-            skipped_files.append(f"{file.filename}: ошибка OCR")
-            continue
+        if perform_ocr:
+            try:
+                ocr_result = recognize_text(file_path)
+            except ValueError:
+                skipped_files.append(f"{file.filename}: некорректное изображение")
+                continue
+            except RuntimeError:
+                skipped_files.append(f"{file.filename}: сервис OCR недоступен")
+                continue
+            except Exception:
+                skipped_files.append(f"{file.filename}: ошибка OCR")
+                continue
+        else:
+            # Non-OCR editor uploads still create normal gallery records, but keep
+            # OCR-compatible fields empty so existing frontend/database logic works.
+            ocr_result = {"text": "", "boxes": [], "ocr_lines": [], "top_code": None}
 
         item = build_gallery_item(
             filename=filename,
@@ -1185,7 +1196,7 @@ async def upload_images_to_document(request: Request, doc_id: str, files: List[U
     await write_audit_log(
         request,
         "document.gallery.upload",
-        {"document_id": doc_id, "added_count": len(added_items), "skipped_files": skipped_files},
+        {"document_id": doc_id, "added_count": len(added_items), "skipped_files": skipped_files, "perform_ocr": perform_ocr},
         current_user=current_user,
     )
     return {

@@ -53,12 +53,14 @@ export async function uploadImage(file: File, performOcr = true) {
 export async function uploadImagesToDocument(
     documentId: string,
     files: File[],
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    performOcr = true
 ) {
     const formData = new FormData()
     for (const file of files) {
         formData.append("files", file)
     }
+    formData.append("perform_ocr", String(performOcr))
 
     return await uploadFormWithProgress(`${API_URL}/documents/${documentId}/gallery`, formData, onProgress)
 }
