@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from backend.app.api.errors import api_error
 from backend.app.auth import (
     USER_ROLE_ADMIN,
     USER_ROLE_EDITOR,
@@ -60,6 +61,10 @@ AUDIT_LOG_DIR = "backend/logs"
 AUDIT_LOG_FILE = os.path.join(AUDIT_LOG_DIR, "audit.log")
 os.makedirs(AUDIT_LOG_DIR, exist_ok=True)
 UNSORTED_SYSTEM_KEY="unsorted"
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
+IMAGE_CONTENT_TYPES = {"image/png", "image/jpeg", "image/jpg"}
+
+logger = logging.getLogger("backend.api")
 
 audit_logger = logging.getLogger("backend.audit")
 if not audit_logger.handlers:
@@ -68,6 +73,20 @@ if not audit_logger.handlers:
     file_handler.setFormatter(logging.Formatter("%(message)s"))
     audit_logger.addHandler(file_handler)
     audit_logger.propagate = False
+
+
+def validate_upload_size(file_bytes: bytes):
+    if len(file_bytes) > MAX_UPLOAD_BYTES:
+        raise api_error(413, "FILE_TOO_LARGE")
+
+
+def validate_image_upload(file: UploadFile):
+    if file.content_type not in IMAGE_CONTENT_TYPES:
+        raise api_error(400, "INVALID_IMAGE")
+
+
+def safe_filename(file: UploadFile):
+    return (file.filename or "file").strip() or "file"
 
 def calculate_file_hash(file_bytes: bytes):
     return hashlib.md5(file_bytes).hexdigest()
@@ -596,9 +615,9 @@ async def login(request: Request, payload: AuthCredentials, response: Response):
 
     user = await users_collection.find_one({"username_lower": username_lower})
     if not user or not verify_password(password, user.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Неверное имя пользователя или пароль")
+        raise api_error(401, "INVALID_CREDENTIALS", "Invalid username or password")
     if not user.get("is_active", True):
-        raise HTTPException(status_code=403, detail="Пользователь деактивирован")
+        raise api_error(403, "ACCESS_DENIED")
 
     role = user.get("role", USER_ROLE_EDITOR)
     if role not in {USER_ROLE_EDITOR, USER_ROLE_ADMIN}:
@@ -974,10 +993,12 @@ async def upload_image(
     current_user=Depends(require_editor_user),
 ):
 
-    if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
-        raise HTTPException(status_code=400, detail="Разрешены только PNG и JPG")
+    validate_image_upload(file)
 
     file_bytes = await file.read()
+    validate_upload_size(file_bytes)
+    if not file_bytes:
+        raise api_error(400, "INVALID_IMAGE")
     file_hash = calculate_file_hash(file_bytes)
 
     existing = await documents_collection.find_one({"file_hash": file_hash})
@@ -1000,16 +1021,16 @@ async def upload_image(
             print("===== OCR END =====\n")
 
         except ValueError as exc:
-            print("OCR VALUE ERROR:", exc)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            logger.exception("OCR rejected invalid image during upload: %s", safe_filename(file))
+            raise api_error(400, "INVALID_IMAGE") from exc
 
         except RuntimeError as exc:
-            print("OCR RUNTIME ERROR:", exc)
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+            logger.exception("OCR service failed during upload: %s", safe_filename(file))
+            raise api_error(500, "OCR_FAILURE") from exc
 
         except Exception as exc:
-            print("OCR UNKNOWN ERROR:", exc)
-            raise HTTPException(status_code=500, detail="OCR failure") from exc
+            logger.exception("Unexpected OCR failure during upload: %s", safe_filename(file))
+            raise api_error(500, "OCR_FAILURE") from exc
     else:
         ocr_result = {"text": "", "boxes": [], "top_code": None, "ocr_lines": []}
 
@@ -1106,21 +1127,24 @@ async def upload_images_to_document(
     added_items = []
     appended_texts: List[str] = []
     appended_codes: List[str] = []
-    skipped_files: List[str] = []
+    skipped_files: list[dict[str, str]] = []
 
     for file in files:
-        if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
-            skipped_files.append(f"{file.filename}: неподдерживаемый тип файла")
+        if file.content_type not in IMAGE_CONTENT_TYPES:
+            skipped_files.append({"filename": safe_filename(file), "error_code": "INVALID_IMAGE"})
             continue
 
         file_bytes = await file.read()
+        if len(file_bytes) > MAX_UPLOAD_BYTES:
+            skipped_files.append({"filename": safe_filename(file), "error_code": "FILE_TOO_LARGE"})
+            continue
         if not file_bytes:
-            skipped_files.append(f"{file.filename}: пустой файл")
+            skipped_files.append({"filename": safe_filename(file), "error_code": "INVALID_IMAGE"})
             continue
 
         file_hash = calculate_file_hash(file_bytes)
         if file_hash in existing_hashes:
-            skipped_files.append(f"{file.filename}: дубликат изображения")
+            skipped_files.append({"filename": safe_filename(file), "error_code": "DUPLICATE_FILE"})
             continue
 
         filename, file_path = save_upload_file(file, file_bytes)
@@ -1129,13 +1153,16 @@ async def upload_images_to_document(
             try:
                 ocr_result = recognize_text(file_path)
             except ValueError:
-                skipped_files.append(f"{file.filename}: некорректное изображение")
+                logger.exception("OCR rejected invalid gallery image: %s", safe_filename(file))
+                skipped_files.append({"filename": safe_filename(file), "error_code": "INVALID_IMAGE"})
                 continue
             except RuntimeError:
-                skipped_files.append(f"{file.filename}: сервис OCR недоступен")
+                logger.exception("OCR service failed for gallery image: %s", safe_filename(file))
+                skipped_files.append({"filename": safe_filename(file), "error_code": "OCR_FAILURE"})
                 continue
             except Exception:
-                skipped_files.append(f"{file.filename}: ошибка OCR")
+                logger.exception("Unexpected OCR failure for gallery image: %s", safe_filename(file))
+                skipped_files.append({"filename": safe_filename(file), "error_code": "OCR_FAILURE"})
                 continue
         else:
             # Non-OCR editor uploads still create normal gallery records, but keep
@@ -1161,10 +1188,10 @@ async def upload_images_to_document(
             appended_codes.append(top_code)
 
     if not added_items:
-        detail = "Не загружено ни одного нового корректного изображения"
-        if skipped_files:
-            detail = f"{detail}. " + "; ".join(skipped_files)
-        raise HTTPException(status_code=400, detail=detail)
+        error_code = skipped_files[0].get("error_code") if skipped_files and isinstance(skipped_files[0], dict) else "INVALID_IMAGE"
+        if error_code not in {"OCR_FAILURE", "INVALID_IMAGE", "FILE_TOO_LARGE"}:
+            error_code = "BAD_REQUEST"
+        raise api_error(400 if error_code != "FILE_TOO_LARGE" else 413, error_code)
 
 
     existing_text = (document.get("recognized_text") or "").strip()
@@ -1221,26 +1248,29 @@ async def upload_attachments_to_document(request: Request, doc_id: str, files: L
     existing_names = {item.get("original_name", "").strip().lower() for item in attachments}
 
     added_items = []
-    skipped_files: List[str] = []
+    skipped_files: list[dict[str, str]] = []
 
     for file in files:
         original_name = (file.filename or "").strip()
         if not original_name:
-            skipped_files.append("Безымянный файл: пустое имя файла")
+            skipped_files.append({"filename": safe_filename(file), "error_code": "BAD_REQUEST"})
             continue
 
         if (file.content_type or "").startswith("image/"):
-            skipped_files.append(f"{original_name}: изображения добавляются через галерею")
+            skipped_files.append({"filename": original_name, "error_code": "INVALID_IMAGE"})
             continue
 
         file_bytes = await file.read()
+        if len(file_bytes) > MAX_UPLOAD_BYTES:
+            skipped_files.append({"filename": original_name, "error_code": "FILE_TOO_LARGE"})
+            continue
         if not file_bytes:
-            skipped_files.append(f"{original_name}: пустой файл")
+            skipped_files.append({"filename": original_name, "error_code": "BAD_REQUEST"})
             continue
 
         normalized_name = original_name.lower()
         if normalized_name in existing_names:
-            skipped_files.append(f"{original_name}: такой файл уже прикреплён")
+            skipped_files.append({"filename": original_name, "error_code": "DUPLICATE_FILE"})
             continue
 
         filename, file_path = save_upload_file(file, file_bytes)
@@ -1255,10 +1285,10 @@ async def upload_attachments_to_document(request: Request, doc_id: str, files: L
         existing_names.add(normalized_name)
 
     if not added_items:
-        detail = "Не загружено ни одного нового файла"
-        if skipped_files:
-            detail = f"{detail}. " + "; ".join(skipped_files)
-        raise HTTPException(status_code=400, detail=detail)
+        error_code = skipped_files[0].get("error_code") if skipped_files and isinstance(skipped_files[0], dict) else "BAD_REQUEST"
+        if error_code not in {"FILE_TOO_LARGE", "INVALID_IMAGE"}:
+            error_code = "BAD_REQUEST"
+        raise api_error(400 if error_code != "FILE_TOO_LARGE" else 413, error_code)
 
     await documents_collection.update_one(
         {"_id": object_id},

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte"
   import { tagHue } from "../tagColors"
+  import { t } from "../i18n"
 
   export let assignedTags: string[] = []
   export let allTags: string[] = []
@@ -40,16 +41,16 @@
 <div class="picker-shell">
   <div class="picker-header">
     <div>
-      <h3>Управление тегами</h3>
-      <p>Нажмите на тег, чтобы добавить его к карточке или убрать из неё.</p>
+      <h3>{$t("tagPicker.title")}</h3>
+      <p>{$t("tagPicker.help")}</p>
     </div>
-    <button class="close-btn" aria-label="Закрыть управление тегами" on:click={close}>✕</button>
+    <button class="close-btn" aria-label={$t("tagPicker.close")} on:click={close}>✕</button>
   </div>
 
   <input
     class="search-input"
     type="text"
-    placeholder="Поиск тегов"
+    placeholder={$t("tagPicker.search")}
     bind:value={search}
   />
 
@@ -60,7 +61,7 @@
   <div class="picker-grid">
     <section class="picker-column">
       <div class="column-header">
-        <h4>На карточке</h4>
+        <h4>{$t("tagPicker.assigned")}</h4>
         <span>{assignedTags.length}</span>
       </div>
 
@@ -79,19 +80,19 @@
         </div>
       {:else}
         <p class="empty-state">
-          {search.trim() ? "Назначенные теги не найдены" : "У этой карточки пока нет тегов"}
+          {search.trim() ? $t("tagPicker.assignedNotFound") : $t("tagPicker.assignedEmpty")}
         </p>
       {/if}
     </section>
 
     <section class="picker-column">
       <div class="column-header">
-        <h4>Доступные теги</h4>
+        <h4>{$t("tagPicker.available")}</h4>
         <span>{availableTags.length}</span>
       </div>
 
       {#if loading}
-        <p class="empty-state">Загрузка тегов…</p>
+        <p class="empty-state">{$t("tagPicker.loading")}</p>
       {:else if filteredAvailable.length > 0}
         <div class="tag-list">
           {#each filteredAvailable as tag}
@@ -107,7 +108,7 @@
         </div>
       {:else}
         <p class="empty-state">
-          {search.trim() ? "Подходящие теги не найдены" : "Все доступные теги уже добавлены"}
+          {search.trim() ? $t("tagPicker.availableNotFound") : $t("tagPicker.availableEmpty")}
         </p>
       {/if}
     </section>

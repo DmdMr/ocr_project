@@ -8,6 +8,7 @@
     deleteDocumentImage,
     editDocumentImage,
     createCardField,
+    formatSkippedFileError,
     getCardFields,
     getDocumentById,
     getDocumentPath,
@@ -27,6 +28,7 @@
   import DocumentFilesSection from "./lib/components/document-editor/DocumentFilesSection.svelte"
   import DocumentImageEditorModal from "./lib/components/document-editor/DocumentImageEditorModal.svelte"
   import { canEditDocuments, isAdmin } from "./lib/auth"
+  import { t } from "./lib/i18n"
 
   export let params: { id: string }
 
@@ -125,7 +127,7 @@
       customFieldSettings = fields
       syncDraftFromDocument(found)
     } catch (err) {
-      error = err instanceof Error ? err.message : "Не удалось загрузить документ"
+      error = err instanceof Error ? err.message : $t("document.notFound")
     } finally {
       loading = false
     }
@@ -148,12 +150,12 @@
 
   function normalizeFilenameDraft(value: string, originalName: string) {
     const trimmed = value.trim()
-    if (!trimmed) return { error: "Имя файла не может быть пустым", value: "" }
+    if (!trimmed) return { error: $t("document.filenameRequired"), value: "" }
     const { extension: originalExtension } = splitFilenameParts(originalName)
     if (!originalExtension) return { error: "", value: trimmed }
     const { base, extension } = splitFilenameParts(trimmed)
     const normalizedBase = (extension && extension.toLowerCase() === originalExtension.toLowerCase() ? base : trimmed).trim()
-    if (!normalizedBase) return { error: "Имя файла не может быть пустым", value: "" }
+    if (!normalizedBase) return { error: $t("document.filenameRequired"), value: "" }
     return { error: "", value: `${normalizedBase}${originalExtension}` }
   }
 
@@ -280,7 +282,7 @@
 
     const nonImageFiles = files.filter((file) => !file.type.startsWith("image/"))
     if (!nonImageFiles.length) {
-      attachmentUploadError = "Изображения добавляйте в секции изображений"
+      attachmentUploadError = $t("document.imagesInGalleryHint")
       return
     }
 
@@ -291,10 +293,10 @@
     try {
       const result = await uploadDocumentAttachments(doc._id, nonImageFiles, (percent) => attachmentUploadProgress = percent)
       if (result.document) applyDocumentUpdate(result.document)
-      attachmentUploadSuccess = `Файлы загружены: ${result.added_count ?? nonImageFiles.length}`
-      attachmentUploadError = result.skipped_files?.join("; ") ?? ""
+      attachmentUploadSuccess = `${$t("document.attachmentsUploaded")}: ${result.added_count ?? nonImageFiles.length}`
+      attachmentUploadError = result.skipped_files?.map(formatSkippedFileError).join("; ") ?? ""
     } catch (err) {
-      attachmentUploadError = err instanceof Error ? err.message : "Не удалось прикрепить файлы"
+      attachmentUploadError = err instanceof Error ? err.message : $t("document.attachmentError")
     } finally {
       attachmentsUploading = false
     }
@@ -317,10 +319,11 @@
       // with empty OCR-compatible fields and leaves existing recognized text unchanged.
       const result = await uploadImagesToDocument(doc._id, files, (percent) => galleryUploadProgress = percent, performOcr)
       if (result.document) applyDocumentUpdate(result.document)
-      const message = performOcr ? label("uploadedWithRecognition") : label("uploadedWithoutRecognition")
+      const message = performOcr ? $t("document.uploadedWithRecognition") : $t("document.uploadedWithoutRecognition")
       galleryUploadSuccess = `${message}: ${result.added_count ?? files.length}`
+      galleryUploadError = result.skipped_files?.map(formatSkippedFileError).join("; ") ?? ""
     } catch (err) {
-      galleryUploadError = err instanceof Error ? err.message : label("uploadError")
+      galleryUploadError = err instanceof Error ? err.message : $t("document.uploadError")
     } finally {
       galleryUploading = false
     }
@@ -336,7 +339,7 @@
   async function removeImage(filename: string) {
     if (!$canEditDocuments) return
     if (!doc || galleryImages.length <= 1) return
-    if (!confirm("Удалить это изображение?")) return
+    if (!confirm($t("document.deleteImageConfirm"))) return
     const updated = await deleteDocumentImage(doc._id, filename)
     applyDocumentUpdate(updated)
   }
@@ -408,7 +411,7 @@
       allTags = await getTags()
       tagsError = ""
     } catch (err) {
-      tagsError = err instanceof Error ? err.message : "Не удалось загрузить теги"
+      tagsError = err instanceof Error ? err.message : $t("tags.loadFailed")
     } finally {
       tagsLoading = false
     }
@@ -436,7 +439,7 @@
   async function removeDocumentNow() {
     if (!$canEditDocuments) return
     if (!doc) return
-    if (!confirm("Удалить карточку?")) return
+    if (!confirm($t("document.deleteConfirm"))) return
     await deleteDocument(doc._id)
     push("/")
   }
@@ -458,13 +461,13 @@
 </script>
 
 {#if loading}
-  <div class="page"><p>Загрузка документа...</p></div>
+  <div class="page"><p>{$t("document.loading")}</p></div>
 {:else if error || !doc}
-  <div class="page"><p>{error || "Документ не найден"}</p></div>
+  <div class="page"><p>{error || $t("document.notFound")}</p></div>
 {:else}
   <div class="page document-editor-page">
     <header class="workspace-header panel">
-      <button class="back-btn" on:click={goBack}>← Back</button>
+      <button class="back-btn" on:click={goBack}>← {$t("common.back")}</button>
       <div class="header-center">
         <DocumentHeader
           {doc}
@@ -480,22 +483,22 @@
           }}
         />
         <div class="header-meta-line">
-          <span><strong>Created:</strong> {new Date(doc.created_at).toLocaleString()}</span>
-          <span><strong>Updated:</strong> {new Date((doc as any).updated_at || doc.created_at).toLocaleString()}</span>
+          <span><strong>{$t("common.created")}:</strong> {new Date(doc.created_at).toLocaleString()}</span>
+          <span><strong>{$t("common.updated")}:</strong> {new Date((doc as any).updated_at || doc.created_at).toLocaleString()}</span>
         </div>
       </div>
       <div class="header-actions">
-        <button class="back-btn" on:click={() => filenameEditing = true} disabled={!$canEditDocuments}>Edit</button>
-        <button class="back-btn" on:click={removeDocumentNow} disabled={!$canEditDocuments}>Delete</button>
+        <button class="back-btn" on:click={() => filenameEditing = true} disabled={!$canEditDocuments}>{$t("common.edit")}</button>
+        <button class="back-btn" on:click={removeDocumentNow} disabled={!$canEditDocuments}>{$t("common.delete")}</button>
       </div>
     </header>
 
     <section class="editor-layout">
       <aside class="editor-sidebar">
         <section class="panel folder-path-panel">
-          <strong>Location:</strong>
+          <strong>{$t("document.location")}</strong>
           <div class="path-items">
-            <button class="path-link" on:click={() => openFilesLocation()}>Root</button>
+            <button class="path-link" on:click={() => openFilesLocation()}>{$t("common.root")}</button>
             <span>/</span>
             {#if folderPath.length}
               {#each folderPath as item (item.id)}
@@ -503,14 +506,14 @@
                 <span>/</span>
               {/each}
             {:else}
-              <span>Unsorted</span>
+              <span>{$t("common.unsorted")}</span>
               <span>/</span>
             {/if}
             <span>{doc.display_filename || doc.filename}</span>
           </div>
           <div class="gallery-upload-actions">
-            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-with-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{label("uploadWithRecognition")}</button>
-            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-without-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{label("uploadWithoutRecognition")}</button>
+            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-with-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withRecognition")}</button>
+            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-without-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withoutRecognition")}</button>
           </div>
         </section>
 
@@ -533,7 +536,7 @@
         </div>
 
         <section class="panel files-panel">
-          <h3>Files</h3>
+          <h3>{$t("document.files")}</h3>
           <DocumentFilesSection
             attachments={doc.attachments ?? []}
             canEdit={$canEditDocuments}
@@ -544,7 +547,7 @@
             on:upload={handleAttachmentUpload}
             on:remove={(event) => removeAttachment(event.detail.attachment)}
           />
-          <button class="back-btn" on:click={() => document.getElementById('file-upload')?.click()} disabled={!$canEditDocuments}>Add file</button>
+          <button class="back-btn" on:click={() => document.getElementById('file-upload')?.click()} disabled={!$canEditDocuments}>{$t("document.addFile")}</button>
           <div class="visually-hidden-upload">
             <input id="file-upload" type="file" multiple on:change={(event) => handleAttachmentUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []) } } as CustomEvent<{ files: File[] }>)} />
           </div>
@@ -552,7 +555,7 @@
 
         {#if galleryUploading}
           <div class="panel progress-panel">
-            <p>{galleryUploadMode === "with_ocr" ? label("uploadingWithRecognition") : label("uploadingWithoutRecognition")}... {galleryUploadProgress}%</p>
+            <p>{galleryUploadMode === "with_ocr" ? $t("document.uploadingWithRecognition") : $t("document.uploadingWithoutRecognition")}... {galleryUploadProgress}%</p>
             <div class="progress-wrap"><div class="progress" style={`width:${galleryUploadProgress}%`}></div></div>
           </div>
         {/if}
@@ -567,7 +570,7 @@
       <main class="editor-content">
         <section class="working-block">
           {#if !$canEditDocuments}
-            <p class="hint">Sign in as editor/admin to modify images, tags, fields, files, or OCR text.</p>
+            <p class="hint">{$t("document.readOnlyHint")}</p>
           {/if}
           <div class="document-blocks">
             <!-- Document editor reading order: metadata fields stay in the sidebar,
@@ -583,7 +586,7 @@
               />
             </section>
 
-            <section class="gallery-section" aria-label="Uploaded images">
+            <section class="gallery-section" aria-label={$t("metadata.images")}>
               {#each galleryImages as image}
                 <DocumentImageBlock
                   {image}

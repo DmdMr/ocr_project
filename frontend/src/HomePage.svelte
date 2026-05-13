@@ -4,6 +4,7 @@
     import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
     import TagManager from "./lib/components/TagManager.svelte"
     import { getSystemNetwork, getTags, type SystemNetworkInfo } from "./lib/api"
+    import { t } from "./lib/i18n"
     import { onMount } from "svelte"
     import { push } from 'svelte-spa-router'
     import { canEditDocuments, currentUser, isAdmin, isAuthenticated, logout } from './lib/auth'
@@ -11,7 +12,6 @@
     type ThemeMode = "system" | "light" | "dark"
     let refreshKey = 0
     let themeMode: ThemeMode = "system"
-    let language: "en" | "ru" = "en"
     let viewMode: "grid" | "list" | "files" = "grid"
     let viewModeLoaded = false
     let initialFolderId: string | null = null
@@ -69,9 +69,9 @@
 
         try {
             await navigator.clipboard.writeText(networkInfo.url)
-            networkCopyStatus = "Copied"
+            networkCopyStatus = $t("common.copied")
         } catch {
-            networkCopyStatus = "Copy failed"
+            networkCopyStatus = $t("common.copyFailed")
         }
 
         setTimeout(() => {
@@ -92,19 +92,9 @@
         localStorage.setItem("themeMode", mode)
     }
 
-    function setLanguage(newLanguage: "en" | "ru") {
-        language = newLanguage
-        localStorage.setItem("language", newLanguage)
-        document.documentElement.lang = newLanguage
-    }
-
-    
-
     onMount(() => {
         const savedTheme = (localStorage.getItem("themeMode") as ThemeMode | null) ?? "system"
-        const savedLanguage = (localStorage.getItem("language") as "en" | "ru" | null) ?? "en"
         applyTheme(savedTheme)
-        setLanguage(savedLanguage)
         const saved = localStorage.getItem("viewMode")
         if (saved === "grid" || saved === "list" || saved === "files") {
             viewMode = saved
@@ -142,7 +132,7 @@
     type="button"
     class="sidebar-backdrop"
     class:open={sidebarOpen}
-    aria-label="Закрыть боковую панель"
+    aria-label={$t("common.close")}
     on:click={toggleSidebar}
   ></button>
 
@@ -168,16 +158,16 @@
       </section>
 
       <section class="sidebar-section">
-        <div class="sidebar-title">Local Network Access</div>
+        <div class="sidebar-title">{$t("network.title")}</div>
         <div class="network-panel panel">
           <!-- Electron binds FastAPI to 0.0.0.0; this panel shows the LAN URL
             returned by /api/system/network so nearby devices can open the same
             SQLite-backed OCR workspace in a browser. -->
-          <div class="network-url">{networkInfo?.url ?? "Detecting local address..."}</div>
+          <div class="network-url">{networkInfo?.url ?? $t("network.detecting")}</div>
           <div class:online={networkStatus === "online"} class:offline={networkStatus === "offline"} class="network-status">
-            Status: {networkStatus === "loading" ? "Checking..." : networkStatus === "online" ? "Online" : "Offline"}
+            {$t("network.status")}: {networkStatus === "loading" ? $t("network.checking") : networkStatus === "online" ? $t("network.online") : $t("network.offline")}
           </div>
-          <button type="button" on:click={copyNetworkUrl} disabled={!networkInfo?.url}>Copy</button>
+          <button type="button" on:click={copyNetworkUrl} disabled={!networkInfo?.url}>{$t("common.copy")}</button>
           {#if networkCopyStatus}
             <span class="copy-status">{networkCopyStatus}</span>
           {/if}
@@ -185,16 +175,16 @@
       </section>
 
       <section class="sidebar-section">
-        <div class="sidebar-title">Primary Actions</div>
+        <div class="sidebar-title">{$t("sidebar.primaryActions")}</div>
         {#if $canEditDocuments}
           <Upload embedded on:uploaded={handleUpload} />
         {:else}
-          <div class="panel sign-in-hint">Sign in as editor/admin to upload and edit documents.</div>
+          <div class="panel sign-in-hint">{$t("sidebar.signInHint")}</div>
         {/if}
       </section>
 
       <section class="sidebar-section">
-        <div class="sidebar-title">Tags Block</div>
+        <div class="sidebar-title">{$t("sidebar.tagsBlock")}</div>
         <TagManager
           initialTags={tags}
           canManage={$canEditDocuments}

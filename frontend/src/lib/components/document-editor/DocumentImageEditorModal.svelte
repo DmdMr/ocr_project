@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte"
   import { UPLOADS_URL } from "../../api"
   import type { GalleryImage } from "../../types"
+  import { t } from "../../i18n"
 
   export let image: GalleryImage
   export let saving = false
@@ -122,13 +123,13 @@
 
 <svelte:window on:mousemove={onMouseMove} on:mouseup={onMouseUp} />
 
-<div class="backdrop" role="button" tabindex="0" aria-label="Закрыть редактор изображения" on:click={close} on:keydown={closeOnBackdropKeydown}>
+<div class="backdrop" role="button" tabindex="0" aria-label={$t("imageEditor.close")} on:click={close} on:keydown={closeOnBackdropKeydown}>
   <div class="modal panel" role="dialog" aria-modal="true" tabindex="0" on:click|stopPropagation on:keydown={stopDialogKeydown}>
     <div class="toolbar">
-      <h3>Редактирование: {image.filename}</h3>
+      <h3>{$t("imageEditor.title")}: {image.filename}</h3>
       <div class="tool-buttons">
-        <button class:active={tool === "crop"} on:click={() => tool = "crop"}>Обрезка</button>
-        <button class:active={tool === "rotate"} on:click={() => tool = "rotate"}>Поворот</button>
+        <button class:active={tool === "crop"} on:click={() => tool = "crop"}>{$t("imageEditor.crop")}</button>
+        <button class:active={tool === "rotate"} on:click={() => tool = "rotate"}>{$t("imageEditor.rotate")}</button>
         {#if tool === "rotate"}
           <button on:click={() => nudge(-1)}>↺ 90°</button>
           <button on:click={() => nudge(1)}>↻ 90°</button>
@@ -136,7 +137,7 @@
       </div>
     </div>
 
-    <div class="stage" bind:this={stageEl} role="button" tabindex="0" aria-label="Область кадрирования изображения" on:mousedown={onMouseDown} on:keydown={onStageKeydown}>
+    <div class="stage" bind:this={stageEl} role="button" tabindex="0" aria-label={$t("imageEditor.stage")} on:mousedown={onMouseDown} on:keydown={onStageKeydown}>
       <img bind:this={imageEl} src={imageSrc} alt={image.filename} style={`transform: rotate(${tool === 'rotate' ? previewRotation : 0}deg);`} />
       {#if tool === "crop" && cropRect}
         <div class="crop" style={`left:${cropRect.x}px; top:${cropRect.y}px; width:${cropRect.width}px; height:${cropRect.height}px;`}></div>
@@ -144,8 +145,8 @@
     </div>
 
     <div class="actions">
-      <button class="primary" disabled={saving} on:click={save}>{saving ? "Сохранение..." : "Применить"}</button>
-      <button disabled={saving} on:click={close}>Отмена</button>
+      <button class="primary" disabled={saving} on:click={save}>{saving ? $t("imageEditor.applying") : $t("imageEditor.apply")}</button>
+      <button disabled={saving} on:click={close}>{$t("imageEditor.cancel")}</button>
     </div>
   </div>
 </div>

@@ -1,16 +1,21 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
 
+from backend.app.api.errors import http_exception_handler, unhandled_exception_handler, validation_exception_handler
 from backend.app.api.routes import router
 from backend.app.auth import bootstrap_first_admin
 from backend.app.db.database import activity_logs_collection, documents_collection, folders_collection, sessions_collection, users_collection, init_db
 from backend.app.services.folder_service import ensure_unsorted_folder, ensure_unsorted_indexes
 
 app = FastAPI()
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 raw_origins = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 allow_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]

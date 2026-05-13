@@ -3,6 +3,7 @@
   import { createEventDispatcher } from "svelte"
   import type { CardCustomFieldSetting, Document } from "../../types"
   import { tagHue } from "../../tagColors"
+  import { t } from "../../i18n"
 
   export let doc: Document
   export let customFieldSettings: CardCustomFieldSetting[] = []
@@ -60,7 +61,7 @@
     if (!canEdit || !canCreateFields || newFieldSaving) return
     const trimmedName = newFieldName.trim()
     if (!trimmedName) {
-      newFieldError = "Введите имя поля"
+      newFieldError = $t("metadata.fieldNameRequired")
       await tick()
       newFieldNameInput?.focus()
       return
@@ -82,7 +83,7 @@
       newFieldValue = ""
       newFieldType = "text"
     } catch (error) {
-      newFieldError = error instanceof Error ? error.message : "Не удалось создать поле"
+      newFieldError = error instanceof Error ? error.message : $t("metadata.createFieldError")
     } finally {
       newFieldSaving = false
     }
@@ -100,9 +101,9 @@
 <section class="panel metadata">
   <div class="metadata-block">
     <div class="section-head">
-      <h3>Теги</h3>
+      <h3>{$t("metadata.tags")}</h3>
       {#if canEdit}
-        <button on:click={() => dispatch("manageTags")}>Управлять</button>
+        <button on:click={() => dispatch("manageTags")}>{$t("metadata.manage")}</button>
       {/if}
     </div>
     <div class="tags">
@@ -111,22 +112,22 @@
           <span class="tag tag-colored" style={`--tag-hue: ${tagHue(tag)}`}>{tag}</span>
         {/each}
       {:else}
-        <span class="muted">Нет тегов</span>
+        <span class="muted">{$t("metadata.noTags")}</span>
       {/if}
     </div>
   </div>
 
   <div class="metadata-block">
     <div class="section-head">
-      <h3>Пользовательские поля</h3>
+      <h3>{$t("metadata.customFields")}</h3>
       <div class="field-actions">
         {#if canEdit}
-          <button type="button" on:click={startCustomFieldCreation} disabled={!canCreateFields || creatingField} title={canCreateFields ? "Создать поле" : "Создавать поля может только администратор"}>Add Field</button>
+          <button type="button" on:click={startCustomFieldCreation} disabled={!canCreateFields || creatingField} title={canCreateFields ? $t("metadata.createFieldTitle") : $t("metadata.adminOnlyFieldCreate")}>{$t("metadata.addField")}</button>
         {/if}
         <span class="save-state" data-state={customFieldsStatus}>
-          {#if customFieldsStatus === "saving"}Saving...{/if}
-          {#if customFieldsStatus === "saved"}Saved{/if}
-          {#if customFieldsStatus === "error"}Error{/if}
+          {#if customFieldsStatus === "saving"}{$t("common.saving")}{/if}
+          {#if customFieldsStatus === "saved"}{$t("common.saved")}{/if}
+          {#if customFieldsStatus === "error"}{$t("common.error")}{/if}
         </span>
       </div>
     </div>
@@ -134,30 +135,30 @@
       {#if creatingField}
         <div class="new-field-card">
           <label>
-            <span>Field name</span>
+            <span>{$t("metadata.fieldName")}</span>
             <input
               bind:this={newFieldNameInput}
               bind:value={newFieldName}
               disabled={newFieldSaving}
-              placeholder="New field name"
+              placeholder={$t("metadata.fieldNamePlaceholder")}
               on:keydown={(event) => { if (event.key === "Enter") submitCustomFieldCreation() }}
             />
           </label>
           <label>
-            <span>Type</span>
+            <span>{$t("metadata.fieldType")}</span>
             <select bind:value={newFieldType} disabled={newFieldSaving}>
-              <option value="text">Text</option>
-              <option value="number">Number</option>
-              <option value="people">People</option>
+              <option value="text">text</option>
+              <option value="number">number</option>
+              <option value="people">people</option>
             </select>
           </label>
           <label>
-            <span>Value</span>
+            <span>{$t("metadata.fieldValue")}</span>
             <input
               type={newFieldType === "number" ? "number" : "text"}
               bind:value={newFieldValue}
               disabled={newFieldSaving}
-              placeholder="Optional value"
+              placeholder={$t("metadata.fieldValuePlaceholder")}
               on:keydown={(event) => { if (event.key === "Enter") submitCustomFieldCreation() }}
             />
           </label>
@@ -165,8 +166,8 @@
             <p class="field-error">{newFieldError}</p>
           {/if}
           <div class="new-field-actions">
-            <button type="button" on:click={submitCustomFieldCreation} disabled={newFieldSaving}>{newFieldSaving ? "Saving..." : "Save field"}</button>
-            <button type="button" on:click={cancelCustomFieldCreation} disabled={newFieldSaving}>Cancel</button>
+            <button type="button" on:click={submitCustomFieldCreation} disabled={newFieldSaving}>{newFieldSaving ? $t("common.saving") : $t("metadata.saveField")}</button>
+            <button type="button" on:click={cancelCustomFieldCreation} disabled={newFieldSaving}>{$t("common.cancel")}</button>
           </div>
         </div>
       {/if}
@@ -188,10 +189,10 @@
 
   <div class="metadata-block">
     <div class="section-head">
-      <h3>Изображения</h3>
+      <h3>{$t("metadata.images")}</h3>
       {#if canEdit}
         <label class="upload-btn">
-          Добавить изображения
+          {$t("metadata.addImages")}
           <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={emitSelectedImages} />
         </label>
       {/if}

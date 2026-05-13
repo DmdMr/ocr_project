@@ -1,4 +1,6 @@
 // api.ts
+import { get } from "svelte/store"
+import { t } from "./i18n"
 //const BACKEND_HOST = window.location.hostname; // automatically matches localhost or LAN IP
 //const API_URL = `http://${BACKEND_HOST}:8000/api`;
 //console.log(BACKEND_HOST);
@@ -17,11 +19,91 @@ export const UPLOADS_URL = "/uploads"
 
 console.log(UPLOADS_URL);
 
+export type ApiErrorCode =
+    | "OCR_FAILURE"
+    | "INVALID_IMAGE"
+    | "FILE_TOO_LARGE"
+    | "NETWORK_ERROR"
+    | "AUTH_REQUIRED"
+    | "INVALID_CREDENTIALS"
+    | "ACCESS_DENIED"
+    | "VALIDATION_ERROR"
+    | "NOT_FOUND"
+    | "BAD_REQUEST"
+    | "DUPLICATE_FILE"
+    | "INTERNAL_ERROR"
+
+export interface SkippedFileError {
+    filename?: string
+    error_code?: ApiErrorCode
+}
+
+export class ApiError extends Error {
+    errorCode: ApiErrorCode
+    status?: number
+
+    constructor(errorCode: ApiErrorCode, status?: number) {
+        super(translateApiError(errorCode))
+        this.name = "ApiError"
+        this.errorCode = errorCode
+        this.status = status
+    }
+}
+
+function translateApiError(errorCode: ApiErrorCode) {
+    return get(t)(`errors.${errorCode}`)
+}
+
+function fallbackErrorCode(status?: number): ApiErrorCode {
+    if (status === 401) return "AUTH_REQUIRED"
+    if (status === 403) return "ACCESS_DENIED"
+    if (status === 404) return "NOT_FOUND"
+    if (status === 413) return "FILE_TOO_LARGE"
+    if (status === 422) return "VALIDATION_ERROR"
+    if (status && status >= 500) return "INTERNAL_ERROR"
+    return "BAD_REQUEST"
+}
+
+export function formatSkippedFileError(item: SkippedFileError | string) {
+    if (typeof item === "string") return get(t)("errors.BAD_REQUEST")
+    const filename = item.filename?.trim()
+    const errorCode = item.error_code && get(t)(`errors.${item.error_code}`) !== `errors.${item.error_code}`
+        ? item.error_code
+        : "BAD_REQUEST"
+    const message = translateApiError(errorCode)
+    return filename ? `${filename}: ${message}` : message
+}
+
+function parseApiErrorCode(payload: any, status?: number): ApiErrorCode {
+    const detail = payload?.detail
+    const errorCode = payload?.error_code ?? (typeof detail === "object" ? detail?.error_code : undefined)
+    if (typeof errorCode === "string" && get(t)(`errors.${errorCode}`) !== `errors.${errorCode}`) {
+        return errorCode as ApiErrorCode
+    }
+    return fallbackErrorCode(status)
+}
+
+async function parseJson(response: Response) {
+    return await response.json().catch(() => ({}))
+}
+
+async function parseJsonOrThrow(response: Response) {
+    const data = await parseJson(response)
+    if (!response.ok) {
+        throw new ApiError(parseApiErrorCode(data, response.status), response.status)
+    }
+    return data
+}
+
 async function apiFetch(url: string, init: RequestInit = {}) {
-    return fetch(url, {
-        credentials: "include",
-        ...init
-    })
+    try {
+        return await fetch(url, {
+            credentials: "include",
+            ...init
+        })
+    } catch (error) {
+        throw new ApiError("NETWORK_ERROR")
+    }
 }
 
 export interface CardFieldDefinition {
@@ -43,11 +125,7 @@ export async function uploadImage(file: File, performOcr = true) {
         body: formData
     })
 
-    if (!res.ok) {
-        throw new Error("Failed to upload image")
-    }
-
-    return await res.json()
+    return await parseJsonOrThrow(res)
 }
 
 export async function uploadImagesToDocument(
@@ -85,11 +163,7 @@ async function uploadFormWithProgress(
 ) {
     if (!onProgress) {
         const response = await apiFetch(url, { method: "POST", body: formData })
-        const data = await response.json().catch(() => ({}))
-        if (!response.ok) {
-            throw new Error(data.detail || "Failed to upload files")
-        }
-        return data
+        return await parseJsonOrThrow(response)
     }
 
     return await new Promise<any>((resolve, reject) => {
@@ -116,39 +190,32 @@ async function uploadFormWithProgress(
                 resolve(data)
                 return
             }
-            reject(new Error(data.detail || "Failed to upload files"))
+            reject(new ApiError(parseApiErrorCode(data, xhr.status), xhr.status))
         }
 
-        xhr.onerror = () => reject(new Error("Network error during upload"))
+        xhr.onerror = () => reject(new ApiError("NETWORK_ERROR"))
         xhr.send(formData)
     })
 }
 
 export async function getDocuments() {
     const res = await apiFetch(`${API_URL}/documents`)
-    if (!res.ok) throw new Error("Failed to fetch documents")
-    return await res.json()
+    return await parseJsonOrThrow(res)
 }
 
 export async function getDocumentById(id: string) {
     const res = await apiFetch(`${API_URL}/documents/${encodeURIComponent(id)}`)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch document")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function getFolderTree() {
     const res = await apiFetch(`${API_URL}/folders/tree`)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch folder tree")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function getFolderContents(folderId: string) {
     const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}/contents`)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch folder contents")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function createFolder(name: string, parentId?: string | null) {
@@ -157,9 +224,7 @@ export async function createFolder(name: string, parentId?: string | null) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, parent_id: parentId ?? null })
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to create folder")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function renameFolder(folderId: string, name: string) {
@@ -168,16 +233,12 @@ export async function renameFolder(folderId: string, name: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name })
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to rename folder")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function deleteFolderById(folderId: string) {
     const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}`, { method: "DELETE" })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to delete folder")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function moveFolder(folderId: string, targetParentId?: string | null) {
@@ -186,9 +247,7 @@ export async function moveFolder(folderId: string, targetParentId?: string | nul
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_parent_id: targetParentId ?? null })
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to move folder")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function moveDocumentToFolder(documentId: string, targetFolderId: string) {
@@ -197,23 +256,17 @@ export async function moveDocumentToFolder(documentId: string, targetFolderId: s
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_folder_id: targetFolderId })
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to move document")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function getFolderPath(folderId: string) {
     const res = await apiFetch(`${API_URL}/folders/${encodeURIComponent(folderId)}/path`)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch folder path")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function getDocumentPath(documentId: string) {
     const res = await apiFetch(`${API_URL}/documents/${encodeURIComponent(documentId)}/path`)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch document path")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function deleteDocument(id: string) {
@@ -221,32 +274,26 @@ export async function deleteDocument(id: string) {
         method: "DELETE"
     })
 
-    if (!res.ok) throw new Error("Failed to delete document")
-    return await res.json().catch(() => ({}))
+    return await parseJsonOrThrow(res)
 }
 
 export async function getArchivedDocuments() {
     const res = await apiFetch(`${API_URL}/documents/archived`)
-    if (!res.ok) throw new Error("Failed to fetch archived documents")
-    return await res.json()
+    return await parseJsonOrThrow(res)
 }
 
 export async function restoreArchivedDocument(id: string) {
     const res = await apiFetch(`${API_URL}/documents/${id}/restore`, {
         method: "POST"
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to restore document")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function permanentlyDeleteArchivedDocument(id: string) {
     const res = await apiFetch(`${API_URL}/documents/${id}/permanent`, {
         method: "DELETE"
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to permanently delete document")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function bulkRestoreArchivedDocuments(ids: string[]) {
@@ -255,9 +302,7 @@ export async function bulkRestoreArchivedDocuments(ids: string[]) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids })
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to restore documents")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function bulkPermanentlyDeleteArchivedDocuments(ids: string[]) {
@@ -266,9 +311,7 @@ export async function bulkPermanentlyDeleteArchivedDocuments(ids: string[]) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids })
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail || "Failed to permanently delete documents")
-    return data
+    return await parseJsonOrThrow(res)
 }
 
 export async function updateDocument(id: string, data: any) {
@@ -280,20 +323,12 @@ export async function updateDocument(id: string, data: any) {
         body: JSON.stringify(data)
     })
 
-    if (!response.ok) {
-        throw new Error("Failed to update document")
-    }
-
-    return response.json()
+    return await parseJsonOrThrow(response)
 }
 
 export async function getCardFields() {
     const response = await apiFetch(`${API_URL}/settings/fields`)
-    const data: CardFieldDefinition[] = await response.json().catch(() => [])
-    if (!response.ok) {
-        throw new Error("Failed to fetch custom fields")
-    }
-    return data
+    return (await parseJsonOrThrow(response)) as CardFieldDefinition[]
 }
 
 export async function getSettings() {
@@ -309,22 +344,14 @@ export async function createCardField(name: string, type: "text" | "number" | "p
         },
         body: JSON.stringify({ name, type })
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) {
-        throw new Error(data.detail || "Failed to create field")
-    }
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function deleteCardField(name: string) {
     const response = await apiFetch(`${API_URL}/settings/fields/${encodeURIComponent(name)}`, {
         method: "DELETE"
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) {
-        throw new Error(data.detail || "Failed to delete field")
-    }
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function updateDocumentCustomFields(id: string, customFields: Record<string, string | number | string[] | null>) {
@@ -335,11 +362,7 @@ export async function updateDocumentCustomFields(id: string, customFields: Recor
         },
         body: JSON.stringify({ custom_fields: customFields })
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) {
-        throw new Error(data.detail || "Failed to update custom fields")
-    }
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 
@@ -349,8 +372,7 @@ export async function setDocumentTags(id: string, tags: string[]) {
 
 export async function searchDocuments(q: string) {
     const res = await apiFetch(`${API_URL}/search?q=${encodeURIComponent(q)}`)
-    if (!res.ok) throw new Error("Search request failed")
-    return await res.json()
+    return await parseJsonOrThrow(res)
 }
 
 export function normalizeTag(tag: string) {
@@ -369,11 +391,7 @@ export function tagExists(tags: string[], tag: string) {
 
 export async function getTags(): Promise<string[]> {
     const response = await apiFetch(`${API_URL}/tags`)
-    if (!response.ok) {
-        throw new Error("Failed to fetch tags")
-    }
-
-    const data = await response.json()
+    const data = await parseJsonOrThrow(response)
     return data.tags ?? []
 }
 
@@ -388,9 +406,7 @@ export interface SystemNetworkInfo {
 
 export async function getSystemNetwork(): Promise<SystemNetworkInfo> {
     const response = await apiFetch(`${API_URL}/system/network`)
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to fetch network info")
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function createTag(tag: string) {
@@ -402,13 +418,7 @@ export async function createTag(tag: string) {
         body: JSON.stringify({ tag })
     })
 
-    const payload = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-        throw new Error(payload.detail || "Failed to create tag")
-    }
-
-    return payload
+    return await parseJsonOrThrow(response)
 }
 
 export async function deleteTag(tag: string) {
@@ -416,13 +426,7 @@ export async function deleteTag(tag: string) {
         method: "DELETE"
     })
 
-    const payload = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-        throw new Error(payload.detail || "Failed to delete tag")
-    }
-
-    return payload
+    return await parseJsonOrThrow(response)
 }
 
 
@@ -447,13 +451,7 @@ export async function editDocumentImage(id: string, payload: ImageEditPayload) {
         body: JSON.stringify(payload)
     })
 
-    const data = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-        throw new Error(data.detail || "Failed to edit image")
-    }
-
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function deleteDocumentAttachment(id: string, attachmentFilename: string) {
@@ -461,13 +459,7 @@ export async function deleteDocumentAttachment(id: string, attachmentFilename: s
         method: "DELETE"
     })
 
-    const data = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-        throw new Error(data.detail || "Failed to delete attachment")
-    }
-
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function deleteDocumentImage(id: string, imageFilename: string) {
@@ -475,13 +467,7 @@ export async function deleteDocumentImage(id: string, imageFilename: string) {
         method: "DELETE"
     })
 
-    const data = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-        throw new Error(data.detail || "Failed to delete image")
-    }
-
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 
@@ -501,9 +487,7 @@ export async function register(username: string, password: string): Promise<Auth
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Не удалось зарегистрироваться")
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function login(username: string, password: string): Promise<AuthUser> {
@@ -512,22 +496,18 @@ export async function login(username: string, password: string): Promise<AuthUse
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Не удалось войти")
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function logout() {
     const response = await apiFetch(`${API_URL}/auth/logout`, { method: "POST" })
-    if (!response.ok) throw new Error("Failed to logout")
+    if (!response.ok) await parseJsonOrThrow(response)
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
     const response = await apiFetch(`${API_URL}/auth/me`)
     if (response.status === 401) return null
-    const data = await response.json().catch(() => null)
-    if (!response.ok) throw new Error("Failed to load current user")
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export interface AdminUserPayload {
@@ -554,8 +534,7 @@ export interface ActivityLogEntry {
 
 export async function getUsers(): Promise<AuthUser[]> {
     const response = await apiFetch(`${API_URL}/users`)
-    const data = await response.json().catch(() => ({ users: [] }))
-    if (!response.ok) throw new Error(data.detail || "Failed to fetch users")
+    const data = await parseJsonOrThrow(response)
     return data.users ?? []
 }
 
@@ -565,9 +544,7 @@ export async function createUserByAdmin(payload: AdminUserPayload): Promise<Auth
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to create user")
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function updateUserByAdmin(userId: string, payload: AdminUserUpdatePayload): Promise<AuthUser> {
@@ -576,9 +553,7 @@ export async function updateUserByAdmin(userId: string, payload: AdminUserUpdate
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to update user")
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function resetUserPasswordByAdmin(userId: string, newPassword: string) {
@@ -587,14 +562,11 @@ export async function resetUserPasswordByAdmin(userId: string, newPassword: stri
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ new_password: newPassword })
     })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.detail || "Failed to reset password")
-    return data
+    return await parseJsonOrThrow(response)
 }
 
 export async function getActivityLogs(limit = 100): Promise<ActivityLogEntry[]> {
     const response = await apiFetch(`${API_URL}/activity-logs?limit=${encodeURIComponent(String(limit))}`)
-    const data = await response.json().catch(() => ({ logs: [] }))
-    if (!response.ok) throw new Error(data.detail || "Failed to fetch activity logs")
+    const data = await parseJsonOrThrow(response)
     return data.logs ?? []
 }

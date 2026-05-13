@@ -3,6 +3,7 @@
     import type { Document } from "../types"
     import { tagHue } from "../tagColors"
     import { UPLOADS_URL } from "../api"
+    import { t } from "../i18n"
 
     export let doc: Document
     export let search = ""
@@ -109,7 +110,7 @@
         <button
             class="select-checkbox"
             class:visible={selected}
-            aria-label="Выбрать карточку"
+            aria-label={$t("archive.selected")}
             on:click={handleCheckboxClick}
         >
             {#if selected}{/if}

@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte"
   import { createTag, getTags, deleteTag, isValidTagName, normalizeTag, tagExists } from "../api"
   import { tagHue } from "../tagColors"
+  import { t } from "../i18n"
 
   export let initialTags: string[] = []
   export let canManage = false
@@ -32,17 +33,17 @@
     // Editors and admins can modify the global tag list; viewers still use this
     // component in read-only mode for filtering/selecting existing tags.
     if (!normalized) {
-      createError = "Введите тег"
+      createError = $t("tags.required")
       return
     }
 
     if (!isValidTagName(normalized)) {
-      createError = "Тег может содержать буквы, цифры, пробелы, _, - и ."
+      createError = $t("tags.invalid")
       return
     }
 
     if (tagExists(tags, normalized)) {
-      createError = "Тег уже существует"
+      createError = $t("tags.duplicate")
       return
     }
 
@@ -66,7 +67,7 @@
         return
       }
 
-      createError = error instanceof Error ? error.message : "Не удалось создать тег"
+      createError = error instanceof Error ? error.message : $t("tags.createFailed")
     }
   }
 
@@ -86,7 +87,7 @@
     if (!canManage) return
     const normalized = normalizeTag(tag)
     if (!isValidTagName(normalized)) {
-      createError = "Некорректный тег"
+      createError = $t("tags.invalidExisting")
       return
     }
 
@@ -104,7 +105,7 @@
       dispatch("tagsChanged", { tags })
     } catch (error) {
       console.error("Не удалось удалить тег", error)
-      createError = error instanceof Error ? error.message : "Не удалось удалить тег"
+      createError = error instanceof Error ? error.message : $t("tags.deleteFailed")
     }
   }
 
@@ -118,12 +119,12 @@
       <input
         type="text"
         class="my-input"
-        placeholder="Создать тег"
+        placeholder={$t("tags.createPlaceholder")}
         bind:value={createInput}
         on:keydown={handleCreateKeydown}
       />
 
-      <button class="primary" on:click={submitTag}>Создать тег</button> 
+      <button class="primary" on:click={submitTag}>{$t("tags.create")}</button>
     </div>
   {/if}
 
@@ -131,13 +132,13 @@
     <input
       class="my-input"
       type="text"
-      placeholder="Поиск тегов"
+      placeholder={$t("tags.searchPlaceholder")}
       bind:value={searchInput}
     />
 
     {#if canManage}
       <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
-        {deleteMode ? "Готово" : "Удалить"}
+        {deleteMode ? $t("tags.done") : $t("tags.deleteMode")}
       </button>
     {/if}
   </div>
@@ -150,7 +151,7 @@
 
   <div class="tags-list">
     {#if filteredTags.length === 0}
-      <p class="empty">Теги не найдены</p>
+      <p class="empty">{$t("tags.notFound")}</p>
     {:else}
       {#each filteredTags as tag}
         <div class:deleting={deleteMode} class="tag-chip-row">

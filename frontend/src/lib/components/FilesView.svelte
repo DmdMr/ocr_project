@@ -11,6 +11,7 @@
     renameFolder
   } from "../api"
   import type { Document, FolderNode } from "../types"
+  import { t } from "../i18n"
 
   export let canEdit = false
   export let initialFolderId: string | null = null
@@ -109,12 +110,12 @@
 
   function folderPath(folderId: string): FolderPathNode[] {
     const path: FolderPathNode[] = []
-    let current = foldersById[folderId]
+    let current: FolderNode | undefined = foldersById[folderId]
     const visited = new Set<string>()
     while (current && !visited.has(current.id)) {
       visited.add(current.id)
       path.push({ id: current.id, name: current.name })
-      current = current.parent_id ? foldersById[current.parent_id] : null
+      current = current.parent_id ? foldersById[current.parent_id] : undefined
     }
     return path.reverse()
   }
@@ -148,7 +149,7 @@
   }
 
   function expandAncestors(folderId: string) {
-    let current = foldersById[folderId]
+    let current: FolderNode | undefined = foldersById[folderId]
     while (current?.parent_id) {
       expanded.add(current.parent_id)
       current = foldersById[current.parent_id]
@@ -353,7 +354,7 @@
         <div class="inline-editor root-create">
           <input bind:value={createDraft} placeholder="Folder name" on:keydown={(e) => e.key === "Enter" && submitCreate()} />
           <button on:click={submitCreate}>Create</button>
-          <button class="secondary" on:click={() => creatingUnderParentId = "__cancel__"}>Cancel</button>
+          <button class="secondary" on:click={() => creatingUnderParentId = "__cancel__"}>{$t("files.cancel")}</button>
         </div>
       {/if}
 
@@ -389,7 +390,7 @@
             <div class="inline-editor child" style={`--depth:${row.depth + 1};`}>
               <input bind:value={createDraft} placeholder="Folder name" on:keydown={(e) => e.key === "Enter" && submitCreate()} />
               <button on:click={submitCreate}>Create</button>
-              <button class="secondary" on:click={() => creatingUnderParentId = "__cancel__"}>Cancel</button>
+              <button class="secondary" on:click={() => creatingUnderParentId = "__cancel__"}>{$t("files.cancel")}</button>
             </div>
           {/if}
         {:else}
@@ -409,7 +410,7 @@
 
     {#if selectedFolderId}
       <div class="current-contents">
-        <h4>Current folder contents</h4>
+        <h4>{$t("files.currentContents")}</h4>
         {#if currentFolders.length}
           {#each currentFolders as folder (folder.id)}
             <div class="content-row">
@@ -428,25 +429,25 @@
     {/if}
 
     {#if selectedFolderId && loadedFolderContents.has(selectedFolderId) && !currentFolders.length && !currentDocuments.length}
-      <p class="muted">This folder is empty.</p>
+      <p class="muted">{$t("files.folderEmpty")}</p>
     {/if}
   {/if}
 
   {#if moveState}
-    <div class="move-modal-backdrop" role="button" tabindex="0" aria-label="Close move dialog" on:click={closeMoveDialog} on:keydown={closeMoveDialogOnKeydown}>
+    <div class="move-modal-backdrop" role="button" tabindex="0" aria-label={$t("common.close")} on:click={closeMoveDialog} on:keydown={closeMoveDialogOnKeydown}>
       <div class="move-modal panel" role="dialog" aria-modal="true" tabindex="0" on:click|stopPropagation on:keydown={keepMoveDialogOpenOnKeydown}>
-        <h4>Move: {moveState.name}</h4>
+        <h4>{$t("files.moveTitle")}: {moveState.name}</h4>
         <select bind:value={moveTargetFolderId}>
           {#if moveState.type === "folder"}
-            <option value="">Top level</option>
+            <option value="">{$t("files.topLevel")}</option>
           {/if}
           {#each folderOptions(moveState.type === "folder" ? moveState.id : undefined) as folder (folder.id)}
             <option value={folder.id}>{folder.name}</option>
           {/each}
         </select>
         <div class="move-actions">
-          <button on:click={submitMove}>Move</button>
-          <button class="secondary" on:click={closeMoveDialog}>Cancel</button>
+          <button on:click={submitMove}>{$t("files.move")}</button>
+          <button class="secondary" on:click={closeMoveDialog}>{$t("files.cancel")}</button>
         </div>
       </div>
     </div>
