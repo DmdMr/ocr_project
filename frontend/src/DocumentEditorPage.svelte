@@ -7,6 +7,7 @@
     deleteDocumentAttachment,
     deleteDocumentImage,
     editDocumentImage,
+    createCardField,
     getCardFields,
     getDocumentById,
     getDocumentPath,
@@ -25,7 +26,7 @@
   import DocumentImageBlock from "./lib/components/document-editor/DocumentImageBlock.svelte"
   import DocumentFilesSection from "./lib/components/document-editor/DocumentFilesSection.svelte"
   import DocumentImageEditorModal from "./lib/components/document-editor/DocumentImageEditorModal.svelte"
-  import { canEditDocuments } from "./lib/auth"
+  import { canEditDocuments, isAdmin } from "./lib/auth"
 
   export let params: { id: string }
 
@@ -48,6 +49,7 @@
   let galleryUploadProgress = 0
   let galleryUploadSuccess = ""
   let galleryUploadError = ""
+  let galleryUploadMode: "with_ocr" | "without_ocr" = "with_ocr"
 
   let customFieldSettings: CardCustomFieldSetting[] = []
   let customFieldDraft: Record<string, string | number | string[] | null> = {}
@@ -71,6 +73,35 @@
   $: galleryImages = (doc?.gallery_images ?? []) as GalleryImage[]
   $: selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0]
   $: selectedImageSrc = selectedImage ? `${UPLOADS_URL}/${selectedImage.filename}?v=${encodeURIComponent(selectedImage.image_version ?? "")}` : ""
+
+  const editorLabels = {
+    en: {
+      uploadWithRecognition: "Upload with recognition",
+      uploadWithoutRecognition: "Upload without recognition",
+      uploadingWithRecognition: "Uploading with recognition",
+      uploadingWithoutRecognition: "Uploading without recognition",
+      uploadedWithRecognition: "Images added with recognition",
+      uploadedWithoutRecognition: "Images added without recognition",
+      uploadError: "Failed to upload images"
+    },
+    ru: {
+      uploadWithRecognition: "Загрузить с распознаванием",
+      uploadWithoutRecognition: "Загрузить без распознавания",
+      uploadingWithRecognition: "Загрузка с распознаванием",
+      uploadingWithoutRecognition: "Загрузка без распознавания",
+      uploadedWithRecognition: "Изображения добавлены с распознаванием",
+      uploadedWithoutRecognition: "Изображения добавлены без распознавания",
+      uploadError: "Не удалось загрузить изображения"
+    }
+  }
+
+  function editorLanguage() {
+    return localStorage.getItem("language") === "ru" ? "ru" : "en"
+  }
+
+  function label(key: keyof typeof editorLabels.en) {
+    return editorLabels[editorLanguage()][key]
+  }
 
   onMount(async () => {
     await loadDocument()
@@ -202,6 +233,44 @@
     }
   }
 
+  async function createDocumentEditorField(payload: { name: string; value: string; type?: "text" | "number" | "people" }) {
+    if (!$canEditDocuments || !$isAdmin) {
+      throw new Error("Only administrators can create custom fields")
+    }
+    if (!doc) return
+
+    const requestedName = payload.name.trim()
+    const fieldType = payload.type ?? "text"
+    if (!requestedName) {
+      throw new Error("Field name is required")
+    }
+
+    // Field creation reuses the existing settings API used by the table view.
+    // The backend registers the field definition and seeds every document with
+    // the default value, keeping the current custom_fields database structure.
+    const created = await createCardField(requestedName, fieldType)
+    const createdField = created.field ?? { name: requestedName.toLowerCase(), type: fieldType }
+    const fieldName = createdField.name
+
+    const nextDraft = {
+      ...customFieldDraft,
+      [fieldName]: normalizeFieldValue(createdField.type, payload.value)
+    }
+
+    customFieldSettings = [...customFieldSettings, createdField]
+    customFieldDraft = nextDraft
+    customFieldsStatus = "saving"
+
+    // Persist the new field's value on the current document immediately after
+    // the global field definition exists. Existing document save behavior stays
+    // unchanged because updateDocumentCustomFields already handles custom_fields.
+    const updated = await updateDocumentCustomFields(doc._id, nextDraft)
+    applyDocumentUpdate(updated)
+    changedCustomFields = new Set<string>()
+    customFieldsStatus = "saved"
+    scheduleSavedStateClear()
+  }
+
   async function handleAttachmentUpload(event: CustomEvent<{ files: File[] }>) {
     if (!$canEditDocuments) return
     if (!doc) return
@@ -231,22 +300,27 @@
     }
   }
 
-  async function handleGalleryUpload(event: CustomEvent<{ files: File[] }>) {
+  async function handleGalleryUpload(event: CustomEvent<{ files: File[]; performOcr?: boolean }>) {
     if (!$canEditDocuments) return
     if (!doc) return
     const files = event.detail.files ?? []
     if (!files.length) return
+    const performOcr = event.detail.performOcr ?? true
+    galleryUploadMode = performOcr ? "with_ocr" : "without_ocr"
     galleryUploadSuccess = ""
     galleryUploading = true
     galleryUploadProgress = 0
     galleryUploadError = ""
 
     try {
-      const result = await uploadImagesToDocument(doc._id, files, (percent) => galleryUploadProgress = percent)
+      // Reuse the same gallery upload endpoint; perform_ocr=false stores images
+      // with empty OCR-compatible fields and leaves existing recognized text unchanged.
+      const result = await uploadImagesToDocument(doc._id, files, (percent) => galleryUploadProgress = percent, performOcr)
       if (result.document) applyDocumentUpdate(result.document)
-      galleryUploadSuccess = `Изображения добавлены: ${result.added_count ?? files.length}`
+      const message = performOcr ? label("uploadedWithRecognition") : label("uploadedWithoutRecognition")
+      galleryUploadSuccess = `${message}: ${result.added_count ?? files.length}`
     } catch (err) {
-      galleryUploadError = err instanceof Error ? err.message : "Не удалось загрузить изображения"
+      galleryUploadError = err instanceof Error ? err.message : label("uploadError")
     } finally {
       galleryUploading = false
     }
@@ -434,7 +508,10 @@
             {/if}
             <span>{doc.display_filename || doc.filename}</span>
           </div>
-          <button class="back-btn" on:click={() => document.getElementById('gallery-upload')?.click()} disabled={!$canEditDocuments}>Add image</button>
+          <div class="gallery-upload-actions">
+            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-with-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{label("uploadWithRecognition")}</button>
+            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-without-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{label("uploadWithoutRecognition")}</button>
+          </div>
         </section>
 
         <DocumentMetadataSection
@@ -443,13 +520,16 @@
           {customFieldSettings}
           {customFieldDraft}
           {customFieldsStatus}
+          canCreateFields={$isAdmin}
+          onCreateCustomField={createDocumentEditorField}
           on:customFieldInput={(event) => onCustomFieldInput(event.detail.fieldName, event.detail.value, event.detail.saveNow ?? false)}
           on:manageTags={() => tagPickerOpen = true}
           on:deleteDoc={removeDocumentNow}
-          on:addImages={handleGalleryUpload}
+          on:addImages={(event) => handleGalleryUpload({ detail: { files: event.detail.files, performOcr: true } } as CustomEvent<{ files: File[]; performOcr?: boolean }>)}
         />
         <div class="visually-hidden-upload">
-          <input id="gallery-upload" type="file" accept="image/*" multiple on:change={(event) => handleGalleryUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []) } } as CustomEvent<{ files: File[] }>)} />
+          <input id="gallery-upload-with-ocr" type="file" accept="image/*" multiple on:change={(event) => { handleGalleryUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []), performOcr: true } } as CustomEvent<{ files: File[]; performOcr?: boolean }>); (event.currentTarget as HTMLInputElement).value = "" }} />
+          <input id="gallery-upload-without-ocr" type="file" accept="image/*" multiple on:change={(event) => { handleGalleryUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []), performOcr: false } } as CustomEvent<{ files: File[]; performOcr?: boolean }>); (event.currentTarget as HTMLInputElement).value = "" }} />
         </div>
 
         <section class="panel files-panel">
@@ -472,7 +552,7 @@
 
         {#if galleryUploading}
           <div class="panel progress-panel">
-            <p>Uploading images... {galleryUploadProgress}%</p>
+            <p>{galleryUploadMode === "with_ocr" ? label("uploadingWithRecognition") : label("uploadingWithoutRecognition")}... {galleryUploadProgress}%</p>
             <div class="progress-wrap"><div class="progress" style={`width:${galleryUploadProgress}%`}></div></div>
           </div>
         {/if}
@@ -490,17 +570,9 @@
             <p class="hint">Sign in as editor/admin to modify images, tags, fields, files, or OCR text.</p>
           {/if}
           <div class="document-blocks">
-            {#each galleryImages as image}
-              <DocumentImageBlock
-                {image}
-                canEdit={$canEditDocuments}
-                canDelete={galleryImages.length > 1}
-                on:open={(event) => openImage(event.detail.filename)}
-                on:delete={(event) => removeImage(event.detail.filename)}
-                on:edit={(event) => openImageEditor(event.detail.filename)}
-              />
-            {/each}
-
+            <!-- Document editor reading order: metadata fields stay in the sidebar,
+              then OCR text is shown before gallery images so users can read notes
+              without scrolling past large uploads first. -->
             <section class="ocr-card">
               <DocumentContentEditor
                 bind:value={editedText}
@@ -509,6 +581,19 @@
                 onToggleEdit={() => editing = !editing}
                 onSave={saveText}
               />
+            </section>
+
+            <section class="gallery-section" aria-label="Uploaded images">
+              {#each galleryImages as image}
+                <DocumentImageBlock
+                  {image}
+                  canEdit={$canEditDocuments}
+                  canDelete={galleryImages.length > 1}
+                  on:open={(event) => openImage(event.detail.filename)}
+                  on:delete={(event) => removeImage(event.detail.filename)}
+                  on:edit={(event) => openImageEditor(event.detail.filename)}
+                />
+              {/each}
             </section>
           </div>
         </section>
@@ -597,11 +682,11 @@
   .editor-layout { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: var(--editor-gap-md); align-items: start; }
   .editor-sidebar { display: flex; flex-direction: column; gap: var(--editor-gap-sm); }
   .editor-content { display: flex; flex-direction: column; gap: var(--editor-gap-md); }
-  .ocr-panel { min-height: 0; max-height: 72vh; overflow: auto; padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .document-blocks, .gallery-section { display: grid; gap: var(--editor-gap-md); }
   .folder-path-panel { padding: var(--editor-panel-padding); display: grid; gap: var(--editor-gap-sm); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .path-items { display: flex; gap: var(--editor-gap-sm); flex-wrap: wrap; align-items: center; }
   .path-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--text); }
-  .images-section { padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
+  .gallery-upload-actions { display: grid; gap: var(--editor-gap-sm); }
   .files-panel { display: grid; gap: var(--editor-gap-sm); padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .files-panel h3 { margin: 0; }
   .visually-hidden-upload { display: none; }

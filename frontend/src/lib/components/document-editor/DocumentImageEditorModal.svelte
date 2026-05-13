@@ -45,6 +45,12 @@
     }
   }
 
+  function onStageKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      close()
+    }
+  }
+
   function onMouseDown(event: MouseEvent) {
     if (tool !== "crop") return
     event.preventDefault()
@@ -69,6 +75,24 @@
 
   function onMouseUp() {
     isDrawing = false
+  }
+
+  function close() {
+    dispatch("close")
+  }
+
+  function closeOnBackdropKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape" || event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      close()
+    }
+  }
+
+  function stopDialogKeydown(event: KeyboardEvent) {
+    event.stopPropagation()
+    if (event.key === "Escape") {
+      close()
+    }
   }
 
   function save() {
@@ -98,8 +122,8 @@
 
 <svelte:window on:mousemove={onMouseMove} on:mouseup={onMouseUp} />
 
-<div class="backdrop" on:click={() => dispatch("close")}> 
-  <div class="modal panel" on:click|stopPropagation>
+<div class="backdrop" role="button" tabindex="0" aria-label="Закрыть редактор изображения" on:click={close} on:keydown={closeOnBackdropKeydown}>
+  <div class="modal panel" role="dialog" aria-modal="true" tabindex="0" on:click|stopPropagation on:keydown={stopDialogKeydown}>
     <div class="toolbar">
       <h3>Редактирование: {image.filename}</h3>
       <div class="tool-buttons">
@@ -112,7 +136,7 @@
       </div>
     </div>
 
-    <div class="stage" bind:this={stageEl} on:mousedown={onMouseDown}>
+    <div class="stage" bind:this={stageEl} role="button" tabindex="0" aria-label="Область кадрирования изображения" on:mousedown={onMouseDown} on:keydown={onStageKeydown}>
       <img bind:this={imageEl} src={imageSrc} alt={image.filename} style={`transform: rotate(${tool === 'rotate' ? previewRotation : 0}deg);`} />
       {#if tool === "crop" && cropRect}
         <div class="crop" style={`left:${cropRect.x}px; top:${cropRect.y}px; width:${cropRect.width}px; height:${cropRect.height}px;`}></div>
@@ -121,7 +145,7 @@
 
     <div class="actions">
       <button class="primary" disabled={saving} on:click={save}>{saving ? "Сохранение..." : "Применить"}</button>
-      <button disabled={saving} on:click={() => dispatch("close")}>Отмена</button>
+      <button disabled={saving} on:click={close}>Отмена</button>
     </div>
   </div>
 </div>

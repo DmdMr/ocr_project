@@ -3,7 +3,7 @@
     import DocumentList from "./lib/components/DocumentList.svelte"
     import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
     import TagManager from "./lib/components/TagManager.svelte"
-    import { getTags } from "./lib/api"
+    import { getSystemNetwork, getTags, type SystemNetworkInfo } from "./lib/api"
     import { onMount } from "svelte"
     import { push } from 'svelte-spa-router'
     import { canEditDocuments, currentUser, isAdmin, isAuthenticated, logout } from './lib/auth'
@@ -21,6 +21,9 @@
     let sidebarStateLoaded = false
     let tags: string[] = []
     let activeTag: string | null = null
+    let networkInfo: SystemNetworkInfo | null = null
+    let networkStatus: "loading" | "online" | "offline" = "loading"
+    let networkCopyStatus = ""
 
 
     onMount(() => {
@@ -39,6 +42,16 @@
         }
     })
 
+    onMount(async () => {
+        try {
+            networkInfo = await getSystemNetwork()
+            networkStatus = "online"
+        } catch (error) {
+            console.error("Failed to load LAN network info", error)
+            networkStatus = "offline"
+        }
+    })
+
     $: if (columnsLoaded) {
         localStorage.setItem("columnCount", String(columnCount))
     }
@@ -49,6 +62,21 @@
 
     function toggleSidebar() {
         sidebarOpen = !sidebarOpen
+    }
+
+    async function copyNetworkUrl() {
+        if (!networkInfo?.url) return
+
+        try {
+            await navigator.clipboard.writeText(networkInfo.url)
+            networkCopyStatus = "Copied"
+        } catch {
+            networkCopyStatus = "Copy failed"
+        }
+
+        setTimeout(() => {
+            networkCopyStatus = ""
+        }, 1500)
     }
 
 
@@ -140,6 +168,23 @@
       </section>
 
       <section class="sidebar-section">
+        <div class="sidebar-title">Local Network Access</div>
+        <div class="network-panel panel">
+          <!-- Electron binds FastAPI to 0.0.0.0; this panel shows the LAN URL
+            returned by /api/system/network so nearby devices can open the same
+            SQLite-backed OCR workspace in a browser. -->
+          <div class="network-url">{networkInfo?.url ?? "Detecting local address..."}</div>
+          <div class:online={networkStatus === "online"} class:offline={networkStatus === "offline"} class="network-status">
+            Status: {networkStatus === "loading" ? "Checking..." : networkStatus === "online" ? "Online" : "Offline"}
+          </div>
+          <button type="button" on:click={copyNetworkUrl} disabled={!networkInfo?.url}>Copy</button>
+          {#if networkCopyStatus}
+            <span class="copy-status">{networkCopyStatus}</span>
+          {/if}
+        </div>
+      </section>
+
+      <section class="sidebar-section">
         <div class="sidebar-title">Primary Actions</div>
         {#if $canEditDocuments}
           <Upload embedded on:uploaded={handleUpload} />
@@ -152,7 +197,7 @@
         <div class="sidebar-title">Tags Block</div>
         <TagManager
           initialTags={tags}
-          canManage={$isAdmin}
+          canManage={$canEditDocuments}
           on:select={(event) => activeTag = event.detail.tag}
           on:tagsChanged={(event) => tags = event.detail.tags}
         />
@@ -270,6 +315,35 @@
 .sign-in-hint {
     margin-top: 10px;
     padding: 10px;
+    color: var(--text-muted);
+}
+
+.network-panel {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+}
+
+.network-url {
+    overflow-wrap: anywhere;
+    font-weight: 700;
+}
+
+.network-status {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.network-status.online {
+    color: #16a34a;
+}
+
+.network-status.offline {
+    color: #ef4444;
+}
+
+.copy-status {
+    font-size: 0.85rem;
     color: var(--text-muted);
 }
 
