@@ -35,6 +35,21 @@
       loading = false
     }
   }
+
+  async function openAsViewer() {
+    error = ''
+    loading = true
+    try {
+      // Viewer mode uses the existing guest role instead of creating a fake
+      // admin/editor session, so write actions remain disabled and protected.
+      await continueAsViewer()
+      push('/')
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Не удалось открыть гостевой режим'
+    } finally {
+      loading = false
+    }
+  }
 </script>
 
 <div class="auth-wrap">

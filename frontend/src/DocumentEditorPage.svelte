@@ -76,6 +76,35 @@
   $: selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0]
   $: selectedImageSrc = selectedImage ? `${UPLOADS_URL}/${selectedImage.filename}?v=${encodeURIComponent(selectedImage.image_version ?? "")}` : ""
 
+  const editorLabels = {
+    en: {
+      uploadWithRecognition: "Upload with recognition",
+      uploadWithoutRecognition: "Upload without recognition",
+      uploadingWithRecognition: "Uploading with recognition",
+      uploadingWithoutRecognition: "Uploading without recognition",
+      uploadedWithRecognition: "Images added with recognition",
+      uploadedWithoutRecognition: "Images added without recognition",
+      uploadError: "Failed to upload images"
+    },
+    ru: {
+      uploadWithRecognition: "Загрузить с распознаванием",
+      uploadWithoutRecognition: "Загрузить без распознавания",
+      uploadingWithRecognition: "Загрузка с распознаванием",
+      uploadingWithoutRecognition: "Загрузка без распознавания",
+      uploadedWithRecognition: "Изображения добавлены с распознаванием",
+      uploadedWithoutRecognition: "Изображения добавлены без распознавания",
+      uploadError: "Не удалось загрузить изображения"
+    }
+  }
+
+  function editorLanguage() {
+    return localStorage.getItem("language") === "ru" ? "ru" : "en"
+  }
+
+  function label(key: keyof typeof editorLabels.en) {
+    return editorLabels[editorLanguage()][key]
+  }
+
   onMount(async () => {
     await loadDocument()
     await loadTags()
