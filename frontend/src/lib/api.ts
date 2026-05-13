@@ -376,6 +376,21 @@ export async function getTags(): Promise<string[]> {
 }
 
 
+
+export interface SystemNetworkInfo {
+    local_ip: string
+    port: number
+    url: string
+    status?: string
+}
+
+export async function getSystemNetwork(): Promise<SystemNetworkInfo> {
+    const response = await apiFetch(`${API_URL}/system/network`)
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch network info")
+    return data
+}
+
 export async function createTag(tag: string) {
     const response = await apiFetch(`${API_URL}/tags`, {
         method: "POST",

@@ -644,11 +644,9 @@
   .editor-sidebar { display: flex; flex-direction: column; gap: var(--editor-gap-sm); }
   .editor-content { display: flex; flex-direction: column; gap: var(--editor-gap-md); }
   .document-blocks, .gallery-section { display: grid; gap: var(--editor-gap-md); }
-  .ocr-panel { min-height: 0; max-height: 72vh; overflow: auto; padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .folder-path-panel { padding: var(--editor-panel-padding); display: grid; gap: var(--editor-gap-sm); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .path-items { display: flex; gap: var(--editor-gap-sm); flex-wrap: wrap; align-items: center; }
   .path-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--text); }
-  .images-section { padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .files-panel { display: grid; gap: var(--editor-gap-sm); padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .files-panel h3 { margin: 0; }
   .visually-hidden-upload { display: none; }

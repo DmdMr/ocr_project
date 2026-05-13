@@ -42,11 +42,12 @@
     "dev:mac": "concurrently -n FRONTEND,BACKEND -c blue,green \"npm run frontend\" \"npm run backend:mac\"",
     "dev:win": "concurrently -n FRONTEND,BACKEND -c blue,green \"npm run frontend\" \"npm run backend:win\"",
     "frontend:build": "cd frontend && npm run build",
-    "electron": "npm run frontend:build && cross-env ELECTRON_START_BACKEND=true electron .",
+    "electron": "cross-env ELECTRON_START_BACKEND=true electron .",
     "electron:build": "npm run frontend:build && electron-builder",
     "electron:build:mac": "npm run frontend:build && electron-builder --mac dmg",
     "electron:build:win": "npm run frontend:build && electron-builder --win nsis",
-    "electron:build:linux": "npm run frontend:build && electron-builder --linux deb"
+    "electron:build:linux": "npm run frontend:build && electron-builder --linux deb AppImage",
+    "electron:dev": "npm run frontend:build && cross-env ELECTRON_START_BACKEND=true electron ."
   },
   "repository": {
     "type": "git",
@@ -101,7 +102,8 @@
     },
     "linux": {
       "target": [
-        "deb"
+        "deb",
+        "AppImage"
       ]
     }
   }

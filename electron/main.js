@@ -2,18 +2,50 @@ const { app, BrowserWindow, dialog } = require("electron")
 const { spawn } = require("child_process")
 const fs = require("fs")
 const http = require("http")
+const os = require("os")
 const path = require("path")
 
-const BACKEND_HOST = "127.0.0.1"
+const BACKEND_BIND_HOST = "0.0.0.0"
+const BACKEND_WINDOW_HOST = "127.0.0.1"
 const BACKEND_PORT = "8000"
-const BACKEND_URL = `http://${BACKEND_HOST}:${BACKEND_PORT}`
+const BACKEND_URL = `http://${BACKEND_WINDOW_HOST}:${BACKEND_PORT}`
 
 let backendProcess = null
+let backendOwnedByElectron = false
 
 function resolveProjectRoot() {
   // In development Electron runs from the repository root.
   // In packaged builds electron-builder exposes copied backend/frontend files under process.resourcesPath.
   return app.isPackaged ? process.resourcesPath : path.resolve(__dirname, "..")
+}
+
+function detectLocalIPv4() {
+  const interfaces = os.networkInterfaces()
+
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (entry.family === "IPv4" && !entry.internal) {
+        return entry.address
+      }
+    }
+  }
+
+  return BACKEND_WINDOW_HOST
+}
+
+function isBackendOnline() {
+  return new Promise((resolve) => {
+    const request = http.get(BACKEND_URL, (response) => {
+      response.resume()
+      resolve(true)
+    })
+
+    request.on("error", () => resolve(false))
+    request.setTimeout(1000, () => {
+      request.destroy()
+      resolve(false)
+    })
+  })
 }
 
 function resolvePythonExecutable(projectRoot) {
@@ -49,8 +81,15 @@ function resolvePackagedBackendExecutable(projectRoot) {
   return candidates.find((candidate) => fs.existsSync(candidate))
 }
 
-function startBackend() {
+async function startBackend() {
   if (backendProcess) {
+    return
+  }
+
+  // Avoid duplicate backend instances: if port 8000 is already serving the app,
+  // Electron reuses it for the desktop window and will not kill it on exit.
+  if (await isBackendOnline()) {
+    backendOwnedByElectron = false
     return
   }
 
@@ -64,23 +103,24 @@ function startBackend() {
       cwd: projectRoot,
       env: {
         ...process.env,
-        HOST: BACKEND_HOST,
+        HOST: BACKEND_BIND_HOST,
         PORT: BACKEND_PORT,
+        LOCAL_NETWORK_URL: `http://${detectLocalIPv4()}:${BACKEND_PORT}`,
       },
-      stdio: "inherit",
+      stdio: app.isPackaged ? "ignore" : "inherit",
       windowsHide: true,
     })
   } else {
     const pythonExecutable = resolvePythonExecutable(projectRoot)
 
     // Development/default backend start: this launches FastAPI exactly as the web app does,
-    // using uvicorn to serve backend.app.main:app on http://127.0.0.1:8000.
+    // binding uvicorn to 0.0.0.0:8000 so other LAN devices can connect.
     backendProcess = spawn(pythonExecutable, [
       "-m",
       "uvicorn",
       "backend.app.main:app",
       "--host",
-      BACKEND_HOST,
+      BACKEND_BIND_HOST,
       "--port",
       BACKEND_PORT,
     ], {
@@ -89,11 +129,14 @@ function startBackend() {
         ...process.env,
         ELECTRON_RUN_AS_DESKTOP: "true",
         FRONTEND_DIST_DIR: path.join(projectRoot, "frontend", "dist"),
+        LOCAL_NETWORK_URL: `http://${detectLocalIPv4()}:${BACKEND_PORT}`,
       },
-      stdio: "inherit",
+      stdio: app.isPackaged ? "ignore" : "inherit",
       windowsHide: true,
     })
   }
+
+  backendOwnedByElectron = true
 
   backendProcess.on("exit", (code, signal) => {
     backendProcess = null
@@ -133,10 +176,12 @@ function waitForBackend(timeoutMs = 60000) {
 
 function createWindow() {
   // Electron owns the desktop shell: it creates the application window and points it
-  // at the FastAPI server, which can serve API routes, uploads, and the built Svelte UI.
+  // at the FastAPI server, which serves API routes, uploads, the built Svelte UI,
+  // and the LAN-shareable browser URL shown in the sidebar.
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    autoHideMenuBar: app.isPackaged,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -147,7 +192,7 @@ function createWindow() {
 }
 
 function stopBackend() {
-  if (!backendProcess) {
+  if (!backendProcess || !backendOwnedByElectron) {
     return
   }
 
@@ -161,7 +206,7 @@ function stopBackend() {
 }
 
 app.whenReady().then(async () => {
-  startBackend()
+  await startBackend()
 
   try {
     await waitForBackend()

@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import socket
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -2084,3 +2085,27 @@ async def get_tags():
     async for tag in tags_collection.find().sort([("created_at", -1), ("_id", -1)]):
         tags.append(tag["tag"])
     return {"tags": tags}
+
+
+def detect_local_ipv4():
+    env_url = os.getenv("LOCAL_NETWORK_URL", "").strip()
+    if env_url.startswith("http://"):
+        host = env_url.removeprefix("http://").split(":", 1)[0]
+        if host:
+            return host
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+
+
+@router.get("/system/network")
+async def get_system_network():
+    # One-click desktop sharing: Electron starts uvicorn on 0.0.0.0 and this
+    # endpoint tells the Svelte UI which LAN URL other devices should open.
+    port = int(os.getenv("PORT", "8000"))
+    local_ip = detect_local_ipv4()
+    return {"local_ip": local_ip, "port": port, "url": f"http://{local_ip}:{port}", "status": "online"}
