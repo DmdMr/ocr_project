@@ -531,17 +531,9 @@
             <p class="hint">Sign in as editor/admin to modify images, tags, fields, files, or OCR text.</p>
           {/if}
           <div class="document-blocks">
-            {#each galleryImages as image}
-              <DocumentImageBlock
-                {image}
-                canEdit={$canEditDocuments}
-                canDelete={galleryImages.length > 1}
-                on:open={(event) => openImage(event.detail.filename)}
-                on:delete={(event) => removeImage(event.detail.filename)}
-                on:edit={(event) => openImageEditor(event.detail.filename)}
-              />
-            {/each}
-
+            <!-- Document editor reading order: metadata fields stay in the sidebar,
+              then OCR text is shown before gallery images so users can read notes
+              without scrolling past large uploads first. -->
             <section class="ocr-card">
               <DocumentContentEditor
                 bind:value={editedText}
@@ -550,6 +542,19 @@
                 onToggleEdit={() => editing = !editing}
                 onSave={saveText}
               />
+            </section>
+
+            <section class="gallery-section" aria-label="Uploaded images">
+              {#each galleryImages as image}
+                <DocumentImageBlock
+                  {image}
+                  canEdit={$canEditDocuments}
+                  canDelete={galleryImages.length > 1}
+                  on:open={(event) => openImage(event.detail.filename)}
+                  on:delete={(event) => removeImage(event.detail.filename)}
+                  on:edit={(event) => openImageEditor(event.detail.filename)}
+                />
+              {/each}
             </section>
           </div>
         </section>
@@ -638,6 +643,7 @@
   .editor-layout { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: var(--editor-gap-md); align-items: start; }
   .editor-sidebar { display: flex; flex-direction: column; gap: var(--editor-gap-sm); }
   .editor-content { display: flex; flex-direction: column; gap: var(--editor-gap-md); }
+  .document-blocks, .gallery-section { display: grid; gap: var(--editor-gap-md); }
   .ocr-panel { min-height: 0; max-height: 72vh; overflow: auto; padding: var(--editor-panel-padding); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .folder-path-panel { padding: var(--editor-panel-padding); display: grid; gap: var(--editor-gap-sm); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
   .path-items { display: flex; gap: var(--editor-gap-sm); flex-wrap: wrap; align-items: center; }

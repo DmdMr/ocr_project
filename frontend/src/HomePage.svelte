@@ -152,7 +152,7 @@
         <div class="sidebar-title">Tags Block</div>
         <TagManager
           initialTags={tags}
-          canManage={$isAdmin}
+          canManage={$canEditDocuments}
           on:select={(event) => activeTag = event.detail.tag}
           on:tagsChanged={(event) => tags = event.detail.tags}
         />

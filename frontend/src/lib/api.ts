@@ -352,7 +352,12 @@ export async function searchDocuments(q: string) {
 }
 
 export function normalizeTag(tag: string) {
-    return tag.trim().toLowerCase()
+    return tag.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+export function isValidTagName(tag: string) {
+    const normalized = normalizeTag(tag)
+    return normalized.length > 0 && normalized.length <= 64 && /^[\p{L}\p{N}_ .-]+$/u.test(normalized)
 }
 
 export function tagExists(tags: string[], tag: string) {
