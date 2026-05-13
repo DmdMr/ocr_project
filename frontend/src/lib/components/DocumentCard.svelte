@@ -3,6 +3,7 @@
     import { push } from "svelte-spa-router"
     import type { Document } from "../types"
     import { tagHue } from "../tagColors"
+    import { t } from "../i18n"
     import { UPLOADS_URL } from "../api"
     
 
@@ -141,7 +142,7 @@
     <div class="card-media" on:click={handleCardClick}>
         <img src={cardImageSrc(doc)} alt="" on:click={() => window.location.hash = `#/documents/${doc._id}`}/>
         {#if cardImageCount(doc) >= 2}
-            <div class="image-count-indicator" aria-label={`Изображений: ${cardImageCount(doc)}`}>
+            <div class="image-count-indicator" aria-label={`${$t("metadata.images")}: ${cardImageCount(doc)}`}>
                 {#each Array(visibleIndicatorDots(cardImageCount(doc))) as _, idx (idx)}
                     <span class="indicator-dot"></span>
                 {/each}
@@ -158,7 +159,7 @@
             <button
                 class="select-checkbox"
                 class:visible={selected}
-                aria-label="Выбрать карточку"
+                aria-label={$t("archive.selected")}
                 on:click={handleCheckboxClick}
             >
                 {#if selected}{/if}
@@ -189,7 +190,7 @@
             {/each}
         {:else}
             <!--
-        <span class="card-tags-empty">No tags</span>
+        <span class="card-tags-empty">{$t("metadata.noTags")}</span>
             -->
             
         {/if}

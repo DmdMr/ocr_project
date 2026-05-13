@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte"
-  import { createTag, getTags, deleteTag, normalizeTag, tagExists } from "../api"
+  import { createTag, getTags, deleteTag, isValidTagName, normalizeTag, tagExists } from "../api"
   import { tagHue } from "../tagColors"
+  import { t } from "../i18n"
 
   export let initialTags: string[] = []
   export let canManage = false
@@ -29,10 +30,20 @@
     const normalized = normalizeTag(createInput)
     createError = ""
 
-    if (!normalized) return
+    // Editors and admins can modify the global tag list; viewers still use this
+    // component in read-only mode for filtering/selecting existing tags.
+    if (!normalized) {
+      createError = $t("tags.required")
+      return
+    }
+
+    if (!isValidTagName(normalized)) {
+      createError = $t("tags.invalid")
+      return
+    }
 
     if (tagExists(tags, normalized)) {
-      createError = "Тег уже существует"
+      createError = $t("tags.duplicate")
       return
     }
 
@@ -56,7 +67,7 @@
         return
       }
 
-      createError = error instanceof Error ? error.message : "Не удалось создать тег"
+      createError = error instanceof Error ? error.message : $t("tags.createFailed")
     }
   }
 
@@ -74,19 +85,27 @@
 
   async function removeTag(tag: string) {
     if (!canManage) return
-    try {
-      await deleteTag(tag)
-      tags = tags.filter(existing => existing !== tag)
+    const normalized = normalizeTag(tag)
+    if (!isValidTagName(normalized)) {
+      createError = $t("tags.invalidExisting")
+      return
+    }
 
-      if (selectedTag === tag) {
+    createError = ""
+
+    try {
+      await deleteTag(normalized)
+      tags = tags.filter(existing => normalizeTag(existing) !== normalized)
+
+      if (selectedTag && normalizeTag(selectedTag) === normalized) {
         selectedTag = null
         dispatch("select", { tag: null })
       }
 
       dispatch("tagsChanged", { tags })
     } catch (error) {
-      console.error("Не удалось создать тег", error)
-      createError = error instanceof Error ? error.message : "Не удалось создать тег"
+      console.error("Не удалось удалить тег", error)
+      createError = error instanceof Error ? error.message : $t("tags.deleteFailed")
     }
   }
 
@@ -100,12 +119,12 @@
       <input
         type="text"
         class="my-input"
-        placeholder="Создать тег"
+        placeholder={$t("tags.createPlaceholder")}
         bind:value={createInput}
         on:keydown={handleCreateKeydown}
       />
 
-      <button class="primary" on:click={submitTag}>Создать тег</button> 
+      <button class="primary" on:click={submitTag}>{$t("tags.create")}</button>
     </div>
   {/if}
 
@@ -113,13 +132,13 @@
     <input
       class="my-input"
       type="text"
-      placeholder="Поиск тегов"
+      placeholder={$t("tags.searchPlaceholder")}
       bind:value={searchInput}
     />
 
     {#if canManage}
       <button class="mode-toggle" on:click={() => deleteMode = !deleteMode}>
-        {deleteMode ? "Готово" : "Удалить"}
+        {deleteMode ? $t("tags.done") : $t("tags.deleteMode")}
       </button>
     {/if}
   </div>
@@ -132,7 +151,7 @@
 
   <div class="tags-list">
     {#if filteredTags.length === 0}
-      <p class="empty">Теги не найдены</p>
+      <p class="empty">{$t("tags.notFound")}</p>
     {:else}
       {#each filteredTags as tag}
         <div class:deleting={deleteMode} class="tag-chip-row">

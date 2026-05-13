@@ -14,6 +14,7 @@
         deleteCardField
     
     } from "../api"
+    import { t } from "../i18n"
 
     export let refreshKey: number
     export let viewMode: "grid" | "list" | "files" = "grid"
@@ -28,7 +29,7 @@
 
     let documents: Document[] = []
     let search = ""
-    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc" = "date_desc"
+    let sortOrder: "date_asc" | "date_desc" | "name_asc" | "name_desc" = "date_desc" as "date_asc" | "date_desc" | "name_asc" | "name_desc"
     export let activeTag: string | null = null
     let selectedIds: string[] = []
     let customFieldSettings: CardCustomFieldSetting[] = []
@@ -81,7 +82,7 @@
         if (!canEdit) return
         if (!selectedIds.length) return
 
-        const confirmed = confirm(`Удалить ${selectedIds.length} карточек?`)
+        const confirmed = confirm($t("documents.bulkDeleteConfirm", { count: selectedIds.length }))
         if (!confirmed) return
 
         await Promise.all(selectedIds.map(id => deleteDocument(id)))
@@ -97,7 +98,7 @@
 
         if (!selectedIds.length) return
 
-        const entered = prompt(`Введите тег для выбранных карточек:\n${availableTags.join(", ")}`)
+        const entered = prompt($t("documents.enterTagPrompt", { tags: availableTags.join(", ") }))
         if (!entered) return
 
         const normalized = normalizeTag(entered)
@@ -256,14 +257,14 @@
 
     async function handleAddProperty() {
         if (!isAdmin) return
-        const name = prompt("Название нового свойства")
+        const name = prompt($t("documents.propertyNamePrompt"))
         if (!name || !name.trim()) return
 
-        const typePrompt = prompt("Тип свойства: text, number или people", "text")
+        const typePrompt = prompt($t("documents.propertyTypePrompt"), "text")
         if (!typePrompt) return
         const normalizedType = typePrompt.trim().toLowerCase()
         if (normalizedType !== "text" && normalizedType !== "number" && normalizedType !== "people") {
-            alert("Поддерживаются только типы: text, number или people")
+            alert($t("documents.propertyTypeInvalid"))
             return
         }
 
@@ -271,7 +272,7 @@
             await createCardField(name.trim(), normalizedType as "text" | "number" | "people")
             await load()
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Не удалось создать свойство"
+            const message = error instanceof Error ? error.message : $t("documents.propertyCreateError")
             alert(message)
         }
     }
@@ -297,7 +298,7 @@
                 openFilterField = null
             }
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Не удалось удалить свойство"
+            const message = error instanceof Error ? error.message : $t("documents.propertyDeleteError")
             alert(message)
         }
     }
@@ -586,8 +587,8 @@
             type="button"
             class="sidebar-toggle-inline"
             class:active={sidebarOpen}
-            aria-label={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
-            title={sidebarOpen ? "Скрыть боковую панель" : "Показать боковую панель"}
+            aria-label={sidebarOpen ? $t("documents.hideSidebar") : $t("documents.showSidebar")}
+            title={sidebarOpen ? $t("documents.hideSidebar") : $t("documents.showSidebar")}
             on:click={() => dispatch("toggleSidebar")}
         >
             ☰
@@ -596,31 +597,31 @@
         <input
             type="text"
             class="my-input compact-search"
-            placeholder="Поиск документов"
+            placeholder={$t("documents.searchPlaceholder")}
             bind:value={search}
         />
 
-        <div class="view-toggle" role="group" aria-label="Режим отображения">
+        <div class="view-toggle" role="group" aria-label={$t("documents.viewMode")}>
             <button
                 class="secondary"
                 class:active={viewMode === "grid"}
                 on:click={() => setViewMode("grid")}
             >
-                Сетка
+                {$t("documents.grid")}
             </button>
             <button
                 class="secondary"
                 class:active={viewMode === "list"}
                 on:click={() => setViewMode("list")}
             >
-                Таблица
+                {$t("documents.table")}
             </button>
             <button
                 class="secondary"
                 class:active={viewMode === "files"}
                 on:click={() => setViewMode("files")}
             >
-                Files
+                {$t("documents.files")}
             </button>
         </div>
     </div>
@@ -629,13 +630,13 @@
 {#if viewMode !== "files" && canEdit && selectedIds.length > 0}
   <div class="bulk-actions-manager panel">
     <div class="bulk-left">
-      Выбрано: {selectedIds.length}
+      {$t("archive.selected")}: {selectedIds.length}
     </div>
 
     <div class="bulk-right">
-      <button on:click={bulkAddTag}>Добавить тег</button>
-      <button class="danger" on:click={bulkDelete}>Удалить</button>
-      <button on:click={clearSelection}>Отмена</button>
+      <button on:click={bulkAddTag}>{$t("documents.addTag")}</button>
+      <button class="danger" on:click={bulkDelete}>{$t("common.delete")}</button>
+      <button on:click={clearSelection}>{$t("common.cancel")}</button>
     </div>
   </div>
 {/if}

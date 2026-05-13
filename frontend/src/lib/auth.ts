@@ -54,6 +54,21 @@ export async function register(username: string, password: string) {
   return user
 }
 
+export async function continueAsViewer() {
+  // Guest mode intentionally does not create a backend session. It clears any
+  // existing auth cookie when possible, then uses the existing unauthenticated
+  // viewer role so permission stores keep uploads/edits/deletes disabled.
+  try {
+    await apiLogout()
+  } catch {
+    // If there is no active session or logout fails, the local viewer state is
+    // still safe because mutating backend routes require editor/admin auth.
+  }
+  currentUser.set(viewerUser)
+  authReady.set(true)
+  return viewerUser
+}
+
 export async function logout() {
   await apiLogout()
   currentUser.set(viewerUser)

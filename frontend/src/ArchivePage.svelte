@@ -11,6 +11,7 @@
     bulkPermanentlyDeleteArchivedDocuments
   } from "./lib/api"
   import { canEditDocuments } from "./lib/auth"
+  import { t } from "./lib/i18n"
 
   let archivedDocs: Document[] = []
   let selectedIds: string[] = []
@@ -42,7 +43,7 @@
   }
 
   async function deleteOnePermanently(id: string) {
-    const confirmed = confirm("Удалить карточку навсегда?")
+    const confirmed = confirm($t("archive.deleteConfirm"))
     if (!confirmed) return
     await permanentlyDeleteArchivedDocument(id)
     archivedDocs = archivedDocs.filter(doc => doc._id !== id)
@@ -58,7 +59,7 @@
 
   async function deleteSelectedPermanently() {
     if (!selectedIds.length) return
-    const confirmed = confirm(`Удалить навсегда ${selectedIds.length} карточек?`)
+    const confirmed = confirm($t("archive.bulkDeleteConfirm", { count: selectedIds.length }))
     if (!confirmed) return
     await bulkPermanentlyDeleteArchivedDocuments(selectedIds)
     archivedDocs = archivedDocs.filter(doc => !selectedIds.includes(doc._id))
@@ -66,39 +67,39 @@
   }
 
   function displayName(doc: Document) {
-    return doc.display_filename || doc.filename || "Без имени"
+    return doc.display_filename || doc.filename || $t("archive.unnamed")
   }
 
   onMount(loadArchived)
 </script>
 
 <div class="panel nav-panel">
-  <button on:click={() => push("/")}>Главная</button>
-  <button on:click={() => push("/about")}>О проекте</button>
+  <button on:click={() => push("/")}>{$t("archive.home")}</button>
+  <button on:click={() => push("/about")}>{$t("archive.about")}</button>
 </div>
 
 <div class="panel archive-panel">
-  <h2>Архив карточек</h2>
-  <p>Карточки хранятся в архиве до 30 дней, затем удаляются автоматически.</p>
+  <h2>{$t("archive.title")}</h2>
+  <p>{$t("archive.info")}</p>
 </div>
 
 <div class="panel actions-bar">
-  <span>Выбрано: {selectedIds.length}</span>
+  <span>{$t("archive.selected")}: {selectedIds.length}</span>
   <div class="bulk-actions">
     {#if $canEditDocuments}
-      <button class="secondary" on:click={restoreSelected} disabled={!selectedIds.length}>Восстановить выбранные</button>
-      <button class="danger" on:click={deleteSelectedPermanently} disabled={!selectedIds.length}>Удалить выбранные</button>
-      <button class="secondary" on:click={clearSelection} disabled={!selectedIds.length}>Снять выбор</button>
+      <button class="secondary" on:click={restoreSelected} disabled={!selectedIds.length}>{$t("archive.restoreSelected")}</button>
+      <button class="danger" on:click={deleteSelectedPermanently} disabled={!selectedIds.length}>{$t("archive.deleteSelected")}</button>
+      <button class="secondary" on:click={clearSelection} disabled={!selectedIds.length}>{$t("archive.clearSelection")}</button>
     {:else}
-      <span class="muted">Только просмотр. Войдите как editor/admin для изменения архива.</span>
+      <span class="muted">{$t("archive.readOnly")}</span>
     {/if}
   </div>
 </div>
 
 {#if loading}
-  <div class="panel">Загрузка архива...</div>
+  <div class="panel">{$t("archive.loading")}</div>
 {:else if !archivedDocs.length}
-  <div class="panel">Архив пуст.</div>
+  <div class="panel">{$t("archive.empty")}</div>
 {:else}
   <div class="archive-list">
     {#each archivedDocs as doc (doc._id)}
@@ -121,13 +122,13 @@
 
         <div class="card-content">
           <div class="card-title">{displayName(doc)}</div>
-          <div class="card-meta">Архивировано: {doc.archived_at ? new Date(doc.archived_at).toLocaleString() : "—"}</div>
+          <div class="card-meta">{$t("archive.archivedAt")}: {doc.archived_at ? new Date(doc.archived_at).toLocaleString() : "—"}</div>
         </div>
 
         <div class="card-actions">
           {#if $canEditDocuments}
-            <button class="secondary" on:click={() => restoreOne(doc._id)}>Восстановить</button>
-            <button class="danger" on:click={() => deleteOnePermanently(doc._id)}>Удалить навсегда</button>
+            <button class="secondary" on:click={() => restoreOne(doc._id)}>{$t("archive.restore")}</button>
+            <button class="danger" on:click={() => deleteOnePermanently(doc._id)}>{$t("archive.deleteForever")}</button>
           {/if}
         </div>
       </div>

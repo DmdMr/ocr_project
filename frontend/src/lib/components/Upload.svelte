@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from "svelte"
     import { uploadImage } from "../api"
+    import { t } from "../i18n"
 
     export const galleryUploading = false
     export let embedded = false
@@ -42,9 +43,6 @@
         fileInput?.click()
     }
 
-    function modeLabel(mode: UploadMode) {
-        return mode === "with_ocr" ? "с распознаванием" : "без распознавания"
-    }
 
     async function handleUpload(files: FileList | null, mode: UploadMode) {
         setFiles(files)
@@ -79,7 +77,7 @@
         }
 
         uploading = false
-        message = `Загрузка ${modeLabel(mode)} завершена`
+        message = mode === "with_ocr" ? $t("upload.doneWithRecognition") : $t("upload.doneWithoutRecognition")
         dispatch("uploaded")
     }
 
@@ -122,11 +120,11 @@
 
     <div class="upload-actions">
         <button class="upload-btn upload-action-btn" on:click={() => openFilePicker("with_ocr")} disabled={uploading}>
-            {uploading && selectedUploadMode === "with_ocr" ? "Загрузка..." : "Загрузить с распознаванием"}
+            {uploading && selectedUploadMode === "with_ocr" ? $t("upload.uploading") : $t("upload.withRecognition")}
         </button>
 
         <button class="secondary upload-action-btn" on:click={() => openFilePicker("without_ocr")} disabled={uploading}>
-            {uploading && selectedUploadMode === "without_ocr" ? "Загрузка..." : "Загрузить без распознавания"}
+            {uploading && selectedUploadMode === "without_ocr" ? $t("upload.uploading") : $t("upload.withoutRecognition")}
         </button>
     </div>
 </div>
@@ -139,7 +137,7 @@
             <div class="file-header">
                 <span>{item.name}</span>
                 <span class="status {item.status}">
-                    {item.status}
+                    {$t(`upload.status.${item.status}`)}
                 </span>
             </div>
 

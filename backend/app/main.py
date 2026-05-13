@@ -1,15 +1,21 @@
 import os
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
 
+from backend.app.api.errors import http_exception_handler, unhandled_exception_handler, validation_exception_handler
 from backend.app.api.routes import router
 from backend.app.auth import bootstrap_first_admin
 from backend.app.db.database import activity_logs_collection, documents_collection, folders_collection, sessions_collection, users_collection, init_db
 from backend.app.services.folder_service import ensure_unsorted_folder, ensure_unsorted_indexes
 
 app = FastAPI()
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 raw_origins = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 allow_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
@@ -46,3 +52,36 @@ async def setup_indexes():
 
 app.include_router(router)
 app.mount("/uploads", StaticFiles(directory="backend/uploads"), name="uploads")
+
+
+def resolve_frontend_dist_dir():
+    """Locate the built Svelte app without changing the existing Vite dev workflow.
+
+    Electron loads http://127.0.0.1:8000, so packaged desktop builds need FastAPI
+    to serve the compiled frontend from frontend/dist. During normal development,
+    npm run dev:mac can continue to use the Vite dev server on port 5173.
+    """
+    configured_dist = os.getenv("FRONTEND_DIST_DIR")
+    candidates = []
+
+    if configured_dist:
+        candidates.append(Path(configured_dist))
+
+    project_root = Path(__file__).resolve().parents[2]
+    candidates.extend([
+        project_root / "frontend" / "dist",
+        Path.cwd() / "frontend" / "dist",
+    ])
+
+    for candidate in candidates:
+        if (candidate / "index.html").exists():
+            return candidate
+
+    return None
+
+
+frontend_dist_dir = resolve_frontend_dist_dir()
+if frontend_dist_dir:
+    # Packaging support: this mount lets the Electron window open the Svelte UI from
+    # the FastAPI origin while preserving existing /api and /uploads routes above.
+    app.mount("/", StaticFiles(directory=frontend_dist_dir, html=True), name="frontend")

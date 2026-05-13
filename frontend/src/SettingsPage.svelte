@@ -3,6 +3,7 @@
   import { push } from 'svelte-spa-router'
   import { createCardField, deleteCardField, getCardFields } from './lib/api'
   import { isAdmin } from './lib/auth'
+  import { t } from './lib/i18n'
   import type { CardCustomFieldSetting } from './lib/types'
 
   let fields: CardCustomFieldSetting[] = []
@@ -18,7 +19,7 @@
     try {
       fields = await getCardFields()
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to load settings'
+      error = e instanceof Error ? e.message : $t('settings.loadError')
     } finally {
       loading = false
     }
@@ -35,19 +36,19 @@
       newName = ''
       await loadSettings()
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to add field'
+      error = e instanceof Error ? e.message : $t('settings.addError')
     } finally {
       saving = false
     }
   }
 
   async function removeField(name: string) {
-    if (!confirm(`Удалить поле "${name}"?`)) return
+    if (!confirm($t('settings.deleteConfirm', { name }))) return
     try {
       await deleteCardField(name)
       await loadSettings()
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to delete field'
+      error = e instanceof Error ? e.message : $t('settings.deleteError')
     }
   }
 
@@ -56,35 +57,29 @@
 
 <div class="panel settings-page">
   <div class="settings-header">
-    <h2>Настройки карточек</h2>
-    <button on:click={() => push('/')}>Назад</button>
+    <h2>{$t('settings.title')}</h2>
+    <button on:click={() => push('/')}>{$t('common.back')}</button>
   </div>
 
   {#if !$isAdmin}
-    <p class="error">Доступно только администраторам.</p>
+    <p class="error">{$t('settings.adminOnly')}</p>
   {:else}
-  <p class="muted">Поля ниже добавляются в каждую карточку документа.</p>
+  <p class="muted">{$t('settings.help')}</p>
 
   <div class="add-field-row">
-    <input bind:value={newName} placeholder="Название поля (например hours-to-make)" />
+    <input bind:value={newName} placeholder={$t('settings.fieldPlaceholder')} />
     <select bind:value={newType}>
-      <option value="text">Текст</option>
-      <option value="number">Число</option>
-      <option value="people">Люди</option>
+      <option value="text">text</option>
+      <option value="number">number</option>
+      <option value="people">people</option>
     </select>
-    <button class="primary" on:click={addField} disabled={saving || !newName.trim()}>
-      {saving ? 'Добавление...' : 'Добавить'}
-    </button>
+    <button on:click={addField} disabled={saving}>{saving ? $t('common.saving') : $t('settings.add')}</button>
   </div>
 
-  {#if error}
-    <p class="error">{error}</p>
-  {/if}
+  {#if error}<p class="error">{error}</p>{/if}
 
   {#if loading}
-    <p class="muted">Загрузка...</p>
-  {:else if !fields.length}
-    <p class="muted">Пока нет пользовательских полей.</p>
+    <p>{$t('common.loading')}</p>
   {:else}
     <div class="fields-list">
       {#each fields as field}
@@ -93,7 +88,7 @@
             <strong>{field.name}</strong>
             <span>{field.type}</span>
           </div>
-          <button class="danger" on:click={() => removeField(field.name)}>Удалить</button>
+          <button class="danger" on:click={() => removeField(field.name)}>{$t('common.delete')}</button>
         </div>
       {/each}
     </div>

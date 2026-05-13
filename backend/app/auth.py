@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import Cookie, Depends, HTTPException, Response
 from passlib.context import CryptContext
 
+from backend.app.api.errors import api_error
 from backend.app.db.database import sessions_collection, users_collection
 
 env_path = Path(__file__).resolve().parent / ".env"
@@ -102,7 +103,7 @@ async def get_current_user(session_id: Optional[str] = Cookie(default=None, alia
 
 async def require_current_user(current_user=Depends(get_current_user)):
     if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise api_error(401, "AUTH_REQUIRED")
     return current_user
 
 
@@ -132,7 +133,7 @@ def require_role(*roles: UserRole):
     async def _require_role(current_user=Depends(require_current_user)):
         user_role = current_user.get("role", USER_ROLE_EDITOR)
         if user_role not in roles:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            raise api_error(403, "ACCESS_DENIED")
         return current_user
 
     return _require_role
