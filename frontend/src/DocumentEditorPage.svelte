@@ -7,6 +7,7 @@
     deleteDocumentAttachment,
     deleteDocumentImage,
     editDocumentImage,
+    createCardField,
     getCardFields,
     getDocumentById,
     getDocumentPath,
@@ -25,7 +26,7 @@
   import DocumentImageBlock from "./lib/components/document-editor/DocumentImageBlock.svelte"
   import DocumentFilesSection from "./lib/components/document-editor/DocumentFilesSection.svelte"
   import DocumentImageEditorModal from "./lib/components/document-editor/DocumentImageEditorModal.svelte"
-  import { canEditDocuments } from "./lib/auth"
+  import { canEditDocuments, isAdmin } from "./lib/auth"
 
   export let params: { id: string }
 
@@ -200,6 +201,44 @@
     } catch {
       customFieldsStatus = "error"
     }
+  }
+
+  async function createDocumentEditorField(payload: { name: string; value: string; type?: "text" | "number" | "people" }) {
+    if (!$canEditDocuments || !$isAdmin) {
+      throw new Error("Only administrators can create custom fields")
+    }
+    if (!doc) return
+
+    const requestedName = payload.name.trim()
+    const fieldType = payload.type ?? "text"
+    if (!requestedName) {
+      throw new Error("Field name is required")
+    }
+
+    // Field creation reuses the existing settings API used by the table view.
+    // The backend registers the field definition and seeds every document with
+    // the default value, keeping the current custom_fields database structure.
+    const created = await createCardField(requestedName, fieldType)
+    const createdField = created.field ?? { name: requestedName.toLowerCase(), type: fieldType }
+    const fieldName = createdField.name
+
+    const nextDraft = {
+      ...customFieldDraft,
+      [fieldName]: normalizeFieldValue(createdField.type, payload.value)
+    }
+
+    customFieldSettings = [...customFieldSettings, createdField]
+    customFieldDraft = nextDraft
+    customFieldsStatus = "saving"
+
+    // Persist the new field's value on the current document immediately after
+    // the global field definition exists. Existing document save behavior stays
+    // unchanged because updateDocumentCustomFields already handles custom_fields.
+    const updated = await updateDocumentCustomFields(doc._id, nextDraft)
+    applyDocumentUpdate(updated)
+    changedCustomFields = new Set<string>()
+    customFieldsStatus = "saved"
+    scheduleSavedStateClear()
   }
 
   async function handleAttachmentUpload(event: CustomEvent<{ files: File[] }>) {
@@ -443,6 +482,8 @@
           {customFieldSettings}
           {customFieldDraft}
           {customFieldsStatus}
+          canCreateFields={$isAdmin}
+          onCreateCustomField={createDocumentEditorField}
           on:customFieldInput={(event) => onCustomFieldInput(event.detail.fieldName, event.detail.value, event.detail.saveNow ?? false)}
           on:manageTags={() => tagPickerOpen = true}
           on:deleteDoc={removeDocumentNow}
