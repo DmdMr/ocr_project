@@ -89,6 +89,24 @@
     return [...ids].sort((left, right) => (foldersById[left]?.name || "").localeCompare(foldersById[right]?.name || ""))
   }
 
+  function closeMoveDialog() {
+    moveState = null
+  }
+
+  function closeMoveDialogOnKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape" || event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      closeMoveDialog()
+    }
+  }
+
+  function keepMoveDialogOpenOnKeydown(event: KeyboardEvent) {
+    event.stopPropagation()
+    if (event.key === "Escape") {
+      closeMoveDialog()
+    }
+  }
+
   function folderPath(folderId: string): FolderPathNode[] {
     const path: FolderPathNode[] = []
     let current = foldersById[folderId]
@@ -415,8 +433,8 @@
   {/if}
 
   {#if moveState}
-    <div class="move-modal-backdrop" on:click={() => moveState = null}>
-      <div class="move-modal panel" on:click|stopPropagation>
+    <div class="move-modal-backdrop" role="button" tabindex="0" aria-label="Close move dialog" on:click={closeMoveDialog} on:keydown={closeMoveDialogOnKeydown}>
+      <div class="move-modal panel" role="dialog" aria-modal="true" tabindex="0" on:click|stopPropagation on:keydown={keepMoveDialogOpenOnKeydown}>
         <h4>Move: {moveState.name}</h4>
         <select bind:value={moveTargetFolderId}>
           {#if moveState.type === "folder"}
@@ -428,7 +446,7 @@
         </select>
         <div class="move-actions">
           <button on:click={submitMove}>Move</button>
-          <button class="secondary" on:click={() => moveState = null}>Cancel</button>
+          <button class="secondary" on:click={closeMoveDialog}>Cancel</button>
         </div>
       </div>
     </div>

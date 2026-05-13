@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte"
-  import { createTag, getTags, deleteTag, normalizeTag, tagExists } from "../api"
+  import { createTag, getTags, deleteTag, isValidTagName, normalizeTag, tagExists } from "../api"
   import { tagHue } from "../tagColors"
 
   export let initialTags: string[] = []
@@ -29,7 +29,17 @@
     const normalized = normalizeTag(createInput)
     createError = ""
 
-    if (!normalized) return
+    // Editors and admins can modify the global tag list; viewers still use this
+    // component in read-only mode for filtering/selecting existing tags.
+    if (!normalized) {
+      createError = "Введите тег"
+      return
+    }
+
+    if (!isValidTagName(normalized)) {
+      createError = "Тег может содержать буквы, цифры, пробелы, _, - и ."
+      return
+    }
 
     if (tagExists(tags, normalized)) {
       createError = "Тег уже существует"
@@ -74,19 +84,27 @@
 
   async function removeTag(tag: string) {
     if (!canManage) return
-    try {
-      await deleteTag(tag)
-      tags = tags.filter(existing => existing !== tag)
+    const normalized = normalizeTag(tag)
+    if (!isValidTagName(normalized)) {
+      createError = "Некорректный тег"
+      return
+    }
 
-      if (selectedTag === tag) {
+    createError = ""
+
+    try {
+      await deleteTag(normalized)
+      tags = tags.filter(existing => normalizeTag(existing) !== normalized)
+
+      if (selectedTag && normalizeTag(selectedTag) === normalized) {
         selectedTag = null
         dispatch("select", { tag: null })
       }
 
       dispatch("tagsChanged", { tags })
     } catch (error) {
-      console.error("Не удалось создать тег", error)
-      createError = error instanceof Error ? error.message : "Не удалось создать тег"
+      console.error("Не удалось удалить тег", error)
+      createError = error instanceof Error ? error.message : "Не удалось удалить тег"
     }
   }
 

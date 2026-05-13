@@ -2,6 +2,8 @@ import hashlib
 import json
 import logging
 import os
+import re
+import socket
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -2021,12 +2023,32 @@ async def get_document_path(doc_id: str, current_user=Depends(require_editor_use
     }
 
 
+
+TAG_NAME_PATTERN = re.compile(r"^[\w\s.-]+$", re.UNICODE)
+TAG_NAME_MAX_LENGTH = 64
+
+
+def normalize_tag_name(tag: str):
+    return " ".join((tag or "").strip().lower().split())
+
+
+def validate_tag_name(tag: str):
+    if not tag:
+        raise HTTPException(status_code=400, detail="Тег обязателен")
+    if len(tag) > TAG_NAME_MAX_LENGTH:
+        raise HTTPException(status_code=400, detail="Тег слишком длинный")
+    if not TAG_NAME_PATTERN.fullmatch(tag):
+        raise HTTPException(status_code=400, detail="Тег содержит недопустимые символы")
+
 class TagRequest(BaseModel):
     tag: str
 
 @router.post("/tags")
-async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_admin_user)):
-    tag = request.tag.strip().lower()
+async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_editor_user)):
+    # Tag modifications are document-editing actions: admins and editors may
+    # create/delete tags, while viewers can only read tags from GET /tags.
+    tag = normalize_tag_name(request.tag)
+    validate_tag_name(tag)
 
     existing_tag = await tags_collection.find_one({"tag": tag})
     if existing_tag:
@@ -2038,11 +2060,11 @@ async def create_tag(http_request: Request, request: TagRequest, current_user=De
     return {"message": "Тег добавлен", "tag": new_tag}
 
 @router.delete("/tags/{tag}")
-async def delete_tag(request: Request, tag: str, current_user=Depends(require_admin_user)):
-    normalized = tag.strip().lower()
-
-    if not normalized:
-        raise HTTPException(status_code=400, detail="Тег обязателен")
+async def delete_tag(request: Request, tag: str, current_user=Depends(require_editor_user)):
+    # Uses the same editor/admin permission boundary as tag creation and
+    # removes the tag from documents after deleting the global tag record.
+    normalized = normalize_tag_name(tag)
+    validate_tag_name(normalized)
 
     result = await tags_collection.delete_one({"tag": normalized})
 
@@ -2063,3 +2085,27 @@ async def get_tags():
     async for tag in tags_collection.find().sort([("created_at", -1), ("_id", -1)]):
         tags.append(tag["tag"])
     return {"tags": tags}
+
+
+def detect_local_ipv4():
+    env_url = os.getenv("LOCAL_NETWORK_URL", "").strip()
+    if env_url.startswith("http://"):
+        host = env_url.removeprefix("http://").split(":", 1)[0]
+        if host:
+            return host
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+
+
+@router.get("/system/network")
+async def get_system_network():
+    # One-click desktop sharing: Electron starts uvicorn on 0.0.0.0 and this
+    # endpoint tells the Svelte UI which LAN URL other devices should open.
+    port = int(os.getenv("PORT", "8000"))
+    local_ip = detect_local_ipv4()
+    return {"local_ip": local_ip, "port": port, "url": f"http://{local_ip}:{port}", "status": "online"}

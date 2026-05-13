@@ -352,7 +352,12 @@ export async function searchDocuments(q: string) {
 }
 
 export function normalizeTag(tag: string) {
-    return tag.trim().toLowerCase()
+    return tag.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+export function isValidTagName(tag: string) {
+    const normalized = normalizeTag(tag)
+    return normalized.length > 0 && normalized.length <= 64 && /^[\p{L}\p{N}_ .-]+$/u.test(normalized)
 }
 
 export function tagExists(tags: string[], tag: string) {
@@ -370,6 +375,21 @@ export async function getTags(): Promise<string[]> {
     return data.tags ?? []
 }
 
+
+
+export interface SystemNetworkInfo {
+    local_ip: string
+    port: number
+    url: string
+    status?: string
+}
+
+export async function getSystemNetwork(): Promise<SystemNetworkInfo> {
+    const response = await apiFetch(`${API_URL}/system/network`)
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.detail || "Failed to fetch network info")
+    return data
+}
 
 export async function createTag(tag: string) {
     const response = await apiFetch(`${API_URL}/tags`, {
