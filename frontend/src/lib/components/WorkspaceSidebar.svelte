@@ -13,6 +13,7 @@
         navigateSettings: void
         navigateAdminUsers: void
         navigateActivity: void
+        navigateVisionOcr: void
         navigateLogin: void
         logout: void
     }>()
@@ -56,6 +57,13 @@
         {#if role === "admin"}
           <button on:click={() => dispatch("navigateSettings")}>{$t("sidebar.fieldsSettings")}</button>
         {/if}
+      </div>
+    </section>
+
+    <section class="sidebar-section">
+      <div class="sidebar-title">Vision</div>
+      <div class="sidebar-actions">
+        <button on:click={() => dispatch("navigateVisionOcr")}>Vision OCR</button>
       </div>
     </section>
 

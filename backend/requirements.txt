@@ -12,3 +12,4 @@ paddlepaddle
 paddleocr
 passlib
 sqlalchemy
+requests

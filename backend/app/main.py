@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 
 from backend.app.api.errors import http_exception_handler, unhandled_exception_handler, validation_exception_handler
 from backend.app.api.routes import router
+from backend.app.api.vision_ocr import router as vision_ocr_router
 from backend.app.auth import bootstrap_first_admin
 from backend.app.db.database import activity_logs_collection, documents_collection, folders_collection, sessions_collection, users_collection, init_db
 from backend.app.services.folder_service import ensure_unsorted_folder, ensure_unsorted_indexes
@@ -51,6 +52,7 @@ async def setup_indexes():
 
 
 app.include_router(router)
+app.include_router(vision_ocr_router)
 app.mount("/uploads", StaticFiles(directory="backend/uploads"), name="uploads")
 
 
