@@ -259,7 +259,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: min(320px, 92vw);
+    width: min(420px, 92vw);
     height: 100vh;
     border-radius: 0;
     padding: 12px;

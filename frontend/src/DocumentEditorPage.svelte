@@ -482,13 +482,9 @@
             filenameDraft = doc?.display_filename ?? doc?.filename ?? ""
           }}
         />
-        <div class="header-meta-line">
-          <span><strong>{$t("common.created")}:</strong> {new Date(doc.created_at).toLocaleString()}</span>
-          <span><strong>{$t("common.updated")}:</strong> {new Date((doc as any).updated_at || doc.created_at).toLocaleString()}</span>
-        </div>
+        
       </div>
       <div class="header-actions">
-        <button class="back-btn" on:click={() => filenameEditing = true} disabled={!$canEditDocuments}>{$t("common.edit")}</button>
         <button class="back-btn" on:click={removeDocumentNow} disabled={!$canEditDocuments}>{$t("common.delete")}</button>
       </div>
     </header>
@@ -511,10 +507,7 @@
             {/if}
             <span>{doc.display_filename || doc.filename}</span>
           </div>
-          <div class="gallery-upload-actions">
-            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-with-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withRecognition")}</button>
-            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-without-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withoutRecognition")}</button>
-          </div>
+          
         </section>
 
         <DocumentMetadataSection
@@ -534,6 +527,10 @@
           <input id="gallery-upload-with-ocr" type="file" accept="image/*" multiple on:change={(event) => { handleGalleryUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []), performOcr: true } } as CustomEvent<{ files: File[]; performOcr?: boolean }>); (event.currentTarget as HTMLInputElement).value = "" }} />
           <input id="gallery-upload-without-ocr" type="file" accept="image/*" multiple on:change={(event) => { handleGalleryUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []), performOcr: false } } as CustomEvent<{ files: File[]; performOcr?: boolean }>); (event.currentTarget as HTMLInputElement).value = "" }} />
         </div>
+        <div class="gallery-upload-actions">
+            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-with-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withRecognition")}</button>
+            <button class="back-btn" on:click={() => document.getElementById('gallery-upload-without-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withoutRecognition")}</button>
+          </div>
 
         <section class="panel files-panel">
           <h3>{$t("document.files")}</h3>
@@ -547,7 +544,6 @@
             on:upload={handleAttachmentUpload}
             on:remove={(event) => removeAttachment(event.detail.attachment)}
           />
-          <button class="back-btn" on:click={() => document.getElementById('file-upload')?.click()} disabled={!$canEditDocuments}>{$t("document.addFile")}</button>
           <div class="visually-hidden-upload">
             <input id="file-upload" type="file" multiple on:change={(event) => handleAttachmentUpload({ detail: { files: Array.from((event.currentTarget as HTMLInputElement).files ?? []) } } as CustomEvent<{ files: File[] }>)} />
           </div>

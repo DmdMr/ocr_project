@@ -16,3 +16,5 @@ test_env
 /backend/models/
 *.safetensors
 /node_modules
+backend/models
+/release

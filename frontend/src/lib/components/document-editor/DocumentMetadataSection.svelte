@@ -187,17 +187,7 @@
     </div>
   </div>
 
-  <div class="metadata-block">
-    <div class="section-head">
-      <h3>{$t("metadata.images")}</h3>
-      {#if canEdit}
-        <label class="upload-btn">
-          {$t("metadata.addImages")}
-          <input type="file" accept="image/png,image/jpeg,image/jpg" multiple hidden on:change={emitSelectedImages} />
-        </label>
-      {/if}
-    </div>
-  </div>
+  
 </section>
 
 <style>

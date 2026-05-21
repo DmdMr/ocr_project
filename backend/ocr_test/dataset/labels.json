@@ -1,0 +1,5493 @@
+{
+  "dataset_metadata": {
+    "language": "ru",
+    "total_lines": 1097
+  },
+  "annotations": [
+    {
+      "image_id": "line_0001",
+      "file_path": "line_crops/line_0001.png",
+      "ground_truth": "17"
+    },
+    {
+      "image_id": "line_0002",
+      "file_path": "line_crops/line_0002.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0003",
+      "file_path": "line_crops/line_0003.png",
+      "ground_truth": "вырезка"
+    },
+    {
+      "image_id": "line_0004",
+      "file_path": "line_crops/line_0004.png",
+      "ground_truth": "100"
+    },
+    {
+      "image_id": "line_0005",
+      "file_path": "line_crops/line_0005.png",
+      "ground_truth": "плита"
+    },
+    {
+      "image_id": "line_0006",
+      "file_path": "line_crops/line_0006.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0007",
+      "file_path": "line_crops/line_0007.png",
+      "ground_truth": "477578"
+    },
+    {
+      "image_id": "line_0008",
+      "file_path": "line_crops/line_0008.png",
+      "ground_truth": "Зажимная"
+    },
+    {
+      "image_id": "line_0009",
+      "file_path": "line_crops/line_0009.png",
+      "ground_truth": "20"
+    },
+    {
+      "image_id": "line_0010",
+      "file_path": "line_crops/line_0010.png",
+      "ground_truth": "1150"
+    },
+    {
+      "image_id": "line_0011",
+      "file_path": "line_crops/line_0011.png",
+      "ground_truth": "13,0"
+    },
+    {
+      "image_id": "line_0012",
+      "file_path": "line_crops/line_0012.png",
+      "ground_truth": "25,0"
+    },
+    {
+      "image_id": "line_0013",
+      "file_path": "line_crops/line_0013.png",
+      "ground_truth": "16,0"
+    },
+    {
+      "image_id": "line_0014",
+      "file_path": "line_crops/line_0014.png",
+      "ground_truth": "0"
+    },
+    {
+      "image_id": "line_0015",
+      "file_path": "line_crops/line_0015.png",
+      "ground_truth": "60"
+    },
+    {
+      "image_id": "line_0016",
+      "file_path": "line_crops/line_0016.png",
+      "ground_truth": "30"
+    },
+    {
+      "image_id": "line_0017",
+      "file_path": "line_crops/line_0017.png",
+      "ground_truth": "1770"
+    },
+    {
+      "image_id": "line_0018",
+      "file_path": "line_crops/line_0018.png",
+      "ground_truth": "1770"
+    },
+    {
+      "image_id": "line_0019",
+      "file_path": "line_crops/line_0019.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0020",
+      "file_path": "line_crops/line_0020.png",
+      "ground_truth": "1,5"
+    },
+    {
+      "image_id": "line_0021",
+      "file_path": "line_crops/line_0021.png",
+      "ground_truth": "кг"
+    },
+    {
+      "image_id": "line_0022",
+      "file_path": "line_crops/line_0022.png",
+      "ground_truth": "9,2"
+    },
+    {
+      "image_id": "line_0023",
+      "file_path": "line_crops/line_0023.png",
+      "ground_truth": "0,5"
+    },
+    {
+      "image_id": "line_0024",
+      "file_path": "line_crops/line_0024.png",
+      "ground_truth": "85"
+    },
+    {
+      "image_id": "line_0025",
+      "file_path": "line_crops/line_0025.png",
+      "ground_truth": "Втулка"
+    },
+    {
+      "image_id": "line_0026",
+      "file_path": "line_crops/line_0026.png",
+      "ground_truth": "145f7"
+    },
+    {
+      "image_id": "line_0027",
+      "file_path": "line_crops/line_0027.png",
+      "ground_truth": "НВС"
+    },
+    {
+      "image_id": "line_0028",
+      "file_path": "line_crops/line_0028.png",
+      "ground_truth": "79"
+    },
+    {
+      "image_id": "line_0029",
+      "file_path": "line_crops/line_0029.png",
+      "ground_truth": "477579"
+    },
+    {
+      "image_id": "line_0030",
+      "file_path": "line_crops/line_0030.png",
+      "ground_truth": "Вес"
+    },
+    {
+      "image_id": "line_0031",
+      "file_path": "line_crops/line_0031.png",
+      "ground_truth": "50"
+    },
+    {
+      "image_id": "line_0032",
+      "file_path": "line_crops/line_0032.png",
+      "ground_truth": "припуск"
+    },
+    {
+      "image_id": "line_0033",
+      "file_path": "line_crops/line_0033.png",
+      "ground_truth": "60"
+    },
+    {
+      "image_id": "line_0034",
+      "file_path": "line_crops/line_0034.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0035",
+      "file_path": "line_crops/line_0035.png",
+      "ground_truth": "пов"
+    },
+    {
+      "image_id": "line_0036",
+      "file_path": "line_crops/line_0036.png",
+      "ground_truth": "80"
+    },
+    {
+      "image_id": "line_0037",
+      "file_path": "line_crops/line_0037.png",
+      "ground_truth": "159"
+    },
+    {
+      "image_id": "line_0038",
+      "file_path": "line_crops/line_0038.png",
+      "ground_truth": "20"
+    },
+    {
+      "image_id": "line_0039",
+      "file_path": "line_crops/line_0039.png",
+      "ground_truth": "105"
+    },
+    {
+      "image_id": "line_0040",
+      "file_path": "line_crops/line_0040.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0041",
+      "file_path": "line_crops/line_0041.png",
+      "ground_truth": "1,33"
+    },
+    {
+      "image_id": "line_0042",
+      "file_path": "line_crops/line_0042.png",
+      "ground_truth": "100"
+    },
+    {
+      "image_id": "line_0043",
+      "file_path": "line_crops/line_0043.png",
+      "ground_truth": "ст"
+    },
+    {
+      "image_id": "line_0044",
+      "file_path": "line_crops/line_0044.png",
+      "ground_truth": "18"
+    },
+    {
+      "image_id": "line_0045",
+      "file_path": "line_crops/line_0045.png",
+      "ground_truth": "ХГ"
+    },
+    {
+      "image_id": "line_0046",
+      "file_path": "line_crops/line_0046.png",
+      "ground_truth": "торец"
+    },
+    {
+      "image_id": "line_0047",
+      "file_path": "line_crops/line_0047.png",
+      "ground_truth": "втулку"
+    },
+    {
+      "image_id": "line_0048",
+      "file_path": "line_crops/line_0048.png",
+      "ground_truth": "на"
+    },
+    {
+      "image_id": "line_0049",
+      "file_path": "line_crops/line_0049.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0050",
+      "file_path": "line_crops/line_0050.png",
+      "ground_truth": "оставив"
+    },
+    {
+      "image_id": "line_0051",
+      "file_path": "line_crops/line_0051.png",
+      "ground_truth": "шлифовку"
+    },
+    {
+      "image_id": "line_0052",
+      "file_path": "line_crops/line_0052.png",
+      "ground_truth": "отв"
+    },
+    {
+      "image_id": "line_0053",
+      "file_path": "line_crops/line_0053.png",
+      "ground_truth": "под"
+    },
+    {
+      "image_id": "line_0054",
+      "file_path": "line_crops/line_0054.png",
+      "ground_truth": "шлиф"
+    },
+    {
+      "image_id": "line_0055",
+      "file_path": "line_crops/line_0055.png",
+      "ground_truth": "пов-ть"
+    },
+    {
+      "image_id": "line_0056",
+      "file_path": "line_crops/line_0056.png",
+      "ground_truth": "шлиф"
+    },
+    {
+      "image_id": "line_0057",
+      "file_path": "line_crops/line_0057.png",
+      "ground_truth": "1,0"
+    },
+    {
+      "image_id": "line_0058",
+      "file_path": "line_crops/line_0058.png",
+      "ground_truth": "1,1"
+    },
+    {
+      "image_id": "line_0059",
+      "file_path": "line_crops/line_0059.png",
+      "ground_truth": "0,25"
+    },
+    {
+      "image_id": "line_0060",
+      "file_path": "line_crops/line_0060.png",
+      "ground_truth": "0,28"
+    },
+    {
+      "image_id": "line_0061",
+      "file_path": "line_crops/line_0061.png",
+      "ground_truth": "шлиф"
+    },
+    {
+      "image_id": "line_0062",
+      "file_path": "line_crops/line_0062.png",
+      "ground_truth": "сторону"
+    },
+    {
+      "image_id": "line_0063",
+      "file_path": "line_crops/line_0063.png",
+      "ground_truth": "резьбы"
+    },
+    {
+      "image_id": "line_0064",
+      "file_path": "line_crops/line_0064.png",
+      "ground_truth": "с"
+    },
+    {
+      "image_id": "line_0065",
+      "file_path": "line_crops/line_0065.png",
+      "ground_truth": "нарезкой"
+    },
+    {
+      "image_id": "line_0066",
+      "file_path": "line_crops/line_0066.png",
+      "ground_truth": "меру"
+    },
+    {
+      "image_id": "line_0067",
+      "file_path": "line_crops/line_0067.png",
+      "ground_truth": "в"
+    },
+    {
+      "image_id": "line_0068",
+      "file_path": "line_crops/line_0068.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0069",
+      "file_path": "line_crops/line_0069.png",
+      "ground_truth": "1,0"
+    },
+    {
+      "image_id": "line_0070",
+      "file_path": "line_crops/line_0070.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0071",
+      "file_path": "line_crops/line_0071.png",
+      "ground_truth": "280"
+    },
+    {
+      "image_id": "line_0072",
+      "file_path": "line_crops/line_0072.png",
+      "ground_truth": "300"
+    },
+    {
+      "image_id": "line_0073",
+      "file_path": "line_crops/line_0073.png",
+      "ground_truth": "26"
+    },
+    {
+      "image_id": "line_0074",
+      "file_path": "line_crops/line_0074.png",
+      "ground_truth": "18"
+    },
+    {
+      "image_id": "line_0075",
+      "file_path": "line_crops/line_0075.png",
+      "ground_truth": "0,24"
+    },
+    {
+      "image_id": "line_0076",
+      "file_path": "line_crops/line_0076.png",
+      "ground_truth": "0,2"
+    },
+    {
+      "image_id": "line_0077",
+      "file_path": "line_crops/line_0077.png",
+      "ground_truth": "2"
+    },
+    {
+      "image_id": "line_0078",
+      "file_path": "line_crops/line_0078.png",
+      "ground_truth": "0,12"
+    },
+    {
+      "image_id": "line_0079",
+      "file_path": "line_crops/line_0079.png",
+      "ground_truth": "0,1"
+    },
+    {
+      "image_id": "line_0080",
+      "file_path": "line_crops/line_0080.png",
+      "ground_truth": "сверлить"
+    },
+    {
+      "image_id": "line_0081",
+      "file_path": "line_crops/line_0081.png",
+      "ground_truth": "2,0"
+    },
+    {
+      "image_id": "line_0082",
+      "file_path": "line_crops/line_0082.png",
+      "ground_truth": "1,83"
+    },
+    {
+      "image_id": "line_0083",
+      "file_path": "line_crops/line_0083.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0084",
+      "file_path": "line_crops/line_0084.png",
+      "ground_truth": "с"
+    },
+    {
+      "image_id": "line_0085",
+      "file_path": "line_crops/line_0085.png",
+      "ground_truth": "0,75"
+    },
+    {
+      "image_id": "line_0086",
+      "file_path": "line_crops/line_0086.png",
+      "ground_truth": "0,83"
+    },
+    {
+      "image_id": "line_0087",
+      "file_path": "line_crops/line_0087.png",
+      "ground_truth": "на"
+    },
+    {
+      "image_id": "line_0088",
+      "file_path": "line_crops/line_0088.png",
+      "ground_truth": "мм"
+    },
+    {
+      "image_id": "line_0089",
+      "file_path": "line_crops/line_0089.png",
+      "ground_truth": "5"
+    },
+    {
+      "image_id": "line_0090",
+      "file_path": "line_crops/line_0090.png",
+      "ground_truth": "под"
+    },
+    {
+      "image_id": "line_0091",
+      "file_path": "line_crops/line_0091.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0092",
+      "file_path": "line_crops/line_0092.png",
+      "ground_truth": "122"
+    },
+    {
+      "image_id": "line_0093",
+      "file_path": "line_crops/line_0093.png",
+      "ground_truth": "54"
+    },
+    {
+      "image_id": "line_0094",
+      "file_path": "line_crops/line_0094.png",
+      "ground_truth": "8,3"
+    },
+    {
+      "image_id": "line_0095",
+      "file_path": "line_crops/line_0095.png",
+      "ground_truth": "Вес"
+    },
+    {
+      "image_id": "line_0096",
+      "file_path": "line_crops/line_0096.png",
+      "ground_truth": "кольцо"
+    },
+    {
+      "image_id": "line_0097",
+      "file_path": "line_crops/line_0097.png",
+      "ground_truth": "477582"
+    },
+    {
+      "image_id": "line_0098",
+      "file_path": "line_crops/line_0098.png",
+      "ground_truth": "477587"
+    },
+    {
+      "image_id": "line_0099",
+      "file_path": "line_crops/line_0099.png",
+      "ground_truth": "Вес"
+    },
+    {
+      "image_id": "line_0100",
+      "file_path": "line_crops/line_0100.png",
+      "ground_truth": "1,6"
+    },
+    {
+      "image_id": "line_0101",
+      "file_path": "line_crops/line_0101.png",
+      "ground_truth": "кг"
+    },
+    {
+      "image_id": "line_0102",
+      "file_path": "line_crops/line_0102.png",
+      "ground_truth": "Т2"
+    },
+    {
+      "image_id": "line_0103",
+      "file_path": "line_crops/line_0103.png",
+      "ground_truth": "40ХФА"
+    },
+    {
+      "image_id": "line_0104",
+      "file_path": "line_crops/line_0104.png",
+      "ground_truth": "65"
+    },
+    {
+      "image_id": "line_0105",
+      "file_path": "line_crops/line_0105.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0106",
+      "file_path": "line_crops/line_0106.png",
+      "ground_truth": "болт"
+    },
+    {
+      "image_id": "line_0107",
+      "file_path": "line_crops/line_0107.png",
+      "ground_truth": "на"
+    },
+    {
+      "image_id": "line_0108",
+      "file_path": "line_crops/line_0108.png",
+      "ground_truth": "0,83"
+    },
+    {
+      "image_id": "line_0109",
+      "file_path": "line_crops/line_0109.png",
+      "ground_truth": "0,75"
+    },
+    {
+      "image_id": "line_0110",
+      "file_path": "line_crops/line_0110.png",
+      "ground_truth": "с"
+    },
+    {
+      "image_id": "line_0111",
+      "file_path": "line_crops/line_0111.png",
+      "ground_truth": "сторону"
+    },
+    {
+      "image_id": "line_0112",
+      "file_path": "line_crops/line_0112.png",
+      "ground_truth": "по"
+    },
+    {
+      "image_id": "line_0113",
+      "file_path": "line_crops/line_0113.png",
+      "ground_truth": "и"
+    },
+    {
+      "image_id": "line_0114",
+      "file_path": "line_crops/line_0114.png",
+      "ground_truth": "3"
+    },
+    {
+      "image_id": "line_0115",
+      "file_path": "line_crops/line_0115.png",
+      "ground_truth": "мм"
+    },
+    {
+      "image_id": "line_0116",
+      "file_path": "line_crops/line_0116.png",
+      "ground_truth": "нарезки"
+    },
+    {
+      "image_id": "line_0117",
+      "file_path": "line_crops/line_0117.png",
+      "ground_truth": "НВ"
+    },
+    {
+      "image_id": "line_0118",
+      "file_path": "line_crops/line_0118.png",
+      "ground_truth": "0,5"
+    },
+    {
+      "image_id": "line_0119",
+      "file_path": "line_crops/line_0119.png",
+      "ground_truth": "0,55"
+    },
+    {
+      "image_id": "line_0120",
+      "file_path": "line_crops/line_0120.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0121",
+      "file_path": "line_crops/line_0121.png",
+      "ground_truth": "в"
+    },
+    {
+      "image_id": "line_0122",
+      "file_path": "line_crops/line_0122.png",
+      "ground_truth": "меру"
+    },
+    {
+      "image_id": "line_0123",
+      "file_path": "line_crops/line_0123.png",
+      "ground_truth": "Т2"
+    },
+    {
+      "image_id": "line_0124",
+      "file_path": "line_crops/line_0124.png",
+      "ground_truth": "меру"
+    },
+    {
+      "image_id": "line_0125",
+      "file_path": "line_crops/line_0125.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0126",
+      "file_path": "line_crops/line_0126.png",
+      "ground_truth": "Центрирующий"
+    },
+    {
+      "image_id": "line_0127",
+      "file_path": "line_crops/line_0127.png",
+      "ground_truth": "болт"
+    },
+    {
+      "image_id": "line_0128",
+      "file_path": "line_crops/line_0128.png",
+      "ground_truth": "под"
+    },
+    {
+      "image_id": "line_0129",
+      "file_path": "line_crops/line_0129.png",
+      "ground_truth": "477588"
+    },
+    {
+      "image_id": "line_0130",
+      "file_path": "line_crops/line_0130.png",
+      "ground_truth": "приспособления"
+    },
+    {
+      "image_id": "line_0131",
+      "file_path": "line_crops/line_0131.png",
+      "ground_truth": "80"
+    },
+    {
+      "image_id": "line_0132",
+      "file_path": "line_crops/line_0132.png",
+      "ground_truth": "90"
+    },
+    {
+      "image_id": "line_0133",
+      "file_path": "line_crops/line_0133.png",
+      "ground_truth": "-0,05"
+    },
+    {
+      "image_id": "line_0134",
+      "file_path": "line_crops/line_0134.png",
+      "ground_truth": "+0,05"
+    },
+    {
+      "image_id": "line_0135",
+      "file_path": "line_crops/line_0135.png",
+      "ground_truth": "300"
+    },
+    {
+      "image_id": "line_0136",
+      "file_path": "line_crops/line_0136.png",
+      "ground_truth": "-0,1"
+    },
+    {
+      "image_id": "line_0137",
+      "file_path": "line_crops/line_0137.png",
+      "ground_truth": "-0,2"
+    },
+    {
+      "image_id": "line_0138",
+      "file_path": "line_crops/line_0138.png",
+      "ground_truth": "Вес"
+    },
+    {
+      "image_id": "line_0139",
+      "file_path": "line_crops/line_0139.png",
+      "ground_truth": "40ХФА"
+    },
+    {
+      "image_id": "line_0140",
+      "file_path": "line_crops/line_0140.png",
+      "ground_truth": "2,25"
+    },
+    {
+      "image_id": "line_0141",
+      "file_path": "line_crops/line_0141.png",
+      "ground_truth": "2,5"
+    },
+    {
+      "image_id": "line_0142",
+      "file_path": "line_crops/line_0142.png",
+      "ground_truth": "14,2"
+    },
+    {
+      "image_id": "line_0143",
+      "file_path": "line_crops/line_0143.png",
+      "ground_truth": "80,7"
+    },
+    {
+      "image_id": "line_0144",
+      "file_path": "line_crops/line_0144.png",
+      "ground_truth": "90,7"
+    },
+    {
+      "image_id": "line_0145",
+      "file_path": "line_crops/line_0145.png",
+      "ground_truth": "300"
+    },
+    {
+      "image_id": "line_0146",
+      "file_path": "line_crops/line_0146.png",
+      "ground_truth": "-0,1"
+    },
+    {
+      "image_id": "line_0147",
+      "file_path": "line_crops/line_0147.png",
+      "ground_truth": "-0,2"
+    },
+    {
+      "image_id": "line_0148",
+      "file_path": "line_crops/line_0148.png",
+      "ground_truth": "5"
+    },
+    {
+      "image_id": "line_0149",
+      "file_path": "line_crops/line_0149.png",
+      "ground_truth": "45"
+    },
+    {
+      "image_id": "line_0150",
+      "file_path": "line_crops/line_0150.png",
+      "ground_truth": "0,67"
+    },
+    {
+      "image_id": "line_0151",
+      "file_path": "line_crops/line_0151.png",
+      "ground_truth": "0,58"
+    },
+    {
+      "image_id": "line_0152",
+      "file_path": "line_crops/line_0152.png",
+      "ground_truth": "33"
+    },
+    {
+      "image_id": "line_0153",
+      "file_path": "line_crops/line_0153.png",
+      "ground_truth": "сверлить"
+    },
+    {
+      "image_id": "line_0154",
+      "file_path": "line_crops/line_0154.png",
+      "ground_truth": "и фаски"
+    },
+    {
+      "image_id": "line_0155",
+      "file_path": "line_crops/line_0155.png",
+      "ground_truth": "280"
+    },
+    {
+      "image_id": "line_0156",
+      "file_path": "line_crops/line_0156.png",
+      "ground_truth": "300"
+    },
+    {
+      "image_id": "line_0157",
+      "file_path": "line_crops/line_0157.png",
+      "ground_truth": "1,5"
+    },
+    {
+      "image_id": "line_0158",
+      "file_path": "line_crops/line_0158.png",
+      "ground_truth": "1,33"
+    },
+    {
+      "image_id": "line_0159",
+      "file_path": "line_crops/line_0159.png",
+      "ground_truth": "с"
+    },
+    {
+      "image_id": "line_0160",
+      "file_path": "line_crops/line_0160.png",
+      "ground_truth": "4"
+    },
+    {
+      "image_id": "line_0161",
+      "file_path": "line_crops/line_0161.png",
+      "ground_truth": "сторон"
+    },
+    {
+      "image_id": "line_0162",
+      "file_path": "line_crops/line_0162.png",
+      "ground_truth": "80"
+    },
+    {
+      "image_id": "line_0163",
+      "file_path": "line_crops/line_0163.png",
+      "ground_truth": "90"
+    },
+    {
+      "image_id": "line_0164",
+      "file_path": "line_crops/line_0164.png",
+      "ground_truth": "250"
+    },
+    {
+      "image_id": "line_0165",
+      "file_path": "line_crops/line_0165.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0166",
+      "file_path": "line_crops/line_0166.png",
+      "ground_truth": "Вес"
+    },
+    {
+      "image_id": "line_0167",
+      "file_path": "line_crops/line_0167.png",
+      "ground_truth": "14,2"
+    },
+    {
+      "image_id": "line_0168",
+      "file_path": "line_crops/line_0168.png",
+      "ground_truth": "1,0"
+    },
+    {
+      "image_id": "line_0169",
+      "file_path": "line_crops/line_0169.png",
+      "ground_truth": "1,1"
+    },
+    {
+      "image_id": "line_0170",
+      "file_path": "line_crops/line_0170.png",
+      "ground_truth": "в р-ры"
+    },
+    {
+      "image_id": "line_0171",
+      "file_path": "line_crops/line_0171.png",
+      "ground_truth": "под"
+    },
+    {
+      "image_id": "line_0172",
+      "file_path": "line_crops/line_0172.png",
+      "ground_truth": "5"
+    },
+    {
+      "image_id": "line_0173",
+      "file_path": "line_crops/line_0173.png",
+      "ground_truth": "80,7"
+    },
+    {
+      "image_id": "line_0174",
+      "file_path": "line_crops/line_0174.png",
+      "ground_truth": "фаски"
+    },
+    {
+      "image_id": "line_0175",
+      "file_path": "line_crops/line_0175.png",
+      "ground_truth": "0,58"
+    },
+    {
+      "image_id": "line_0176",
+      "file_path": "line_crops/line_0176.png",
+      "ground_truth": "0,67"
+    },
+    {
+      "image_id": "line_0177",
+      "file_path": "line_crops/line_0177.png",
+      "ground_truth": "сверлить"
+    },
+    {
+      "image_id": "line_0178",
+      "file_path": "line_crops/line_0178.png",
+      "ground_truth": "2"
+    },
+    {
+      "image_id": "line_0179",
+      "file_path": "line_crops/line_0179.png",
+      "ground_truth": "отв"
+    },
+    {
+      "image_id": "line_0180",
+      "file_path": "line_crops/line_0180.png",
+      "ground_truth": "18"
+    },
+    {
+      "image_id": "line_0181",
+      "file_path": "line_crops/line_0181.png",
+      "ground_truth": "ф22"
+    },
+    {
+      "image_id": "line_0182",
+      "file_path": "line_crops/line_0182.png",
+      "ground_truth": "ф33"
+    },
+    {
+      "image_id": "line_0183",
+      "file_path": "line_crops/line_0183.png",
+      "ground_truth": "фаски"
+    },
+    {
+      "image_id": "line_0184",
+      "file_path": "line_crops/line_0184.png",
+      "ground_truth": "280"
+    },
+    {
+      "image_id": "line_0185",
+      "file_path": "line_crops/line_0185.png",
+      "ground_truth": "300"
+    },
+    {
+      "image_id": "line_0186",
+      "file_path": "line_crops/line_0186.png",
+      "ground_truth": "шлиф"
+    },
+    {
+      "image_id": "line_0187",
+      "file_path": "line_crops/line_0187.png",
+      "ground_truth": "с"
+    },
+    {
+      "image_id": "line_0188",
+      "file_path": "line_crops/line_0188.png",
+      "ground_truth": "4"
+    },
+    {
+      "image_id": "line_0189",
+      "file_path": "line_crops/line_0189.png",
+      "ground_truth": "сторон"
+    },
+    {
+      "image_id": "line_0190",
+      "file_path": "line_crops/line_0190.png",
+      "ground_truth": "80"
+    },
+    {
+      "image_id": "line_0191",
+      "file_path": "line_crops/line_0191.png",
+      "ground_truth": "1,33"
+    },
+    {
+      "image_id": "line_0192",
+      "file_path": "line_crops/line_0192.png",
+      "ground_truth": "40ХФА"
+    },
+    {
+      "image_id": "line_0193",
+      "file_path": "line_crops/line_0193.png",
+      "ground_truth": "Планка"
+    },
+    {
+      "image_id": "line_0194",
+      "file_path": "line_crops/line_0194.png",
+      "ground_truth": "477589"
+    },
+    {
+      "image_id": "line_0195",
+      "file_path": "line_crops/line_0195.png",
+      "ground_truth": "497593"
+    },
+    {
+      "image_id": "line_0196",
+      "file_path": "line_crops/line_0196.png",
+      "ground_truth": "на"
+    },
+    {
+      "image_id": "line_0197",
+      "file_path": "line_crops/line_0197.png",
+      "ground_truth": "собрать"
+    },
+    {
+      "image_id": "line_0198",
+      "file_path": "line_crops/line_0198.png",
+      "ground_truth": "430"
+    },
+    {
+      "image_id": "line_0199",
+      "file_path": "line_crops/line_0199.png",
+      "ground_truth": "2,5"
+    },
+    {
+      "image_id": "line_0200",
+      "file_path": "line_crops/line_0200.png",
+      "ground_truth": "Т50"
+    },
+    {
+      "image_id": "line_0201",
+      "file_path": "line_crops/line_0201.png",
+      "ground_truth": "0,37"
+    },
+    {
+      "image_id": "line_0202",
+      "file_path": "line_crops/line_0202.png",
+      "ground_truth": "0,42"
+    },
+    {
+      "image_id": "line_0203",
+      "file_path": "line_crops/line_0203.png",
+      "ground_truth": "кг"
+    },
+    {
+      "image_id": "line_0204",
+      "file_path": "line_crops/line_0204.png",
+      "ground_truth": "39,5"
+    },
+    {
+      "image_id": "line_0205",
+      "file_path": "line_crops/line_0205.png",
+      "ground_truth": "17"
+    },
+    {
+      "image_id": "line_0206",
+      "file_path": "line_crops/line_0206.png",
+      "ground_truth": "215"
+    },
+    {
+      "image_id": "line_0207",
+      "file_path": "line_crops/line_0207.png",
+      "ground_truth": "430"
+    },
+    {
+      "image_id": "line_0208",
+      "file_path": "line_crops/line_0208.png",
+      "ground_truth": "139"
+    },
+    {
+      "image_id": "line_0209",
+      "file_path": "line_crops/line_0209.png",
+      "ground_truth": "494083"
+    },
+    {
+      "image_id": "line_0210",
+      "file_path": "line_crops/line_0210.png",
+      "ground_truth": "45,0"
+    },
+    {
+      "image_id": "line_0211",
+      "file_path": "line_crops/line_0211.png",
+      "ground_truth": "498"
+    },
+    {
+      "image_id": "line_0212",
+      "file_path": "line_crops/line_0212.png",
+      "ground_truth": "497"
+    },
+    {
+      "image_id": "line_0213",
+      "file_path": "line_crops/line_0213.png",
+      "ground_truth": "748"
+    },
+    {
+      "image_id": "line_0214",
+      "file_path": "line_crops/line_0214.png",
+      "ground_truth": "6"
+    },
+    {
+      "image_id": "line_0215",
+      "file_path": "line_crops/line_0215.png",
+      "ground_truth": "0,6"
+    },
+    {
+      "image_id": "line_0216",
+      "file_path": "line_crops/line_0216.png",
+      "ground_truth": "0,42"
+    },
+    {
+      "image_id": "line_0217",
+      "file_path": "line_crops/line_0217.png",
+      "ground_truth": "0,5"
+    },
+    {
+      "image_id": "line_0218",
+      "file_path": "line_crops/line_0218.png",
+      "ground_truth": "0,5"
+    },
+    {
+      "image_id": "line_0219",
+      "file_path": "line_crops/line_0219.png",
+      "ground_truth": "0,17"
+    },
+    {
+      "image_id": "line_0220",
+      "file_path": "line_crops/line_0220.png",
+      "ground_truth": "4"
+    },
+    {
+      "image_id": "line_0221",
+      "file_path": "line_crops/line_0221.png",
+      "ground_truth": "6"
+    },
+    {
+      "image_id": "line_0222",
+      "file_path": "line_crops/line_0222.png",
+      "ground_truth": "6"
+    },
+    {
+      "image_id": "line_0223",
+      "file_path": "line_crops/line_0223.png",
+      "ground_truth": "0,08"
+    },
+    {
+      "image_id": "line_0224",
+      "file_path": "line_crops/line_0224.png",
+      "ground_truth": "0,1"
+    },
+    {
+      "image_id": "line_0225",
+      "file_path": "line_crops/line_0225.png",
+      "ground_truth": "0,05"
+    },
+    {
+      "image_id": "line_0226",
+      "file_path": "line_crops/line_0226.png",
+      "ground_truth": "0,67"
+    },
+    {
+      "image_id": "line_0227",
+      "file_path": "line_crops/line_0227.png",
+      "ground_truth": "0,6"
+    },
+    {
+      "image_id": "line_0228",
+      "file_path": "line_crops/line_0228.png",
+      "ground_truth": "6"
+    },
+    {
+      "image_id": "line_0229",
+      "file_path": "line_crops/line_0229.png",
+      "ground_truth": "0,1"
+    },
+    {
+      "image_id": "line_0230",
+      "file_path": "line_crops/line_0230.png",
+      "ground_truth": "0,04"
+    },
+    {
+      "image_id": "line_0231",
+      "file_path": "line_crops/line_0231.png",
+      "ground_truth": "25"
+    },
+    {
+      "image_id": "line_0232",
+      "file_path": "line_crops/line_0232.png",
+      "ground_truth": "0,08"
+    },
+    {
+      "image_id": "line_0233",
+      "file_path": "line_crops/line_0233.png",
+      "ground_truth": "2"
+    },
+    {
+      "image_id": "line_0234",
+      "file_path": "line_crops/line_0234.png",
+      "ground_truth": "0,13"
+    },
+    {
+      "image_id": "line_0235",
+      "file_path": "line_crops/line_0235.png",
+      "ground_truth": "0,12"
+    },
+    {
+      "image_id": "line_0236",
+      "file_path": "line_crops/line_0236.png",
+      "ground_truth": "0,07"
+    },
+    {
+      "image_id": "line_0237",
+      "file_path": "line_crops/line_0237.png",
+      "ground_truth": "ПФ5"
+    },
+    {
+      "image_id": "line_0238",
+      "file_path": "line_crops/line_0238.png",
+      "ground_truth": "2,0"
+    },
+    {
+      "image_id": "line_0239",
+      "file_path": "line_crops/line_0239.png",
+      "ground_truth": "ПФ5"
+    },
+    {
+      "image_id": "line_0240",
+      "file_path": "line_crops/line_0240.png",
+      "ground_truth": "0,3"
+    },
+    {
+      "image_id": "line_0241",
+      "file_path": "line_crops/line_0241.png",
+      "ground_truth": "0,25"
+    },
+    {
+      "image_id": "line_0242",
+      "file_path": "line_crops/line_0242.png",
+      "ground_truth": "4"
+    },
+    {
+      "image_id": "line_0243",
+      "file_path": "line_crops/line_0243.png",
+      "ground_truth": "0,2"
+    },
+    {
+      "image_id": "line_0244",
+      "file_path": "line_crops/line_0244.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0245",
+      "file_path": "line_crops/line_0245.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0246",
+      "file_path": "line_crops/line_0246.png",
+      "ground_truth": "757"
+    },
+    {
+      "image_id": "line_0247",
+      "file_path": "line_crops/line_0247.png",
+      "ground_truth": "торец"
+    },
+    {
+      "image_id": "line_0248",
+      "file_path": "line_crops/line_0248.png",
+      "ground_truth": "до"
+    },
+    {
+      "image_id": "line_0249",
+      "file_path": "line_crops/line_0249.png",
+      "ground_truth": "3,5"
+    },
+    {
+      "image_id": "line_0250",
+      "file_path": "line_crops/line_0250.png",
+      "ground_truth": "3,0"
+    },
+    {
+      "image_id": "line_0251",
+      "file_path": "line_crops/line_0251.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0252",
+      "file_path": "line_crops/line_0252.png",
+      "ground_truth": "13"
+    },
+    {
+      "image_id": "line_0253",
+      "file_path": "line_crops/line_0253.png",
+      "ground_truth": "490"
+    },
+    {
+      "image_id": "line_0254",
+      "file_path": "line_crops/line_0254.png",
+      "ground_truth": "30"
+    },
+    {
+      "image_id": "line_0255",
+      "file_path": "line_crops/line_0255.png",
+      "ground_truth": "63,5"
+    },
+    {
+      "image_id": "line_0256",
+      "file_path": "line_crops/line_0256.png",
+      "ground_truth": "40ХФА"
+    },
+    {
+      "image_id": "line_0257",
+      "file_path": "line_crops/line_0257.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0258",
+      "file_path": "line_crops/line_0258.png",
+      "ground_truth": "497"
+    },
+    {
+      "image_id": "line_0259",
+      "file_path": "line_crops/line_0259.png",
+      "ground_truth": "497"
+    },
+    {
+      "image_id": "line_0260",
+      "file_path": "line_crops/line_0260.png",
+      "ground_truth": "607"
+    },
+    {
+      "image_id": "line_0261",
+      "file_path": "line_crops/line_0261.png",
+      "ground_truth": "490"
+    },
+    {
+      "image_id": "line_0262",
+      "file_path": "line_crops/line_0262.png",
+      "ground_truth": "280"
+    },
+    {
+      "image_id": "line_0263",
+      "file_path": "line_crops/line_0263.png",
+      "ground_truth": "300"
+    },
+    {
+      "image_id": "line_0264",
+      "file_path": "line_crops/line_0264.png",
+      "ground_truth": "3,0"
+    },
+    {
+      "image_id": "line_0265",
+      "file_path": "line_crops/line_0265.png",
+      "ground_truth": "5"
+    },
+    {
+      "image_id": "line_0266",
+      "file_path": "line_crops/line_0266.png",
+      "ground_truth": "2"
+    },
+    {
+      "image_id": "line_0267",
+      "file_path": "line_crops/line_0267.png",
+      "ground_truth": "5"
+    },
+    {
+      "image_id": "line_0268",
+      "file_path": "line_crops/line_0268.png",
+      "ground_truth": "529.251"
+    },
+    {
+      "image_id": "line_0269",
+      "file_path": "line_crops/line_0269.png",
+      "ground_truth": "Т5"
+    },
+    {
+      "image_id": "line_0270",
+      "file_path": "line_crops/line_0270.png",
+      "ground_truth": "13"
+    },
+    {
+      "image_id": "line_0271",
+      "file_path": "line_crops/line_0271.png",
+      "ground_truth": "0,5"
+    },
+    {
+      "image_id": "line_0272",
+      "file_path": "line_crops/line_0272.png",
+      "ground_truth": "0,55"
+    },
+    {
+      "image_id": "line_0273",
+      "file_path": "line_crops/line_0273.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0274",
+      "file_path": "line_crops/line_0274.png",
+      "ground_truth": "кг."
+    },
+    {
+      "image_id": "line_0275",
+      "file_path": "line_crops/line_0275.png",
+      "ground_truth": "120"
+    },
+    {
+      "image_id": "line_0276",
+      "file_path": "line_crops/line_0276.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0277",
+      "file_path": "line_crops/line_0277.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0278",
+      "file_path": "line_crops/line_0278.png",
+      "ground_truth": "Зачистить"
+    },
+    {
+      "image_id": "line_0279",
+      "file_path": "line_crops/line_0279.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0280",
+      "file_path": "line_crops/line_0280.png",
+      "ground_truth": "3"
+    },
+    {
+      "image_id": "line_0281",
+      "file_path": "line_crops/line_0281.png",
+      "ground_truth": "7,0"
+    },
+    {
+      "image_id": "line_0282",
+      "file_path": "line_crops/line_0282.png",
+      "ground_truth": "6,0"
+    },
+    {
+      "image_id": "line_0283",
+      "file_path": "line_crops/line_0283.png",
+      "ground_truth": "1,2"
+    },
+    {
+      "image_id": "line_0284",
+      "file_path": "line_crops/line_0284.png",
+      "ground_truth": "700"
+    },
+    {
+      "image_id": "line_0285",
+      "file_path": "line_crops/line_0285.png",
+      "ground_truth": "Т5"
+    },
+    {
+      "image_id": "line_0286",
+      "file_path": "line_crops/line_0286.png",
+      "ground_truth": "7,0"
+    },
+    {
+      "image_id": "line_0287",
+      "file_path": "line_crops/line_0287.png",
+      "ground_truth": "8,0"
+    },
+    {
+      "image_id": "line_0288",
+      "file_path": "line_crops/line_0288.png",
+      "ground_truth": "10.002.084"
+    },
+    {
+      "image_id": "line_0289",
+      "file_path": "line_crops/line_0289.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0290",
+      "file_path": "line_crops/line_0290.png",
+      "ground_truth": "081"
+    },
+    {
+      "image_id": "line_0291",
+      "file_path": "line_crops/line_0291.png",
+      "ground_truth": "280"
+    },
+    {
+      "image_id": "line_0292",
+      "file_path": "line_crops/line_0292.png",
+      "ground_truth": "302,4"
+    },
+    {
+      "image_id": "line_0293",
+      "file_path": "line_crops/line_0293.png",
+      "ground_truth": "430"
+    },
+    {
+      "image_id": "line_0294",
+      "file_path": "line_crops/line_0294.png",
+      "ground_truth": "320"
+    },
+    {
+      "image_id": "line_0295",
+      "file_path": "line_crops/line_0295.png",
+      "ground_truth": "543"
+    },
+    {
+      "image_id": "line_0296",
+      "file_path": "line_crops/line_0296.png",
+      "ground_truth": "85"
+    },
+    {
+      "image_id": "line_0297",
+      "file_path": "line_crops/line_0297.png",
+      "ground_truth": "Ст. 5ХНМ"
+    },
+    {
+      "image_id": "line_0298",
+      "file_path": "line_crops/line_0298.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0299",
+      "file_path": "line_crops/line_0299.png",
+      "ground_truth": "203"
+    },
+    {
+      "image_id": "line_0300",
+      "file_path": "line_crops/line_0300.png",
+      "ground_truth": "кг"
+    },
+    {
+      "image_id": "line_0301",
+      "file_path": "line_crops/line_0301.png",
+      "ground_truth": "430"
+    },
+    {
+      "image_id": "line_0302",
+      "file_path": "line_crops/line_0302.png",
+      "ground_truth": "335"
+    },
+    {
+      "image_id": "line_0303",
+      "file_path": "line_crops/line_0303.png",
+      "ground_truth": "250"
+    },
+    {
+      "image_id": "line_0304",
+      "file_path": "line_crops/line_0304.png",
+      "ground_truth": "750"
+    },
+    {
+      "image_id": "line_0305",
+      "file_path": "line_crops/line_0305.png",
+      "ground_truth": "700"
+    },
+    {
+      "image_id": "line_0306",
+      "file_path": "line_crops/line_0306.png",
+      "ground_truth": "25,0"
+    },
+    {
+      "image_id": "line_0307",
+      "file_path": "line_crops/line_0307.png",
+      "ground_truth": "Т5"
+    },
+    {
+      "image_id": "line_0308",
+      "file_path": "line_crops/line_0308.png",
+      "ground_truth": "0,67"
+    },
+    {
+      "image_id": "line_0309",
+      "file_path": "line_crops/line_0309.png",
+      "ground_truth": "Р16"
+    },
+    {
+      "image_id": "line_0310",
+      "file_path": "line_crops/line_0310.png",
+      "ground_truth": "0,75"
+    },
+    {
+      "image_id": "line_0311",
+      "file_path": "line_crops/line_0311.png",
+      "ground_truth": "302,4"
+    },
+    {
+      "image_id": "line_0312",
+      "file_path": "line_crops/line_0312.png",
+      "ground_truth": "по"
+    },
+    {
+      "image_id": "line_0313",
+      "file_path": "line_crops/line_0313.png",
+      "ground_truth": "черт"
+    },
+    {
+      "image_id": "line_0314",
+      "file_path": "line_crops/line_0314.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0315",
+      "file_path": "line_crops/line_0315.png",
+      "ground_truth": "002"
+    },
+    {
+      "image_id": "line_0316",
+      "file_path": "line_crops/line_0316.png",
+      "ground_truth": "083СБ"
+    },
+    {
+      "image_id": "line_0317",
+      "file_path": "line_crops/line_0317.png",
+      "ground_truth": "после"
+    },
+    {
+      "image_id": "line_0318",
+      "file_path": "line_crops/line_0318.png",
+      "ground_truth": "сварки"
+    },
+    {
+      "image_id": "line_0319",
+      "file_path": "line_crops/line_0319.png",
+      "ground_truth": "469"
+    },
+    {
+      "image_id": "line_0320",
+      "file_path": "line_crops/line_0320.png",
+      "ground_truth": "001."
+    },
+    {
+      "image_id": "line_0321",
+      "file_path": "line_crops/line_0321.png",
+      "ground_truth": "10."
+    },
+    {
+      "image_id": "line_0322",
+      "file_path": "line_crops/line_0322.png",
+      "ground_truth": "Втулка"
+    },
+    {
+      "image_id": "line_0323",
+      "file_path": "line_crops/line_0323.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0324",
+      "file_path": "line_crops/line_0324.png",
+      "ground_truth": "526,8"
+    },
+    {
+      "image_id": "line_0325",
+      "file_path": "line_crops/line_0325.png",
+      "ground_truth": "85"
+    },
+    {
+      "image_id": "line_0326",
+      "file_path": "line_crops/line_0326.png",
+      "ground_truth": "после"
+    },
+    {
+      "image_id": "line_0327",
+      "file_path": "line_crops/line_0327.png",
+      "ground_truth": "сварки"
+    },
+    {
+      "image_id": "line_0328",
+      "file_path": "line_crops/line_0328.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0329",
+      "file_path": "line_crops/line_0329.png",
+      "ground_truth": "298"
+    },
+    {
+      "image_id": "line_0330",
+      "file_path": "line_crops/line_0330.png",
+      "ground_truth": "ПТ5"
+    },
+    {
+      "image_id": "line_0331",
+      "file_path": "line_crops/line_0331.png",
+      "ground_truth": "Р16"
+    },
+    {
+      "image_id": "line_0332",
+      "file_path": "line_crops/line_0332.png",
+      "ground_truth": "7,0"
+    },
+    {
+      "image_id": "line_0333",
+      "file_path": "line_crops/line_0333.png",
+      "ground_truth": "8,0"
+    },
+    {
+      "image_id": "line_0334",
+      "file_path": "line_crops/line_0334.png",
+      "ground_truth": "1,75"
+    },
+    {
+      "image_id": "line_0335",
+      "file_path": "line_crops/line_0335.png",
+      "ground_truth": "2,0"
+    },
+    {
+      "image_id": "line_0336",
+      "file_path": "line_crops/line_0336.png",
+      "ground_truth": "471"
+    },
+    {
+      "image_id": "line_0337",
+      "file_path": "line_crops/line_0337.png",
+      "ground_truth": "001"
+    },
+    {
+      "image_id": "line_0338",
+      "file_path": "line_crops/line_0338.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0339",
+      "file_path": "line_crops/line_0339.png",
+      "ground_truth": "Заготовка"
+    },
+    {
+      "image_id": "line_0340",
+      "file_path": "line_crops/line_0340.png",
+      "ground_truth": "вырезка"
+    },
+    {
+      "image_id": "line_0341",
+      "file_path": "line_crops/line_0341.png",
+      "ground_truth": "ПТ5"
+    },
+    {
+      "image_id": "line_0342",
+      "file_path": "line_crops/line_0342.png",
+      "ground_truth": "( точить"
+    },
+    {
+      "image_id": "line_0343",
+      "file_path": "line_crops/line_0343.png",
+      "ground_truth": "заг-вка"
+    },
+    {
+      "image_id": "line_0344",
+      "file_path": "line_crops/line_0344.png",
+      "ground_truth": "9,0"
+    },
+    {
+      "image_id": "line_0345",
+      "file_path": "line_crops/line_0345.png",
+      "ground_truth": "8,0"
+    },
+    {
+      "image_id": "line_0346",
+      "file_path": "line_crops/line_0346.png",
+      "ground_truth": "Ст"
+    },
+    {
+      "image_id": "line_0347",
+      "file_path": "line_crops/line_0347.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0348",
+      "file_path": "line_crops/line_0348.png",
+      "ground_truth": "472"
+    },
+    {
+      "image_id": "line_0349",
+      "file_path": "line_crops/line_0349.png",
+      "ground_truth": "001"
+    },
+    {
+      "image_id": "line_0350",
+      "file_path": "line_crops/line_0350.png",
+      "ground_truth": "10."
+    },
+    {
+      "image_id": "line_0351",
+      "file_path": "line_crops/line_0351.png",
+      "ground_truth": "Заготовка"
+    },
+    {
+      "image_id": "line_0352",
+      "file_path": "line_crops/line_0352.png",
+      "ground_truth": "вырезка"
+    },
+    {
+      "image_id": "line_0353",
+      "file_path": "line_crops/line_0353.png",
+      "ground_truth": "2"
+    },
+    {
+      "image_id": "line_0354",
+      "file_path": "line_crops/line_0354.png",
+      "ground_truth": "ПТ5"
+    },
+    {
+      "image_id": "line_0355",
+      "file_path": "line_crops/line_0355.png",
+      "ground_truth": "9,0"
+    },
+    {
+      "image_id": "line_0356",
+      "file_path": "line_crops/line_0356.png",
+      "ground_truth": "10,0"
+    },
+    {
+      "image_id": "line_0357",
+      "file_path": "line_crops/line_0357.png",
+      "ground_truth": "Ст"
+    },
+    {
+      "image_id": "line_0358",
+      "file_path": "line_crops/line_0358.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0359",
+      "file_path": "line_crops/line_0359.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0360",
+      "file_path": "line_crops/line_0360.png",
+      "ground_truth": "002."
+    },
+    {
+      "image_id": "line_0361",
+      "file_path": "line_crops/line_0361.png",
+      "ground_truth": "083"
+    },
+    {
+      "image_id": "line_0362",
+      "file_path": "line_crops/line_0362.png",
+      "ground_truth": "СБ"
+    },
+    {
+      "image_id": "line_0363",
+      "file_path": "line_crops/line_0363.png",
+      "ground_truth": "втулка"
+    },
+    {
+      "image_id": "line_0364",
+      "file_path": "line_crops/line_0364.png",
+      "ground_truth": "85"
+    },
+    {
+      "image_id": "line_0365",
+      "file_path": "line_crops/line_0365.png",
+      "ground_truth": "Ст. 5ХНМ"
+    },
+    {
+      "image_id": "line_0366",
+      "file_path": "line_crops/line_0366.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0367",
+      "file_path": "line_crops/line_0367.png",
+      "ground_truth": "301,4"
+    },
+    {
+      "image_id": "line_0368",
+      "file_path": "line_crops/line_0368.png",
+      "ground_truth": "3,0"
+    },
+    {
+      "image_id": "line_0369",
+      "file_path": "line_crops/line_0369.png",
+      "ground_truth": "3,5"
+    },
+    {
+      "image_id": "line_0370",
+      "file_path": "line_crops/line_0370.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0371",
+      "file_path": "line_crops/line_0371.png",
+      "ground_truth": "002"
+    },
+    {
+      "image_id": "line_0372",
+      "file_path": "line_crops/line_0372.png",
+      "ground_truth": "085"
+    },
+    {
+      "image_id": "line_0373",
+      "file_path": "line_crops/line_0373.png",
+      "ground_truth": "082"
+    },
+    {
+      "image_id": "line_0374",
+      "file_path": "line_crops/line_0374.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0375",
+      "file_path": "line_crops/line_0375.png",
+      "ground_truth": "002"
+    },
+    {
+      "image_id": "line_0376",
+      "file_path": "line_crops/line_0376.png",
+      "ground_truth": "85"
+    },
+    {
+      "image_id": "line_0377",
+      "file_path": "line_crops/line_0377.png",
+      "ground_truth": "42"
+    },
+    {
+      "image_id": "line_0378",
+      "file_path": "line_crops/line_0378.png",
+      "ground_truth": "598"
+    },
+    {
+      "image_id": "line_0379",
+      "file_path": "line_crops/line_0379.png",
+      "ground_truth": "320"
+    },
+    {
+      "image_id": "line_0380",
+      "file_path": "line_crops/line_0380.png",
+      "ground_truth": "5ХНМ"
+    },
+    {
+      "image_id": "line_0381",
+      "file_path": "line_crops/line_0381.png",
+      "ground_truth": "Ст"
+    },
+    {
+      "image_id": "line_0382",
+      "file_path": "line_crops/line_0382.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0383",
+      "file_path": "line_crops/line_0383.png",
+      "ground_truth": "100кг"
+    },
+    {
+      "image_id": "line_0384",
+      "file_path": "line_crops/line_0384.png",
+      "ground_truth": "Т5"
+    },
+    {
+      "image_id": "line_0385",
+      "file_path": "line_crops/line_0385.png",
+      "ground_truth": "3,5"
+    },
+    {
+      "image_id": "line_0386",
+      "file_path": "line_crops/line_0386.png",
+      "ground_truth": "4,0"
+    },
+    {
+      "image_id": "line_0387",
+      "file_path": "line_crops/line_0387.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0388",
+      "file_path": "line_crops/line_0388.png",
+      "ground_truth": "497"
+    },
+    {
+      "image_id": "line_0389",
+      "file_path": "line_crops/line_0389.png",
+      "ground_truth": "600"
+    },
+    {
+      "image_id": "line_0390",
+      "file_path": "line_crops/line_0390.png",
+      "ground_truth": "Сменная"
+    },
+    {
+      "image_id": "line_0391",
+      "file_path": "line_crops/line_0391.png",
+      "ground_truth": "вставка"
+    },
+    {
+      "image_id": "line_0392",
+      "file_path": "line_crops/line_0392.png",
+      "ground_truth": "477"
+    },
+    {
+      "image_id": "line_0393",
+      "file_path": "line_crops/line_0393.png",
+      "ground_truth": "623"
+    },
+    {
+      "image_id": "line_0394",
+      "file_path": "line_crops/line_0394.png",
+      "ground_truth": "РС5"
+    },
+    {
+      "image_id": "line_0395",
+      "file_path": "line_crops/line_0395.png",
+      "ground_truth": "Р16"
+    },
+    {
+      "image_id": "line_0396",
+      "file_path": "line_crops/line_0396.png",
+      "ground_truth": "1,17"
+    },
+    {
+      "image_id": "line_0397",
+      "file_path": "line_crops/line_0397.png",
+      "ground_truth": "1,17"
+    },
+    {
+      "image_id": "line_0398",
+      "file_path": "line_crops/line_0398.png",
+      "ground_truth": "1,25"
+    },
+    {
+      "image_id": "line_0399",
+      "file_path": "line_crops/line_0399.png",
+      "ground_truth": "1,25"
+    },
+    {
+      "image_id": "line_0400",
+      "file_path": "line_crops/line_0400.png",
+      "ground_truth": "7,0"
+    },
+    {
+      "image_id": "line_0401",
+      "file_path": "line_crops/line_0401.png",
+      "ground_truth": "КД8"
+    },
+    {
+      "image_id": "line_0402",
+      "file_path": "line_crops/line_0402.png",
+      "ground_truth": "527"
+    },
+    {
+      "image_id": "line_0403",
+      "file_path": "line_crops/line_0403.png",
+      "ground_truth": "8,0"
+    },
+    {
+      "image_id": "line_0404",
+      "file_path": "line_crops/line_0404.png",
+      "ground_truth": "предварит"
+    },
+    {
+      "image_id": "line_0405",
+      "file_path": "line_crops/line_0405.png",
+      "ground_truth": "5ХТНМ"
+    },
+    {
+      "image_id": "line_0406",
+      "file_path": "line_crops/line_0406.png",
+      "ground_truth": "Ст."
+    },
+    {
+      "image_id": "line_0407",
+      "file_path": "line_crops/line_0407.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0408",
+      "file_path": "line_crops/line_0408.png",
+      "ground_truth": "597"
+    },
+    {
+      "image_id": "line_0409",
+      "file_path": "line_crops/line_0409.png",
+      "ground_truth": "кг."
+    },
+    {
+      "image_id": "line_0410",
+      "file_path": "line_crops/line_0410.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0411",
+      "file_path": "line_crops/line_0411.png",
+      "ground_truth": "5ЗНМ"
+    },
+    {
+      "image_id": "line_0412",
+      "file_path": "line_crops/line_0412.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0413",
+      "file_path": "line_crops/line_0413.png",
+      "ground_truth": "41,4"
+    },
+    {
+      "image_id": "line_0414",
+      "file_path": "line_crops/line_0414.png",
+      "ground_truth": "470"
+    },
+    {
+      "image_id": "line_0415",
+      "file_path": "line_crops/line_0415.png",
+      "ground_truth": "3,0"
+    },
+    {
+      "image_id": "line_0416",
+      "file_path": "line_crops/line_0416.png",
+      "ground_truth": "Т50"
+    },
+    {
+      "image_id": "line_0417",
+      "file_path": "line_crops/line_0417.png",
+      "ground_truth": "3,5"
+    },
+    {
+      "image_id": "line_0418",
+      "file_path": "line_crops/line_0418.png",
+      "ground_truth": "3,0"
+    },
+    {
+      "image_id": "line_0419",
+      "file_path": "line_crops/line_0419.png",
+      "ground_truth": "в"
+    },
+    {
+      "image_id": "line_0420",
+      "file_path": "line_crops/line_0420.png",
+      "ground_truth": "чистовые"
+    },
+    {
+      "image_id": "line_0421",
+      "file_path": "line_crops/line_0421.png",
+      "ground_truth": "Р16"
+    },
+    {
+      "image_id": "line_0422",
+      "file_path": "line_crops/line_0422.png",
+      "ground_truth": "1,5"
+    },
+    {
+      "image_id": "line_0423",
+      "file_path": "line_crops/line_0423.png",
+      "ground_truth": "1,67"
+    },
+    {
+      "image_id": "line_0424",
+      "file_path": "line_crops/line_0424.png",
+      "ground_truth": "205"
+    },
+    {
+      "image_id": "line_0425",
+      "file_path": "line_crops/line_0425.png",
+      "ground_truth": "100"
+    },
+    {
+      "image_id": "line_0426",
+      "file_path": "line_crops/line_0426.png",
+      "ground_truth": "484389"
+    },
+    {
+      "image_id": "line_0427",
+      "file_path": "line_crops/line_0427.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0428",
+      "file_path": "line_crops/line_0428.png",
+      "ground_truth": "497"
+    },
+    {
+      "image_id": "line_0429",
+      "file_path": "line_crops/line_0429.png",
+      "ground_truth": "268"
+    },
+    {
+      "image_id": "line_0430",
+      "file_path": "line_crops/line_0430.png",
+      "ground_truth": "1450"
+    },
+    {
+      "image_id": "line_0431",
+      "file_path": "line_crops/line_0431.png",
+      "ground_truth": "1350"
+    },
+    {
+      "image_id": "line_0432",
+      "file_path": "line_crops/line_0432.png",
+      "ground_truth": "Ст"
+    },
+    {
+      "image_id": "line_0433",
+      "file_path": "line_crops/line_0433.png",
+      "ground_truth": "ОТС"
+    },
+    {
+      "image_id": "line_0434",
+      "file_path": "line_crops/line_0434.png",
+      "ground_truth": "45"
+    },
+    {
+      "image_id": "line_0435",
+      "file_path": "line_crops/line_0435.png",
+      "ground_truth": "5"
+    },
+    {
+      "image_id": "line_0436",
+      "file_path": "line_crops/line_0436.png",
+      "ground_truth": "13"
+    },
+    {
+      "image_id": "line_0437",
+      "file_path": "line_crops/line_0437.png",
+      "ground_truth": "12,0"
+    },
+    {
+      "image_id": "line_0438",
+      "file_path": "line_crops/line_0438.png",
+      "ground_truth": "К25"
+    },
+    {
+      "image_id": "line_0439",
+      "file_path": "line_crops/line_0439.png",
+      "ground_truth": "3"
+    },
+    {
+      "image_id": "line_0440",
+      "file_path": "line_crops/line_0440.png",
+      "ground_truth": "45"
+    },
+    {
+      "image_id": "line_0441",
+      "file_path": "line_crops/line_0441.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0442",
+      "file_path": "line_crops/line_0442.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0443",
+      "file_path": "line_crops/line_0443.png",
+      "ground_truth": "497974"
+    },
+    {
+      "image_id": "line_0444",
+      "file_path": "line_crops/line_0444.png",
+      "ground_truth": "1450"
+    },
+    {
+      "image_id": "line_0445",
+      "file_path": "line_crops/line_0445.png",
+      "ground_truth": "К25"
+    },
+    {
+      "image_id": "line_0446",
+      "file_path": "line_crops/line_0446.png",
+      "ground_truth": "13,5"
+    },
+    {
+      "image_id": "line_0447",
+      "file_path": "line_crops/line_0447.png",
+      "ground_truth": "15,0"
+    },
+    {
+      "image_id": "line_0448",
+      "file_path": "line_crops/line_0448.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0449",
+      "file_path": "line_crops/line_0449.png",
+      "ground_truth": "в"
+    },
+    {
+      "image_id": "line_0450",
+      "file_path": "line_crops/line_0450.png",
+      "ground_truth": "р-ры"
+    },
+    {
+      "image_id": "line_0451",
+      "file_path": "line_crops/line_0451.png",
+      "ground_truth": "чистовые"
+    },
+    {
+      "image_id": "line_0452",
+      "file_path": "line_crops/line_0452.png",
+      "ground_truth": "Ст 45"
+    },
+    {
+      "image_id": "line_0453",
+      "file_path": "line_crops/line_0453.png",
+      "ground_truth": "ОТС"
+    },
+    {
+      "image_id": "line_0454",
+      "file_path": "line_crops/line_0454.png",
+      "ground_truth": "497.268"
+    },
+    {
+      "image_id": "line_0455",
+      "file_path": "line_crops/line_0455.png",
+      "ground_truth": "1100"
+    },
+    {
+      "image_id": "line_0456",
+      "file_path": "line_crops/line_0456.png",
+      "ground_truth": "контроль"
+    },
+    {
+      "image_id": "line_0457",
+      "file_path": "line_crops/line_0457.png",
+      "ground_truth": "СТ5ХНМ"
+    },
+    {
+      "image_id": "line_0458",
+      "file_path": "line_crops/line_0458.png",
+      "ground_truth": "твердости"
+    },
+    {
+      "image_id": "line_0459",
+      "file_path": "line_crops/line_0459.png",
+      "ground_truth": "Р16"
+    },
+    {
+      "image_id": "line_0460",
+      "file_path": "line_crops/line_0460.png",
+      "ground_truth": "1,33"
+    },
+    {
+      "image_id": "line_0461",
+      "file_path": "line_crops/line_0461.png",
+      "ground_truth": "1,5"
+    },
+    {
+      "image_id": "line_0462",
+      "file_path": "line_crops/line_0462.png",
+      "ground_truth": "фаски"
+    },
+    {
+      "image_id": "line_0463",
+      "file_path": "line_crops/line_0463.png",
+      "ground_truth": "45"
+    },
+    {
+      "image_id": "line_0464",
+      "file_path": "line_crops/line_0464.png",
+      "ground_truth": "Ст.5ХНМ"
+    },
+    {
+      "image_id": "line_0465",
+      "file_path": "line_crops/line_0465.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0466",
+      "file_path": "line_crops/line_0466.png",
+      "ground_truth": "сторону"
+    },
+    {
+      "image_id": "line_0467",
+      "file_path": "line_crops/line_0467.png",
+      "ground_truth": "1,5"
+    },
+    {
+      "image_id": "line_0468",
+      "file_path": "line_crops/line_0468.png",
+      "ground_truth": "Р16"
+    },
+    {
+      "image_id": "line_0469",
+      "file_path": "line_crops/line_0469.png",
+      "ground_truth": "38"
+    },
+    {
+      "image_id": "line_0470",
+      "file_path": "line_crops/line_0470.png",
+      "ground_truth": "1,67"
+    },
+    {
+      "image_id": "line_0471",
+      "file_path": "line_crops/line_0471.png",
+      "ground_truth": "16,0"
+    },
+    {
+      "image_id": "line_0472",
+      "file_path": "line_crops/line_0472.png",
+      "ground_truth": "13,0"
+    },
+    {
+      "image_id": "line_0473",
+      "file_path": "line_crops/line_0473.png",
+      "ground_truth": "14,0"
+    },
+    {
+      "image_id": "line_0474",
+      "file_path": "line_crops/line_0474.png",
+      "ground_truth": "К25"
+    },
+    {
+      "image_id": "line_0475",
+      "file_path": "line_crops/line_0475.png",
+      "ground_truth": "К16"
+    },
+    {
+      "image_id": "line_0476",
+      "file_path": "line_crops/line_0476.png",
+      "ground_truth": "Р16"
+    },
+    {
+      "image_id": "line_0477",
+      "file_path": "line_crops/line_0477.png",
+      "ground_truth": "2,0"
+    },
+    {
+      "image_id": "line_0478",
+      "file_path": "line_crops/line_0478.png",
+      "ground_truth": "22,0"
+    },
+    {
+      "image_id": "line_0479",
+      "file_path": "line_crops/line_0479.png",
+      "ground_truth": "42,0"
+    },
+    {
+      "image_id": "line_0480",
+      "file_path": "line_crops/line_0480.png",
+      "ground_truth": "98557"
+    },
+    {
+      "image_id": "line_0481",
+      "file_path": "line_crops/line_0481.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0482",
+      "file_path": "line_crops/line_0482.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0483",
+      "file_path": "line_crops/line_0483.png",
+      "ground_truth": "484389"
+    },
+    {
+      "image_id": "line_0484",
+      "file_path": "line_crops/line_0484.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0485",
+      "file_path": "line_crops/line_0485.png",
+      "ground_truth": "ст. 45"
+    },
+    {
+      "image_id": "line_0486",
+      "file_path": "line_crops/line_0486.png",
+      "ground_truth": "К25"
+    },
+    {
+      "image_id": "line_0487",
+      "file_path": "line_crops/line_0487.png",
+      "ground_truth": "56,0"
+    },
+    {
+      "image_id": "line_0488",
+      "file_path": "line_crops/line_0488.png",
+      "ground_truth": "62,0"
+    },
+    {
+      "image_id": "line_0489",
+      "file_path": "line_crops/line_0489.png",
+      "ground_truth": "269"
+    },
+    {
+      "image_id": "line_0490",
+      "file_path": "line_crops/line_0490.png",
+      "ground_truth": "497"
+    },
+    {
+      "image_id": "line_0491",
+      "file_path": "line_crops/line_0491.png",
+      "ground_truth": "100"
+    },
+    {
+      "image_id": "line_0492",
+      "file_path": "line_crops/line_0492.png",
+      "ground_truth": "К15"
+    },
+    {
+      "image_id": "line_0493",
+      "file_path": "line_crops/line_0493.png",
+      "ground_truth": "6,0"
+    },
+    {
+      "image_id": "line_0494",
+      "file_path": "line_crops/line_0494.png",
+      "ground_truth": "6,67"
+    },
+    {
+      "image_id": "line_0495",
+      "file_path": "line_crops/line_0495.png",
+      "ground_truth": "Ст. 40ХФА"
+    },
+    {
+      "image_id": "line_0496",
+      "file_path": "line_crops/line_0496.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0497",
+      "file_path": "line_crops/line_0497.png",
+      "ground_truth": "3мм"
+    },
+    {
+      "image_id": "line_0498",
+      "file_path": "line_crops/line_0498.png",
+      "ground_truth": "кругом"
+    },
+    {
+      "image_id": "line_0499",
+      "file_path": "line_crops/line_0499.png",
+      "ground_truth": "РС5"
+    },
+    {
+      "image_id": "line_0500",
+      "file_path": "line_crops/line_0500.png",
+      "ground_truth": "0,45"
+    },
+    {
+      "image_id": "line_0501",
+      "file_path": "line_crops/line_0501.png",
+      "ground_truth": "0,45"
+    },
+    {
+      "image_id": "line_0502",
+      "file_path": "line_crops/line_0502.png",
+      "ground_truth": "1,0"
+    },
+    {
+      "image_id": "line_0503",
+      "file_path": "line_crops/line_0503.png",
+      "ground_truth": "1,1"
+    },
+    {
+      "image_id": "line_0504",
+      "file_path": "line_crops/line_0504.png",
+      "ground_truth": "К15"
+    },
+    {
+      "image_id": "line_0505",
+      "file_path": "line_crops/line_0505.png",
+      "ground_truth": "7,0"
+    },
+    {
+      "image_id": "line_0506",
+      "file_path": "line_crops/line_0506.png",
+      "ground_truth": "8,0"
+    },
+    {
+      "image_id": "line_0507",
+      "file_path": "line_crops/line_0507.png",
+      "ground_truth": "300"
+    },
+    {
+      "image_id": "line_0508",
+      "file_path": "line_crops/line_0508.png",
+      "ground_truth": "280"
+    },
+    {
+      "image_id": "line_0509",
+      "file_path": "line_crops/line_0509.png",
+      "ground_truth": "М30"
+    },
+    {
+      "image_id": "line_0510",
+      "file_path": "line_crops/line_0510.png",
+      "ground_truth": "3,0"
+    },
+    {
+      "image_id": "line_0511",
+      "file_path": "line_crops/line_0511.png",
+      "ground_truth": "3,33"
+    },
+    {
+      "image_id": "line_0512",
+      "file_path": "line_crops/line_0512.png",
+      "ground_truth": "0,67"
+    },
+    {
+      "image_id": "line_0513",
+      "file_path": "line_crops/line_0513.png",
+      "ground_truth": "5,0"
+    },
+    {
+      "image_id": "line_0514",
+      "file_path": "line_crops/line_0514.png",
+      "ground_truth": "0,55"
+    },
+    {
+      "image_id": "line_0515",
+      "file_path": "line_crops/line_0515.png",
+      "ground_truth": "0,33"
+    },
+    {
+      "image_id": "line_0516",
+      "file_path": "line_crops/line_0516.png",
+      "ground_truth": "0,4"
+    },
+    {
+      "image_id": "line_0517",
+      "file_path": "line_crops/line_0517.png",
+      "ground_truth": "0,6"
+    },
+    {
+      "image_id": "line_0518",
+      "file_path": "line_crops/line_0518.png",
+      "ground_truth": "6,0"
+    },
+    {
+      "image_id": "line_0519",
+      "file_path": "line_crops/line_0519.png",
+      "ground_truth": "0,75"
+    },
+    {
+      "image_id": "line_0520",
+      "file_path": "line_crops/line_0520.png",
+      "ground_truth": "К15"
+    },
+    {
+      "image_id": "line_0521",
+      "file_path": "line_crops/line_0521.png",
+      "ground_truth": "РС5"
+    },
+    {
+      "image_id": "line_0522",
+      "file_path": "line_crops/line_0522.png",
+      "ground_truth": "5,0"
+    },
+    {
+      "image_id": "line_0523",
+      "file_path": "line_crops/line_0523.png",
+      "ground_truth": "5,5"
+    },
+    {
+      "image_id": "line_0524",
+      "file_path": "line_crops/line_0524.png",
+      "ground_truth": "2,5"
+    },
+    {
+      "image_id": "line_0525",
+      "file_path": "line_crops/line_0525.png",
+      "ground_truth": "3,0"
+    },
+    {
+      "image_id": "line_0526",
+      "file_path": "line_crops/line_0526.png",
+      "ground_truth": "сверлить"
+    },
+    {
+      "image_id": "line_0527",
+      "file_path": "line_crops/line_0527.png",
+      "ground_truth": "Ст.45"
+    },
+    {
+      "image_id": "line_0528",
+      "file_path": "line_crops/line_0528.png",
+      "ground_truth": "вес"
+    },
+    {
+      "image_id": "line_0529",
+      "file_path": "line_crops/line_0529.png",
+      "ground_truth": "010"
+    },
+    {
+      "image_id": "line_0530",
+      "file_path": "line_crops/line_0530.png",
+      "ground_truth": "012"
+    },
+    {
+      "image_id": "line_0531",
+      "file_path": "line_crops/line_0531.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0532",
+      "file_path": "line_crops/line_0532.png",
+      "ground_truth": "477582"
+    },
+    {
+      "image_id": "line_0533",
+      "file_path": "line_crops/line_0533.png",
+      "ground_truth": "1,0"
+    },
+    {
+      "image_id": "line_0534",
+      "file_path": "line_crops/line_0534.png",
+      "ground_truth": "1,17"
+    },
+    {
+      "image_id": "line_0535",
+      "file_path": "line_crops/line_0535.png",
+      "ground_truth": "4 отв."
+    },
+    {
+      "image_id": "line_0536",
+      "file_path": "line_crops/line_0536.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0537",
+      "file_path": "line_crops/line_0537.png",
+      "ground_truth": "5мм"
+    },
+    {
+      "image_id": "line_0538",
+      "file_path": "line_crops/line_0538.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0539",
+      "file_path": "line_crops/line_0539.png",
+      "ground_truth": "Уентрирующее"
+    },
+    {
+      "image_id": "line_0540",
+      "file_path": "line_crops/line_0540.png",
+      "ground_truth": "кольцо"
+    },
+    {
+      "image_id": "line_0541",
+      "file_path": "line_crops/line_0541.png",
+      "ground_truth": "Ст 40ХФА"
+    },
+    {
+      "image_id": "line_0542",
+      "file_path": "line_crops/line_0542.png",
+      "ground_truth": "вес 8,3кг"
+    },
+    {
+      "image_id": "line_0543",
+      "file_path": "line_crops/line_0543.png",
+      "ground_truth": "Н=54"
+    },
+    {
+      "image_id": "line_0544",
+      "file_path": "line_crops/line_0544.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0545",
+      "file_path": "line_crops/line_0545.png",
+      "ground_truth": "РС6"
+    },
+    {
+      "image_id": "line_0546",
+      "file_path": "line_crops/line_0546.png",
+      "ground_truth": "Ф200077"
+    },
+    {
+      "image_id": "line_0547",
+      "file_path": "line_crops/line_0547.png",
+      "ground_truth": "0,5"
+    },
+    {
+      "image_id": "line_0548",
+      "file_path": "line_crops/line_0548.png",
+      "ground_truth": "Ф122Н8"
+    },
+    {
+      "image_id": "line_0549",
+      "file_path": "line_crops/line_0549.png",
+      "ground_truth": "предварит."
+    },
+    {
+      "image_id": "line_0550",
+      "file_path": "line_crops/line_0550.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0551",
+      "file_path": "line_crops/line_0551.png",
+      "ground_truth": "1,25"
+    },
+    {
+      "image_id": "line_0552",
+      "file_path": "line_crops/line_0552.png",
+      "ground_truth": "10.002.079"
+    },
+    {
+      "image_id": "line_0553",
+      "file_path": "line_crops/line_0553.png",
+      "ground_truth": "10.002.078"
+    },
+    {
+      "image_id": "line_0554",
+      "file_path": "line_crops/line_0554.png",
+      "ground_truth": "кроме верхнего,"
+    },
+    {
+      "image_id": "line_0555",
+      "file_path": "line_crops/line_0555.png",
+      "ground_truth": "точить с прим"
+    },
+    {
+      "image_id": "line_0556",
+      "file_path": "line_crops/line_0556.png",
+      "ground_truth": "Ф1325"
+    },
+    {
+      "image_id": "line_0557",
+      "file_path": "line_crops/line_0557.png",
+      "ground_truth": "Ф1085Н7"
+    },
+    {
+      "image_id": "line_0558",
+      "file_path": "line_crops/line_0558.png",
+      "ground_truth": "Ф990Н8"
+    },
+    {
+      "image_id": "line_0559",
+      "file_path": "line_crops/line_0559.png",
+      "ground_truth": "К25=10,0÷11,0"
+    },
+    {
+      "image_id": "line_0560",
+      "file_path": "line_crops/line_0560.png",
+      "ground_truth": "1470"
+    },
+    {
+      "image_id": "line_0561",
+      "file_path": "line_crops/line_0561.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0562",
+      "file_path": "line_crops/line_0562.png",
+      "ground_truth": "17ГС"
+    },
+    {
+      "image_id": "line_0563",
+      "file_path": "line_crops/line_0563.png",
+      "ground_truth": "вес=1030"
+    },
+    {
+      "image_id": "line_0564",
+      "file_path": "line_crops/line_0564.png",
+      "ground_truth": "Н=230"
+    },
+    {
+      "image_id": "line_0565",
+      "file_path": "line_crops/line_0565.png",
+      "ground_truth": "10.002.076"
+    },
+    {
+      "image_id": "line_0566",
+      "file_path": "line_crops/line_0566.png",
+      "ground_truth": "17ГС"
+    },
+    {
+      "image_id": "line_0567",
+      "file_path": "line_crops/line_0567.png",
+      "ground_truth": "вес=314"
+    },
+    {
+      "image_id": "line_0568",
+      "file_path": "line_crops/line_0568.png",
+      "ground_truth": "Ф1470"
+    },
+    {
+      "image_id": "line_0569",
+      "file_path": "line_crops/line_0569.png",
+      "ground_truth": "Ф1367,5"
+    },
+    {
+      "image_id": "line_0570",
+      "file_path": "line_crops/line_0570.png",
+      "ground_truth": "Ф1325"
+    },
+    {
+      "image_id": "line_0571",
+      "file_path": "line_crops/line_0571.png",
+      "ground_truth": "К25 = 20,5 ÷ 21,0"
+    },
+    {
+      "image_id": "line_0572",
+      "file_path": "line_crops/line_0572.png",
+      "ground_truth": "вес = 490"
+    },
+    {
+      "image_id": "line_0573",
+      "file_path": "line_crops/line_0573.png",
+      "ground_truth": "точит с прип"
+    },
+    {
+      "image_id": "line_0574",
+      "file_path": "line_crops/line_0574.png",
+      "ground_truth": "Кольцо верхнее"
+    },
+    {
+      "image_id": "line_0575",
+      "file_path": "line_crops/line_0575.png",
+      "ground_truth": "вырезка"
+    },
+    {
+      "image_id": "line_0576",
+      "file_path": "line_crops/line_0576.png",
+      "ground_truth": "Н=195/50"
+    },
+    {
+      "image_id": "line_0577",
+      "file_path": "line_crops/line_0577.png",
+      "ground_truth": "10.002.075"
+    },
+    {
+      "image_id": "line_0578",
+      "file_path": "line_crops/line_0578.png",
+      "ground_truth": "10.002.076"
+    },
+    {
+      "image_id": "line_0579",
+      "file_path": "line_crops/line_0579.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0580",
+      "file_path": "line_crops/line_0580.png",
+      "ground_truth": "Ф1410"
+    },
+    {
+      "image_id": "line_0581",
+      "file_path": "line_crops/line_0581.png",
+      "ground_truth": "Ф1325"
+    },
+    {
+      "image_id": "line_0582",
+      "file_path": "line_crops/line_0582.png",
+      "ground_truth": "Ф1145"
+    },
+    {
+      "image_id": "line_0583",
+      "file_path": "line_crops/line_0583.png",
+      "ground_truth": "вырезка"
+    },
+    {
+      "image_id": "line_0584",
+      "file_path": "line_crops/line_0584.png",
+      "ground_truth": "на сторону"
+    },
+    {
+      "image_id": "line_0585",
+      "file_path": "line_crops/line_0585.png",
+      "ground_truth": "кроме"
+    },
+    {
+      "image_id": "line_0586",
+      "file_path": "line_crops/line_0586.png",
+      "ground_truth": "рассче в чертеже"
+    },
+    {
+      "image_id": "line_0587",
+      "file_path": "line_crops/line_0587.png",
+      "ground_truth": "Ф42,"
+    },
+    {
+      "image_id": "line_0588",
+      "file_path": "line_crops/line_0588.png",
+      "ground_truth": "4отв"
+    },
+    {
+      "image_id": "line_0589",
+      "file_path": "line_crops/line_0589.png",
+      "ground_truth": "точить в меру"
+    },
+    {
+      "image_id": "line_0590",
+      "file_path": "line_crops/line_0590.png",
+      "ground_truth": "17ГС"
+    },
+    {
+      "image_id": "line_0591",
+      "file_path": "line_crops/line_0591.png",
+      "ground_truth": "вес = 804"
+    },
+    {
+      "image_id": "line_0592",
+      "file_path": "line_crops/line_0592.png",
+      "ground_truth": "957HW3N.002"
+    },
+    {
+      "image_id": "line_0593",
+      "file_path": "line_crops/line_0593.png",
+      "ground_truth": "Ф1410"
+    },
+    {
+      "image_id": "line_0594",
+      "file_path": "line_crops/line_0594.png",
+      "ground_truth": "Ф1470"
+    },
+    {
+      "image_id": "line_0595",
+      "file_path": "line_crops/line_0595.png",
+      "ground_truth": "под"
+    },
+    {
+      "image_id": "line_0596",
+      "file_path": "line_crops/line_0596.png",
+      "ground_truth": "Р15"
+    },
+    {
+      "image_id": "line_0597",
+      "file_path": "line_crops/line_0597.png",
+      "ground_truth": "К25"
+    },
+    {
+      "image_id": "line_0598",
+      "file_path": "line_crops/line_0598.png",
+      "ground_truth": "Ф1145"
+    },
+    {
+      "image_id": "line_0599",
+      "file_path": "line_crops/line_0599.png",
+      "ground_truth": "Ф1470"
+    },
+    {
+      "image_id": "line_0600",
+      "file_path": "line_crops/line_0600.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0601",
+      "file_path": "line_crops/line_0601.png",
+      "ground_truth": "10.002074СБ"
+    },
+    {
+      "image_id": "line_0602",
+      "file_path": "line_crops/line_0602.png",
+      "ground_truth": "К25"
+    },
+    {
+      "image_id": "line_0603",
+      "file_path": "line_crops/line_0603.png",
+      "ground_truth": "кроме"
+    },
+    {
+      "image_id": "line_0604",
+      "file_path": "line_crops/line_0604.png",
+      "ground_truth": "сверху"
+    },
+    {
+      "image_id": "line_0605",
+      "file_path": "line_crops/line_0605.png",
+      "ground_truth": "на сторону"
+    },
+    {
+      "image_id": "line_0606",
+      "file_path": "line_crops/line_0606.png",
+      "ground_truth": "точить с прип"
+    },
+    {
+      "image_id": "line_0607",
+      "file_path": "line_crops/line_0607.png",
+      "ground_truth": "Ф370"
+    },
+    {
+      "image_id": "line_0608",
+      "file_path": "line_crops/line_0608.png",
+      "ground_truth": "Ролик центрирующий"
+    },
+    {
+      "image_id": "line_0609",
+      "file_path": "line_crops/line_0609.png",
+      "ground_truth": "489969"
+    },
+    {
+      "image_id": "line_0610",
+      "file_path": "line_crops/line_0610.png",
+      "ground_truth": "3Х3М3Ф"
+    },
+    {
+      "image_id": "line_0611",
+      "file_path": "line_crops/line_0611.png",
+      "ground_truth": "5ХНМ"
+    },
+    {
+      "image_id": "line_0612",
+      "file_path": "line_crops/line_0612.png",
+      "ground_truth": "Ф140Н7"
+    },
+    {
+      "image_id": "line_0613",
+      "file_path": "line_crops/line_0613.png",
+      "ground_truth": "Вес 137 кг"
+    },
+    {
+      "image_id": "line_0614",
+      "file_path": "line_crops/line_0614.png",
+      "ground_truth": "точить отв-ия"
+    },
+    {
+      "image_id": "line_0615",
+      "file_path": "line_crops/line_0615.png",
+      "ground_truth": "с припуск. 1 мм"
+    },
+    {
+      "image_id": "line_0616",
+      "file_path": "line_crops/line_0616.png",
+      "ground_truth": "6 мм"
+    },
+    {
+      "image_id": "line_0617",
+      "file_path": "line_crops/line_0617.png",
+      "ground_truth": "Т4 ~ 3,0 ÷ 3,53"
+    },
+    {
+      "image_id": "line_0618",
+      "file_path": "line_crops/line_0618.png",
+      "ground_truth": "ст"
+    },
+    {
+      "image_id": "line_0619",
+      "file_path": "line_crops/line_0619.png",
+      "ground_truth": "РС6 ~ 0,7 ÷ 0,75"
+    },
+    {
+      "image_id": "line_0620",
+      "file_path": "line_crops/line_0620.png",
+      "ground_truth": "наружной"
+    },
+    {
+      "image_id": "line_0621",
+      "file_path": "line_crops/line_0621.png",
+      "ground_truth": "2 отв М20 с нарезн"
+    },
+    {
+      "image_id": "line_0622",
+      "file_path": "line_crops/line_0622.png",
+      "ground_truth": "HRC 47 - 50"
+    },
+    {
+      "image_id": "line_0623",
+      "file_path": "line_crops/line_0623.png",
+      "ground_truth": "Д4 ~ 0,5 ÷ 0,55"
+    },
+    {
+      "image_id": "line_0624",
+      "file_path": "line_crops/line_0624.png",
+      "ground_truth": "точить в меру"
+    },
+    {
+      "image_id": "line_0625",
+      "file_path": "line_crops/line_0625.png",
+      "ground_truth": "Ф140Н7"
+    },
+    {
+      "image_id": "line_0626",
+      "file_path": "line_crops/line_0626.png",
+      "ground_truth": "ВШ ~ 2,5"
+    },
+    {
+      "image_id": "line_0627",
+      "file_path": "line_crops/line_0627.png",
+      "ground_truth": "Т3"
+    },
+    {
+      "image_id": "line_0628",
+      "file_path": "line_crops/line_0628.png",
+      "ground_truth": "шлиф. отв"
+    },
+    {
+      "image_id": "line_0629",
+      "file_path": "line_crops/line_0629.png",
+      "ground_truth": "Т3 ~ 1,67 ÷ 2,0"
+    },
+    {
+      "image_id": "line_0630",
+      "file_path": "line_crops/line_0630.png",
+      "ground_truth": "100"
+    },
+    {
+      "image_id": "line_0631",
+      "file_path": "line_crops/line_0631.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0632",
+      "file_path": "line_crops/line_0632.png",
+      "ground_truth": "Ст. 18хг"
+    },
+    {
+      "image_id": "line_0633",
+      "file_path": "line_crops/line_0633.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0634",
+      "file_path": "line_crops/line_0634.png",
+      "ground_truth": "вес 9,2 кг"
+    },
+    {
+      "image_id": "line_0635",
+      "file_path": "line_crops/line_0635.png",
+      "ground_truth": "477.579"
+    },
+    {
+      "image_id": "line_0636",
+      "file_path": "line_crops/line_0636.png",
+      "ground_truth": "Втулка"
+    },
+    {
+      "image_id": "line_0637",
+      "file_path": "line_crops/line_0637.png",
+      "ground_truth": "торец"
+    },
+    {
+      "image_id": "line_0638",
+      "file_path": "line_crops/line_0638.png",
+      "ground_truth": "ВШ ≈ 0,58"
+    },
+    {
+      "image_id": "line_0639",
+      "file_path": "line_crops/line_0639.png",
+      "ground_truth": "КШ ≈ 0,25 ÷ 0,3"
+    },
+    {
+      "image_id": "line_0640",
+      "file_path": "line_crops/line_0640.png",
+      "ground_truth": "на оправке"
+    },
+    {
+      "image_id": "line_0641",
+      "file_path": "line_crops/line_0641.png",
+      "ground_truth": "Шлифовать"
+    },
+    {
+      "image_id": "line_0642",
+      "file_path": "line_crops/line_0642.png",
+      "ground_truth": "Шлифовать"
+    },
+    {
+      "image_id": "line_0643",
+      "file_path": "line_crops/line_0643.png",
+      "ground_truth": "припуск"
+    },
+    {
+      "image_id": "line_0644",
+      "file_path": "line_crops/line_0644.png",
+      "ground_truth": "Ф14517"
+    },
+    {
+      "image_id": "line_0645",
+      "file_path": "line_crops/line_0645.png",
+      "ground_truth": "ПШ6"
+    },
+    {
+      "image_id": "line_0646",
+      "file_path": "line_crops/line_0646.png",
+      "ground_truth": "Верхний"
+    },
+    {
+      "image_id": "line_0647",
+      "file_path": "line_crops/line_0647.png",
+      "ground_truth": "484196"
+    },
+    {
+      "image_id": "line_0648",
+      "file_path": "line_crops/line_0648.png",
+      "ground_truth": "вес 2275кг."
+    },
+    {
+      "image_id": "line_0649",
+      "file_path": "line_crops/line_0649.png",
+      "ground_truth": "сверлить"
+    },
+    {
+      "image_id": "line_0650",
+      "file_path": "line_crops/line_0650.png",
+      "ground_truth": "3х45"
+    },
+    {
+      "image_id": "line_0651",
+      "file_path": "line_crops/line_0651.png",
+      "ground_truth": "сверлить 4 отв."
+    },
+    {
+      "image_id": "line_0652",
+      "file_path": "line_crops/line_0652.png",
+      "ground_truth": "Р16 ≈ 1,5 ÷ 1,67"
+    },
+    {
+      "image_id": "line_0653",
+      "file_path": "line_crops/line_0653.png",
+      "ground_truth": "ф1070"
+    },
+    {
+      "image_id": "line_0654",
+      "file_path": "line_crops/line_0654.png",
+      "ground_truth": "Ф190Н8"
+    },
+    {
+      "image_id": "line_0655",
+      "file_path": "line_crops/line_0655.png",
+      "ground_truth": "ОТС"
+    },
+    {
+      "image_id": "line_0656",
+      "file_path": "line_crops/line_0656.png",
+      "ground_truth": "Ф1470"
+    },
+    {
+      "image_id": "line_0657",
+      "file_path": "line_crops/line_0657.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0658",
+      "file_path": "line_crops/line_0658.png",
+      "ground_truth": "в чистовые размеры"
+    },
+    {
+      "image_id": "line_0659",
+      "file_path": "line_crops/line_0659.png",
+      "ground_truth": "К15 ≈ 15,0 ÷ 16,5"
+    },
+    {
+      "image_id": "line_0660",
+      "file_path": "line_crops/line_0660.png",
+      "ground_truth": "Н=315/230/100"
+    },
+    {
+      "image_id": "line_0661",
+      "file_path": "line_crops/line_0661.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0662",
+      "file_path": "line_crops/line_0662.png",
+      "ground_truth": "497597"
+    },
+    {
+      "image_id": "line_0663",
+      "file_path": "line_crops/line_0663.png",
+      "ground_truth": "Ф1370"
+    },
+    {
+      "image_id": "line_0664",
+      "file_path": "line_crops/line_0664.png",
+      "ground_truth": "Ст. 45"
+    },
+    {
+      "image_id": "line_0665",
+      "file_path": "line_crops/line_0665.png",
+      "ground_truth": "3,33÷3,67"
+    },
+    {
+      "image_id": "line_0666",
+      "file_path": "line_crops/line_0666.png",
+      "ground_truth": "фаски"
+    },
+    {
+      "image_id": "line_0667",
+      "file_path": "line_crops/line_0667.png",
+      "ground_truth": "4 тв-ия"
+    },
+    {
+      "image_id": "line_0668",
+      "file_path": "line_crops/line_0668.png",
+      "ground_truth": "обр-тки"
+    },
+    {
+      "image_id": "line_0669",
+      "file_path": "line_crops/line_0669.png",
+      "ground_truth": "чистоты"
+    },
+    {
+      "image_id": "line_0670",
+      "file_path": "line_crops/line_0670.png",
+      "ground_truth": "контроль"
+    },
+    {
+      "image_id": "line_0671",
+      "file_path": "line_crops/line_0671.png",
+      "ground_truth": "твердости и"
+    },
+    {
+      "image_id": "line_0672",
+      "file_path": "line_crops/line_0672.png",
+      "ground_truth": "Маркироватьт"
+    },
+    {
+      "image_id": "line_0673",
+      "file_path": "line_crops/line_0673.png",
+      "ground_truth": "2 уст-вки"
+    },
+    {
+      "image_id": "line_0674",
+      "file_path": "line_crops/line_0674.png",
+      "ground_truth": "0,67÷0,75"
+    },
+    {
+      "image_id": "line_0675",
+      "file_path": "line_crops/line_0675.png",
+      "ground_truth": "с 2х сторон"
+    },
+    {
+      "image_id": "line_0676",
+      "file_path": "line_crops/line_0676.png",
+      "ground_truth": "2х45"
+    },
+    {
+      "image_id": "line_0677",
+      "file_path": "line_crops/line_0677.png",
+      "ground_truth": "с нарезкой"
+    },
+    {
+      "image_id": "line_0678",
+      "file_path": "line_crops/line_0678.png",
+      "ground_truth": "ф45/М42"
+    },
+    {
+      "image_id": "line_0679",
+      "file_path": "line_crops/line_0679.png",
+      "ground_truth": "центровочное"
+    },
+    {
+      "image_id": "line_0680",
+      "file_path": "line_crops/line_0680.png",
+      "ground_truth": "012.027"
+    },
+    {
+      "image_id": "line_0681",
+      "file_path": "line_crops/line_0681.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0682",
+      "file_path": "line_crops/line_0682.png",
+      "ground_truth": "К25=18,0÷20,0"
+    },
+    {
+      "image_id": "line_0683",
+      "file_path": "line_crops/line_0683.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0684",
+      "file_path": "line_crops/line_0684.png",
+      "ground_truth": "в размеры чертежа"
+    },
+    {
+      "image_id": "line_0685",
+      "file_path": "line_crops/line_0685.png",
+      "ground_truth": "Р16=1,5÷1,67"
+    },
+    {
+      "image_id": "line_0686",
+      "file_path": "line_crops/line_0686.png",
+      "ground_truth": "РС5=2,0÷2,25"
+    },
+    {
+      "image_id": "line_0687",
+      "file_path": "line_crops/line_0687.png",
+      "ground_truth": "Н=300/100"
+    },
+    {
+      "image_id": "line_0688",
+      "file_path": "line_crops/line_0688.png",
+      "ground_truth": "Ст.5ХНМ"
+    },
+    {
+      "image_id": "line_0689",
+      "file_path": "line_crops/line_0689.png",
+      "ground_truth": "вес 615кг"
+    },
+    {
+      "image_id": "line_0690",
+      "file_path": "line_crops/line_0690.png",
+      "ground_truth": "10"
+    },
+    {
+      "image_id": "line_0691",
+      "file_path": "line_crops/line_0691.png",
+      "ground_truth": "Т2=1,1÷1,25"
+    },
+    {
+      "image_id": "line_0692",
+      "file_path": "line_crops/line_0692.png",
+      "ground_truth": "477594"
+    },
+    {
+      "image_id": "line_0693",
+      "file_path": "line_crops/line_0693.png",
+      "ground_truth": "ПФЦ=0,33÷0,42"
+    },
+    {
+      "image_id": "line_0694",
+      "file_path": "line_crops/line_0694.png",
+      "ground_truth": "Ст. 40ХФА"
+    },
+    {
+      "image_id": "line_0695",
+      "file_path": "line_crops/line_0695.png",
+      "ground_truth": "Палец с резьбой"
+    },
+    {
+      "image_id": "line_0696",
+      "file_path": "line_crops/line_0696.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0697",
+      "file_path": "line_crops/line_0697.png",
+      "ground_truth": "ф62d9"
+    },
+    {
+      "image_id": "line_0698",
+      "file_path": "line_crops/line_0698.png",
+      "ground_truth": "М72х4"
+    },
+    {
+      "image_id": "line_0699",
+      "file_path": "line_crops/line_0699.png",
+      "ground_truth": "варительно"
+    },
+    {
+      "image_id": "line_0700",
+      "file_path": "line_crops/line_0700.png",
+      "ground_truth": "Точить пред-"
+    },
+    {
+      "image_id": "line_0701",
+      "file_path": "line_crops/line_0701.png",
+      "ground_truth": "торцы в р-р"
+    },
+    {
+      "image_id": "line_0702",
+      "file_path": "line_crops/line_0702.png",
+      "ground_truth": "вес 10,0кг."
+    },
+    {
+      "image_id": "line_0703",
+      "file_path": "line_crops/line_0703.png",
+      "ground_truth": "маркировка"
+    },
+    {
+      "image_id": "line_0704",
+      "file_path": "line_crops/line_0704.png",
+      "ground_truth": "0,18÷0,2"
+    },
+    {
+      "image_id": "line_0705",
+      "file_path": "line_crops/line_0705.png",
+      "ground_truth": "Окончат"
+    },
+    {
+      "image_id": "line_0706",
+      "file_path": "line_crops/line_0706.png",
+      "ground_truth": "Т2 ≈ 1,5 ÷ 1,75"
+    },
+    {
+      "image_id": "line_0707",
+      "file_path": "line_crops/line_0707.png",
+      "ground_truth": "и чистоты"
+    },
+    {
+      "image_id": "line_0708",
+      "file_path": "line_crops/line_0708.png",
+      "ground_truth": "контроль тверд"
+    },
+    {
+      "image_id": "line_0709",
+      "file_path": "line_crops/line_0709.png",
+      "ground_truth": "0,17÷0,2"
+    },
+    {
+      "image_id": "line_0710",
+      "file_path": "line_crops/line_0710.png",
+      "ground_truth": "0,12÷0,13"
+    },
+    {
+      "image_id": "line_0711",
+      "file_path": "line_crops/line_0711.png",
+      "ground_truth": "(0,4÷0,45)"
+    },
+    {
+      "image_id": "line_0712",
+      "file_path": "line_crops/line_0712.png",
+      "ground_truth": "0,8÷0,9"
+    },
+    {
+      "image_id": "line_0713",
+      "file_path": "line_crops/line_0713.png",
+      "ground_truth": "резьбу М72х4"
+    },
+    {
+      "image_id": "line_0714",
+      "file_path": "line_crops/line_0714.png",
+      "ground_truth": "фрезеровать"
+    },
+    {
+      "image_id": "line_0715",
+      "file_path": "line_crops/line_0715.png",
+      "ground_truth": "ФРК = 0,45 ÷ 0,5"
+    },
+    {
+      "image_id": "line_0716",
+      "file_path": "line_crops/line_0716.png",
+      "ground_truth": "0,08 ÷ 0,1"
+    },
+    {
+      "image_id": "line_0717",
+      "file_path": "line_crops/line_0717.png",
+      "ground_truth": "0,17÷0,2"
+    },
+    {
+      "image_id": "line_0718",
+      "file_path": "line_crops/line_0718.png",
+      "ground_truth": "0,07÷0,08"
+    },
+    {
+      "image_id": "line_0719",
+      "file_path": "line_crops/line_0719.png",
+      "ground_truth": "обр. тка"
+    },
+    {
+      "image_id": "line_0720",
+      "file_path": "line_crops/line_0720.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0721",
+      "file_path": "line_crops/line_0721.png",
+      "ground_truth": "К25 = 10,0 ÷ 9,0"
+    },
+    {
+      "image_id": "line_0722",
+      "file_path": "line_crops/line_0722.png",
+      "ground_truth": "Кольцо верхнее"
+    },
+    {
+      "image_id": "line_0723",
+      "file_path": "line_crops/line_0723.png",
+      "ground_truth": "10.002.076"
+    },
+    {
+      "image_id": "line_0724",
+      "file_path": "line_crops/line_0724.png",
+      "ground_truth": "вырезка"
+    },
+    {
+      "image_id": "line_0725",
+      "file_path": "line_crops/line_0725.png",
+      "ground_truth": "ф1410"
+    },
+    {
+      "image_id": "line_0726",
+      "file_path": "line_crops/line_0726.png",
+      "ground_truth": "Н= 195"
+    },
+    {
+      "image_id": "line_0727",
+      "file_path": "line_crops/line_0727.png",
+      "ground_truth": "5мм на сторону"
+    },
+    {
+      "image_id": "line_0728",
+      "file_path": "line_crops/line_0728.png",
+      "ground_truth": "10.002.075"
+    },
+    {
+      "image_id": "line_0729",
+      "file_path": "line_crops/line_0729.png",
+      "ground_truth": "Кольцо нижнее"
+    },
+    {
+      "image_id": "line_0730",
+      "file_path": "line_crops/line_0730.png",
+      "ground_truth": "Н=200/80"
+    },
+    {
+      "image_id": "line_0731",
+      "file_path": "line_crops/line_0731.png",
+      "ground_truth": "вес 314 кг."
+    },
+    {
+      "image_id": "line_0732",
+      "file_path": "line_crops/line_0732.png",
+      "ground_truth": "Ст 17ГС"
+    },
+    {
+      "image_id": "line_0733",
+      "file_path": "line_crops/line_0733.png",
+      "ground_truth": "К25= 10,0 ÷ 11,0"
+    },
+    {
+      "image_id": "line_0734",
+      "file_path": "line_crops/line_0734.png",
+      "ground_truth": "вес 804кг."
+    },
+    {
+      "image_id": "line_0735",
+      "file_path": "line_crops/line_0735.png",
+      "ground_truth": "10.002.074СБ"
+    },
+    {
+      "image_id": "line_0736",
+      "file_path": "line_crops/line_0736.png",
+      "ground_truth": "Кольцо крепежное"
+    },
+    {
+      "image_id": "line_0737",
+      "file_path": "line_crops/line_0737.png",
+      "ground_truth": "Н=395"
+    },
+    {
+      "image_id": "line_0738",
+      "file_path": "line_crops/line_0738.png",
+      "ground_truth": "К25 ≈9,0 ÷ 10,0"
+    },
+    {
+      "image_id": "line_0739",
+      "file_path": "line_crops/line_0739.png",
+      "ground_truth": "в чистовые размеры"
+    },
+    {
+      "image_id": "line_0740",
+      "file_path": "line_crops/line_0740.png",
+      "ground_truth": "Р15≈3,25÷3,5"
+    },
+    {
+      "image_id": "line_0741",
+      "file_path": "line_crops/line_0741.png",
+      "ground_truth": "Ст. 17ГС"
+    },
+    {
+      "image_id": "line_0742",
+      "file_path": "line_crops/line_0742.png",
+      "ground_truth": "сварное"
+    },
+    {
+      "image_id": "line_0743",
+      "file_path": "line_crops/line_0743.png",
+      "ground_truth": "10.001.281"
+    },
+    {
+      "image_id": "line_0744",
+      "file_path": "line_crops/line_0744.png",
+      "ground_truth": "Н=235"
+    },
+    {
+      "image_id": "line_0745",
+      "file_path": "line_crops/line_0745.png",
+      "ground_truth": "К25 = 10,0 ÷ 11,0"
+    },
+    {
+      "image_id": "line_0746",
+      "file_path": "line_crops/line_0746.png",
+      "ground_truth": "10.001 282"
+    },
+    {
+      "image_id": "line_0747",
+      "file_path": "line_crops/line_0747.png",
+      "ground_truth": "К25 ≈ 10,0 ÷ 9,0"
+    },
+    {
+      "image_id": "line_0748",
+      "file_path": "line_crops/line_0748.png",
+      "ground_truth": "Ст. 20"
+    },
+    {
+      "image_id": "line_0749",
+      "file_path": "line_crops/line_0749.png",
+      "ground_truth": "вес 557 кг."
+    },
+    {
+      "image_id": "line_0750",
+      "file_path": "line_crops/line_0750.png",
+      "ground_truth": "4 отв. М42/Ф45"
+    },
+    {
+      "image_id": "line_0751",
+      "file_path": "line_crops/line_0751.png",
+      "ground_truth": "ст45"
+    },
+    {
+      "image_id": "line_0752",
+      "file_path": "line_crops/line_0752.png",
+      "ground_truth": "10.001.2800СБ"
+    },
+    {
+      "image_id": "line_0753",
+      "file_path": "line_crops/line_0753.png",
+      "ground_truth": "Кольцо крепление"
+    },
+    {
+      "image_id": "line_0754",
+      "file_path": "line_crops/line_0754.png",
+      "ground_truth": "Н=350/230/100"
+    },
+    {
+      "image_id": "line_0755",
+      "file_path": "line_crops/line_0755.png",
+      "ground_truth": "Ст 20"
+    },
+    {
+      "image_id": "line_0756",
+      "file_path": "line_crops/line_0756.png",
+      "ground_truth": "вес 2049кг"
+    },
+    {
+      "image_id": "line_0757",
+      "file_path": "line_crops/line_0757.png",
+      "ground_truth": "К25≈8,0÷9,0"
+    },
+    {
+      "image_id": "line_0758",
+      "file_path": "line_crops/line_0758.png",
+      "ground_truth": "РС5≈4,0"
+    },
+    {
+      "image_id": "line_0759",
+      "file_path": "line_crops/line_0759.png",
+      "ground_truth": "4 отв. Ф42х60"
+    },
+    {
+      "image_id": "line_0760",
+      "file_path": "line_crops/line_0760.png",
+      "ground_truth": "вес=1030"
+    },
+    {
+      "image_id": "line_0761",
+      "file_path": "line_crops/line_0761.png",
+      "ground_truth": "переточка"
+    },
+    {
+      "image_id": "line_0762",
+      "file_path": "line_crops/line_0762.png",
+      "ground_truth": "эскизз см"
+    },
+    {
+      "image_id": "line_0763",
+      "file_path": "line_crops/line_0763.png",
+      "ground_truth": "497.599"
+    },
+    {
+      "image_id": "line_0764",
+      "file_path": "line_crops/line_0764.png",
+      "ground_truth": "Ф273,7"
+    },
+    {
+      "image_id": "line_0765",
+      "file_path": "line_crops/line_0765.png",
+      "ground_truth": "с=5хНМ"
+    },
+    {
+      "image_id": "line_0766",
+      "file_path": "line_crops/line_0766.png",
+      "ground_truth": "Центрователь верхней оправки"
+    },
+    {
+      "image_id": "line_0767",
+      "file_path": "line_crops/line_0767.png",
+      "ground_truth": "з/з 11088"
+    },
+    {
+      "image_id": "line_0768",
+      "file_path": "line_crops/line_0768.png",
+      "ground_truth": "Кольцо ф515"
+    },
+    {
+      "image_id": "line_0769",
+      "file_path": "line_crops/line_0769.png",
+      "ground_truth": "Т50=3,0 ÷ 3,5"
+    },
+    {
+      "image_id": "line_0770",
+      "file_path": "line_crops/line_0770.png",
+      "ground_truth": "РС3≈0,5÷0,55"
+    },
+    {
+      "image_id": "line_0771",
+      "file_path": "line_crops/line_0771.png",
+      "ground_truth": "М12 с нарезкой резьбы"
+    },
+    {
+      "image_id": "line_0772",
+      "file_path": "line_crops/line_0772.png",
+      "ground_truth": "4 отв на"
+    },
+    {
+      "image_id": "line_0773",
+      "file_path": "line_crops/line_0773.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0774",
+      "file_path": "line_crops/line_0774.png",
+      "ground_truth": "вес 43кг"
+    },
+    {
+      "image_id": "line_0775",
+      "file_path": "line_crops/line_0775.png",
+      "ground_truth": "Ст. 45"
+    },
+    {
+      "image_id": "line_0776",
+      "file_path": "line_crops/line_0776.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0777",
+      "file_path": "line_crops/line_0777.png",
+      "ground_truth": "Н=185"
+    },
+    {
+      "image_id": "line_0778",
+      "file_path": "line_crops/line_0778.png",
+      "ground_truth": "483.978"
+    },
+    {
+      "image_id": "line_0779",
+      "file_path": "line_crops/line_0779.png",
+      "ground_truth": "вес 43кг"
+    },
+    {
+      "image_id": "line_0780",
+      "file_path": "line_crops/line_0780.png",
+      "ground_truth": "483978"
+    },
+    {
+      "image_id": "line_0781",
+      "file_path": "line_crops/line_0781.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0782",
+      "file_path": "line_crops/line_0782.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0783",
+      "file_path": "line_crops/line_0783.png",
+      "ground_truth": "Н=185"
+    },
+    {
+      "image_id": "line_0784",
+      "file_path": "line_crops/line_0784.png",
+      "ground_truth": "РС5 - 0,67"
+    },
+    {
+      "image_id": "line_0785",
+      "file_path": "line_crops/line_0785.png",
+      "ground_truth": "4 отв М12"
+    },
+    {
+      "image_id": "line_0786",
+      "file_path": "line_crops/line_0786.png",
+      "ground_truth": "К15 - 4,0 ÷4,5"
+    },
+    {
+      "image_id": "line_0787",
+      "file_path": "line_crops/line_0787.png",
+      "ground_truth": "точить"
+    },
+    {
+      "image_id": "line_0788",
+      "file_path": "line_crops/line_0788.png",
+      "ground_truth": "Ст 45"
+    },
+    {
+      "image_id": "line_0789",
+      "file_path": "line_crops/line_0789.png",
+      "ground_truth": "Н=480/380"
+    },
+    {
+      "image_id": "line_0790",
+      "file_path": "line_crops/line_0790.png",
+      "ground_truth": "446.182"
+    },
+    {
+      "image_id": "line_0791",
+      "file_path": "line_crops/line_0791.png",
+      "ground_truth": "Боковой ролик"
+    },
+    {
+      "image_id": "line_0792",
+      "file_path": "line_crops/line_0792.png",
+      "ground_truth": "Ф 486/Ф 208,1"
+    },
+    {
+      "image_id": "line_0793",
+      "file_path": "line_crops/line_0793.png",
+      "ground_truth": "отв Ф 265,2"
+    },
+    {
+      "image_id": "line_0794",
+      "file_path": "line_crops/line_0794.png",
+      "ground_truth": "Ф140Н7/ф52/ф76"
+    },
+    {
+      "image_id": "line_0795",
+      "file_path": "line_crops/line_0795.png",
+      "ground_truth": "Р16 ≈ 1,25 ÷ 1,5"
+    },
+    {
+      "image_id": "line_0796",
+      "file_path": "line_crops/line_0796.png",
+      "ground_truth": "ОТС Ст. 5хГНМ"
+    },
+    {
+      "image_id": "line_0797",
+      "file_path": "line_crops/line_0797.png",
+      "ground_truth": "вес 242кг"
+    },
+    {
+      "image_id": "line_0798",
+      "file_path": "line_crops/line_0798.png",
+      "ground_truth": "Зачистить"
+    },
+    {
+      "image_id": "line_0799",
+      "file_path": "line_crops/line_0799.png",
+      "ground_truth": "Т6 ≈ 25,0 ÷ 30,0"
+    },
+    {
+      "image_id": "line_0800",
+      "file_path": "line_crops/line_0800.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0801",
+      "file_path": "line_crops/line_0801.png",
+      "ground_truth": "4 отв М24 с нарезк"
+    },
+    {
+      "image_id": "line_0802",
+      "file_path": "line_crops/line_0802.png",
+      "ground_truth": "2 отв М10"
+    },
+    {
+      "image_id": "line_0803",
+      "file_path": "line_crops/line_0803.png",
+      "ground_truth": "2 отв М24"
+    },
+    {
+      "image_id": "line_0804",
+      "file_path": "line_crops/line_0804.png",
+      "ground_truth": "2 отв Ф26+"
+    },
+    {
+      "image_id": "line_0805",
+      "file_path": "line_crops/line_0805.png",
+      "ground_truth": "расточить канавку Ф70"
+    },
+    {
+      "image_id": "line_0806",
+      "file_path": "line_crops/line_0806.png",
+      "ground_truth": "Д10≈1,25÷1,5"
+    },
+    {
+      "image_id": "line_0807",
+      "file_path": "line_crops/line_0807.png",
+      "ground_truth": "предусмотреть"
+    },
+    {
+      "image_id": "line_0808",
+      "file_path": "line_crops/line_0808.png",
+      "ground_truth": "Т6≈10,0÷12,0"
+    },
+    {
+      "image_id": "line_0809",
+      "file_path": "line_crops/line_0809.png",
+      "ground_truth": "Т50"
+    },
+    {
+      "image_id": "line_0810",
+      "file_path": "line_crops/line_0810.png",
+      "ground_truth": "Боковой"
+    },
+    {
+      "image_id": "line_0811",
+      "file_path": "line_crops/line_0811.png",
+      "ground_truth": "446182"
+    },
+    {
+      "image_id": "line_0812",
+      "file_path": "line_crops/line_0812.png",
+      "ground_truth": "Ф486/Ф208,1"
+    },
+    {
+      "image_id": "line_0813",
+      "file_path": "line_crops/line_0813.png",
+      "ground_truth": "И=480/880"
+    },
+    {
+      "image_id": "line_0814",
+      "file_path": "line_crops/line_0814.png",
+      "ground_truth": "Переточка"
+    },
+    {
+      "image_id": "line_0815",
+      "file_path": "line_crops/line_0815.png",
+      "ground_truth": "Т6=3,25-3,5"
+    },
+    {
+      "image_id": "line_0816",
+      "file_path": "line_crops/line_0816.png",
+      "ground_truth": "ст 5ХГНМ"
+    },
+    {
+      "image_id": "line_0817",
+      "file_path": "line_crops/line_0817.png",
+      "ground_truth": "вес=242"
+    },
+    {
+      "image_id": "line_0818",
+      "file_path": "line_crops/line_0818.png",
+      "ground_truth": "РС6≈1.67÷1,83"
+    },
+    {
+      "image_id": "line_0819",
+      "file_path": "line_crops/line_0819.png",
+      "ground_truth": "маркировать"
+    },
+    {
+      "image_id": "line_0820",
+      "file_path": "line_crops/line_0820.png",
+      "ground_truth": "Р12≈2,0÷2,25"
+    },
+    {
+      "image_id": "line_0821",
+      "file_path": "line_crops/line_0821.png",
+      "ground_truth": "4+4 отв"
+    },
+    {
+      "image_id": "line_0822",
+      "file_path": "line_crops/line_0822.png",
+      "ground_truth": "сторону под"
+    },
+    {
+      "image_id": "line_0823",
+      "file_path": "line_crops/line_0823.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0824",
+      "file_path": "line_crops/line_0824.png",
+      "ground_truth": "вес 455кг."
+    },
+    {
+      "image_id": "line_0825",
+      "file_path": "line_crops/line_0825.png",
+      "ground_truth": "Ст. 40ХФА"
+    },
+    {
+      "image_id": "line_0826",
+      "file_path": "line_crops/line_0826.png",
+      "ground_truth": "Ф250"
+    },
+    {
+      "image_id": "line_0827",
+      "file_path": "line_crops/line_0827.png",
+      "ground_truth": "Ф380"
+    },
+    {
+      "image_id": "line_0828",
+      "file_path": "line_crops/line_0828.png",
+      "ground_truth": "Ф 790"
+    },
+    {
+      "image_id": "line_0829",
+      "file_path": "line_crops/line_0829.png",
+      "ground_truth": "РС5=4,5÷5,0"
+    },
+    {
+      "image_id": "line_0830",
+      "file_path": "line_crops/line_0830.png",
+      "ground_truth": "К15=8,0÷9,0"
+    },
+    {
+      "image_id": "line_0831",
+      "file_path": "line_crops/line_0831.png",
+      "ground_truth": "Н=145"
+    },
+    {
+      "image_id": "line_0832",
+      "file_path": "line_crops/line_0832.png",
+      "ground_truth": "Кольцо"
+    },
+    {
+      "image_id": "line_0833",
+      "file_path": "line_crops/line_0833.png",
+      "ground_truth": "497.595"
+    },
+    {
+      "image_id": "line_0834",
+      "file_path": "line_crops/line_0834.png",
+      "ground_truth": "3мм на"
+    },
+    {
+      "image_id": "line_0835",
+      "file_path": "line_crops/line_0835.png",
+      "ground_truth": "с нарезкой резьбы"
+    },
+    {
+      "image_id": "line_0836",
+      "file_path": "line_crops/line_0836.png",
+      "ground_truth": "М20 + 4 отв. М30/ф35"
+    },
+    {
+      "image_id": "line_0837",
+      "file_path": "line_crops/line_0837.png",
+      "ground_truth": "Р16=1,17÷1,25"
+    },
+    {
+      "image_id": "line_0838",
+      "file_path": "line_crops/line_0838.png",
+      "ground_truth": "Ст. 40ХФА"
+    },
+    {
+      "image_id": "line_0839",
+      "file_path": "line_crops/line_0839.png",
+      "ground_truth": "Ст5ХНМ"
+    },
+    {
+      "image_id": "line_0840",
+      "file_path": "line_crops/line_0840.png",
+      "ground_truth": "вес 596кг"
+    },
+    {
+      "image_id": "line_0841",
+      "file_path": "line_crops/line_0841.png",
+      "ground_truth": "К25=10,0÷11,0"
+    },
+    {
+      "image_id": "line_0842",
+      "file_path": "line_crops/line_0842.png",
+      "ground_truth": "Кольцоо опорное"
+    },
+    {
+      "image_id": "line_0843",
+      "file_path": "line_crops/line_0843.png",
+      "ground_truth": "498.278"
+    },
+    {
+      "image_id": "line_0844",
+      "file_path": "line_crops/line_0844.png",
+      "ground_truth": "7595"
+    },
+    {
+      "image_id": "line_0845",
+      "file_path": "line_crops/line_0845.png",
+      "ground_truth": "100% контроль твердости"
+    },
+    {
+      "image_id": "line_0846",
+      "file_path": "line_crops/line_0846.png",
+      "ground_truth": "К15=5,5÷6,0"
+    },
+    {
+      "image_id": "line_0847",
+      "file_path": "line_crops/line_0847.png",
+      "ground_truth": "НВ=280÷300"
+    },
+    {
+      "image_id": "line_0848",
+      "file_path": "line_crops/line_0848.png",
+      "ground_truth": "4=0,4÷0,5"
+    },
+    {
+      "image_id": "line_0849",
+      "file_path": "line_crops/line_0849.png",
+      "ground_truth": "0,1 ÷0,12"
+    },
+    {
+      "image_id": "line_0850",
+      "file_path": "line_crops/line_0850.png",
+      "ground_truth": "0,67 - 1 уст-вка + 3 поворота"
+    },
+    {
+      "image_id": "line_0851",
+      "file_path": "line_crops/line_0851.png",
+      "ground_truth": "РС5=5,0÷5,5"
+    },
+    {
+      "image_id": "line_0852",
+      "file_path": "line_crops/line_0852.png",
+      "ground_truth": "Р16=1,17÷1,25"
+    },
+    {
+      "image_id": "line_0853",
+      "file_path": "line_crops/line_0853.png",
+      "ground_truth": "К15=6,5÷7,0"
+    },
+    {
+      "image_id": "line_0854",
+      "file_path": "line_crops/line_0854.png",
+      "ground_truth": "КД8=6,0÷5,5"
+    },
+    {
+      "image_id": "line_0855",
+      "file_path": "line_crops/line_0855.png",
+      "ground_truth": "НВ=280÷300"
+    },
+    {
+      "image_id": "line_0856",
+      "file_path": "line_crops/line_0856.png",
+      "ground_truth": "497.595"
+    },
+    {
+      "image_id": "line_0857",
+      "file_path": "line_crops/line_0857.png",
+      "ground_truth": "Т5=12,0÷14,0"
+    },
+    {
+      "image_id": "line_0858",
+      "file_path": "line_crops/line_0858.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0859",
+      "file_path": "line_crops/line_0859.png",
+      "ground_truth": "Зачистить"
+    },
+    {
+      "image_id": "line_0860",
+      "file_path": "line_crops/line_0860.png",
+      "ground_truth": "торец + зацентрировать"
+    },
+    {
+      "image_id": "line_0861",
+      "file_path": "line_crops/line_0861.png",
+      "ground_truth": "в центрах с"
+    },
+    {
+      "image_id": "line_0862",
+      "file_path": "line_crops/line_0862.png",
+      "ground_truth": "498.141"
+    },
+    {
+      "image_id": "line_0863",
+      "file_path": "line_crops/line_0863.png",
+      "ground_truth": "Ст. 5ХГНМ"
+    },
+    {
+      "image_id": "line_0864",
+      "file_path": "line_crops/line_0864.png",
+      "ground_truth": "вес 224кг."
+    },
+    {
+      "image_id": "line_0865",
+      "file_path": "line_crops/line_0865.png",
+      "ground_truth": "ф140/ф300"
+    },
+    {
+      "image_id": "line_0866",
+      "file_path": "line_crops/line_0866.png",
+      "ground_truth": "497.594"
+    },
+    {
+      "image_id": "line_0867",
+      "file_path": "line_crops/line_0867.png",
+      "ground_truth": "497.749"
+    },
+    {
+      "image_id": "line_0868",
+      "file_path": "line_crops/line_0868.png",
+      "ground_truth": "Р13=0,5÷0,6"
+    },
+    {
+      "image_id": "line_0869",
+      "file_path": "line_crops/line_0869.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0870",
+      "file_path": "line_crops/line_0870.png",
+      "ground_truth": "Т5=11,0÷12,0"
+    },
+    {
+      "image_id": "line_0871",
+      "file_path": "line_crops/line_0871.png",
+      "ground_truth": "Зачистить"
+    },
+    {
+      "image_id": "line_0872",
+      "file_path": "line_crops/line_0872.png",
+      "ground_truth": "Р13=0,5÷0,55"
+    },
+    {
+      "image_id": "line_0873",
+      "file_path": "line_crops/line_0873.png",
+      "ground_truth": "484.125"
+    },
+    {
+      "image_id": "line_0874",
+      "file_path": "line_crops/line_0874.png",
+      "ground_truth": "010.003"
+    },
+    {
+      "image_id": "line_0875",
+      "file_path": "line_crops/line_0875.png",
+      "ground_truth": "477.595"
+    },
+    {
+      "image_id": "line_0876",
+      "file_path": "line_crops/line_0876.png",
+      "ground_truth": "обр тка в чист"
+    },
+    {
+      "image_id": "line_0877",
+      "file_path": "line_crops/line_0877.png",
+      "ground_truth": "Т5=8,0÷10,0"
+    },
+    {
+      "image_id": "line_0878",
+      "file_path": "line_crops/line_0878.png",
+      "ground_truth": "Окончат"
+    },
+    {
+      "image_id": "line_0879",
+      "file_path": "line_crops/line_0879.png",
+      "ground_truth": "HRC = 38 + 3"
+    },
+    {
+      "image_id": "line_0880",
+      "file_path": "line_crops/line_0880.png",
+      "ground_truth": "1 + 1 отв ие ф22 + фаски"
+    },
+    {
+      "image_id": "line_0881",
+      "file_path": "line_crops/line_0881.png",
+      "ground_truth": "сверлить"
+    },
+    {
+      "image_id": "line_0882",
+      "file_path": "line_crops/line_0882.png",
+      "ground_truth": "РС6=0,58÷0,67"
+    },
+    {
+      "image_id": "line_0883",
+      "file_path": "line_crops/line_0883.png",
+      "ground_truth": "HRC 38"
+    },
+    {
+      "image_id": "line_0884",
+      "file_path": "line_crops/line_0884.png",
+      "ground_truth": "РС5=0,58÷0,67"
+    },
+    {
+      "image_id": "line_0885",
+      "file_path": "line_crops/line_0885.png",
+      "ground_truth": "Сверлить"
+    },
+    {
+      "image_id": "line_0886",
+      "file_path": "line_crops/line_0886.png",
+      "ground_truth": "Т5=15,0÷16,5"
+    },
+    {
+      "image_id": "line_0887",
+      "file_path": "line_crops/line_0887.png",
+      "ground_truth": "Р3=0,67÷0,83"
+    },
+    {
+      "image_id": "line_0888",
+      "file_path": "line_crops/line_0888.png",
+      "ground_truth": "498.695"
+    },
+    {
+      "image_id": "line_0889",
+      "file_path": "line_crops/line_0889.png",
+      "ground_truth": "497.594"
+    },
+    {
+      "image_id": "line_0890",
+      "file_path": "line_crops/line_0890.png",
+      "ground_truth": "Т5=8,0÷9,0"
+    },
+    {
+      "image_id": "line_0891",
+      "file_path": "line_crops/line_0891.png",
+      "ground_truth": "Т5=10,0÷12,0"
+    },
+    {
+      "image_id": "line_0892",
+      "file_path": "line_crops/line_0892.png",
+      "ground_truth": "497.594"
+    },
+    {
+      "image_id": "line_0893",
+      "file_path": "line_crops/line_0893.png",
+      "ground_truth": "HRC 38"
+    },
+    {
+      "image_id": "line_0894",
+      "file_path": "line_crops/line_0894.png",
+      "ground_truth": "РС6=0,67÷0,75"
+    },
+    {
+      "image_id": "line_0895",
+      "file_path": "line_crops/line_0895.png",
+      "ground_truth": "Р16=0,3÷0,33"
+    },
+    {
+      "image_id": "line_0896",
+      "file_path": "line_crops/line_0896.png",
+      "ground_truth": "Ф152,3"
+    },
+    {
+      "image_id": "line_0897",
+      "file_path": "line_crops/line_0897.png",
+      "ground_truth": "ф167,9"
+    },
+    {
+      "image_id": "line_0898",
+      "file_path": "line_crops/line_0898.png",
+      "ground_truth": "Оправка верхняя"
+    },
+    {
+      "image_id": "line_0899",
+      "file_path": "line_crops/line_0899.png",
+      "ground_truth": "957HW3N.008"
+    },
+    {
+      "image_id": "line_0900",
+      "file_path": "line_crops/line_0900.png",
+      "ground_truth": ""
+    },
+    {
+      "image_id": "line_0901",
+      "file_path": "line_crops/line_0901.png",
+      "ground_truth": "РС6=0,42÷0,5"
+    },
+    {
+      "image_id": "line_0902",
+      "file_path": "line_crops/line_0902.png",
+      "ground_truth": "Т3=4,0÷4,5"
+    },
+    {
+      "image_id": "line_0903",
+      "file_path": "line_crops/line_0903.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_0904",
+      "file_path": "line_crops/line_0904.png",
+      "ground_truth": "Т3≈0,3÷0,33"
+    },
+    {
+      "image_id": "line_0905",
+      "file_path": "line_crops/line_0905.png",
+      "ground_truth": "РС5=0,42÷0,5"
+    },
+    {
+      "image_id": "line_0906",
+      "file_path": "line_crops/line_0906.png",
+      "ground_truth": "Р16=0,3÷0,33"
+    },
+    {
+      "image_id": "line_0907",
+      "file_path": "line_crops/line_0907.png",
+      "ground_truth": ""
+    },
+    {
+      "image_id": "line_0908",
+      "file_path": "line_crops/line_0908.png",
+      "ground_truth": "Ст.25хfМФ"
+    },
+    {
+      "image_id": "line_0909",
+      "file_path": "line_crops/line_0909.png",
+      "ground_truth": "вес 39кг."
+    },
+    {
+      "image_id": "line_0910",
+      "file_path": "line_crops/line_0910.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0911",
+      "file_path": "line_crops/line_0911.png",
+      "ground_truth": "включая авт-ие"
+    },
+    {
+      "image_id": "line_0912",
+      "file_path": "line_crops/line_0912.png",
+      "ground_truth": "Окончат"
+    },
+    {
+      "image_id": "line_0913",
+      "file_path": "line_crops/line_0913.png",
+      "ground_truth": "оба-тка"
+    },
+    {
+      "image_id": "line_0914",
+      "file_path": "line_crops/line_0914.png",
+      "ground_truth": "Т3=6,0÷7,0"
+    },
+    {
+      "image_id": "line_0915",
+      "file_path": "line_crops/line_0915.png",
+      "ground_truth": "Ст. 5ХНМ"
+    },
+    {
+      "image_id": "line_0916",
+      "file_path": "line_crops/line_0916.png",
+      "ground_truth": "вес 39кг"
+    },
+    {
+      "image_id": "line_0917",
+      "file_path": "line_crops/line_0917.png",
+      "ground_truth": "527978"
+    },
+    {
+      "image_id": "line_0918",
+      "file_path": "line_crops/line_0918.png",
+      "ground_truth": "0,42÷0,5"
+    },
+    {
+      "image_id": "line_0919",
+      "file_path": "line_crops/line_0919.png",
+      "ground_truth": "409511.714-29.009"
+    },
+    {
+      "image_id": "line_0920",
+      "file_path": "line_crops/line_0920.png",
+      "ground_truth": "Болт М36"
+    },
+    {
+      "image_id": "line_0921",
+      "file_path": "line_crops/line_0921.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0922",
+      "file_path": "line_crops/line_0922.png",
+      "ground_truth": "Ф4=0,3÷0,33"
+    },
+    {
+      "image_id": "line_0923",
+      "file_path": "line_crops/line_0923.png",
+      "ground_truth": "вес1,071кг"
+    },
+    {
+      "image_id": "line_0924",
+      "file_path": "line_crops/line_0924.png",
+      "ground_truth": "Т2=0,33÷0,37"
+    },
+    {
+      "image_id": "line_0925",
+      "file_path": "line_crops/line_0925.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0926",
+      "file_path": "line_crops/line_0926.png",
+      "ground_truth": "Ст. 40Х"
+    },
+    {
+      "image_id": "line_0927",
+      "file_path": "line_crops/line_0927.png",
+      "ground_truth": "вес 1,071кг"
+    },
+    {
+      "image_id": "line_0928",
+      "file_path": "line_crops/line_0928.png",
+      "ground_truth": "ПТ2=0,17÷0,18"
+    },
+    {
+      "image_id": "line_0929",
+      "file_path": "line_crops/line_0929.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0930",
+      "file_path": "line_crops/line_0930.png",
+      "ground_truth": "Т2=2,0÷2,5"
+    },
+    {
+      "image_id": "line_0931",
+      "file_path": "line_crops/line_0931.png",
+      "ground_truth": "НВ=225÷300"
+    },
+    {
+      "image_id": "line_0932",
+      "file_path": "line_crops/line_0932.png",
+      "ground_truth": "ПШ - 2,5"
+    },
+    {
+      "image_id": "line_0933",
+      "file_path": "line_crops/line_0933.png",
+      "ground_truth": "С7 - 1,5"
+    },
+    {
+      "image_id": "line_0934",
+      "file_path": "line_crops/line_0934.png",
+      "ground_truth": "409511.714"
+    },
+    {
+      "image_id": "line_0935",
+      "file_path": "line_crops/line_0935.png",
+      "ground_truth": "29.009"
+    },
+    {
+      "image_id": "line_0936",
+      "file_path": "line_crops/line_0936.png",
+      "ground_truth": "Болт М36"
+    },
+    {
+      "image_id": "line_0937",
+      "file_path": "line_crops/line_0937.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0938",
+      "file_path": "line_crops/line_0938.png",
+      "ground_truth": "Ст. 40Х"
+    },
+    {
+      "image_id": "line_0939",
+      "file_path": "line_crops/line_0939.png",
+      "ground_truth": "ПТ2=0,5÷0,55"
+    },
+    {
+      "image_id": "line_0940",
+      "file_path": "line_crops/line_0940.png",
+      "ground_truth": "ФН=0,3÷0,33"
+    },
+    {
+      "image_id": "line_0941",
+      "file_path": "line_crops/line_0941.png",
+      "ground_truth": "предварит. с"
+    },
+    {
+      "image_id": "line_0942",
+      "file_path": "line_crops/line_0942.png",
+      "ground_truth": "Т3=9,0÷10,0"
+    },
+    {
+      "image_id": "line_0943",
+      "file_path": "line_crops/line_0943.png",
+      "ground_truth": "Т3=0,58÷0,67"
+    },
+    {
+      "image_id": "line_0944",
+      "file_path": "line_crops/line_0944.png",
+      "ground_truth": "вес 81,7 кг."
+    },
+    {
+      "image_id": "line_0945",
+      "file_path": "line_crops/line_0945.png",
+      "ground_truth": "Ст. 5ХГНМ"
+    },
+    {
+      "image_id": "line_0946",
+      "file_path": "line_crops/line_0946.png",
+      "ground_truth": "отв=190"
+    },
+    {
+      "image_id": "line_0947",
+      "file_path": "line_crops/line_0947.png",
+      "ground_truth": "Поковка"
+    },
+    {
+      "image_id": "line_0948",
+      "file_path": "line_crops/line_0948.png",
+      "ground_truth": "497 598"
+    },
+    {
+      "image_id": "line_0949",
+      "file_path": "line_crops/line_0949.png",
+      "ground_truth": "прошивки"
+    },
+    {
+      "image_id": "line_0950",
+      "file_path": "line_crops/line_0950.png",
+      "ground_truth": "Пуансон"
+    },
+    {
+      "image_id": "line_0951",
+      "file_path": "line_crops/line_0951.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0952",
+      "file_path": "line_crops/line_0952.png",
+      "ground_truth": "Т3=7,0÷7,5"
+    },
+    {
+      "image_id": "line_0953",
+      "file_path": "line_crops/line_0953.png",
+      "ground_truth": "Ст.5ХНМ"
+    },
+    {
+      "image_id": "line_0954",
+      "file_path": "line_crops/line_0954.png",
+      "ground_truth": "вес 109кг"
+    },
+    {
+      "image_id": "line_0955",
+      "file_path": "line_crops/line_0955.png",
+      "ground_truth": "Сверлить"
+    },
+    {
+      "image_id": "line_0956",
+      "file_path": "line_crops/line_0956.png",
+      "ground_truth": "РС6≈0,42÷0,5"
+    },
+    {
+      "image_id": "line_0957",
+      "file_path": "line_crops/line_0957.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_0958",
+      "file_path": "line_crops/line_0958.png",
+      "ground_truth": "Т3=5,0÷4,5"
+    },
+    {
+      "image_id": "line_0959",
+      "file_path": "line_crops/line_0959.png",
+      "ground_truth": "0,2÷0,25"
+    },
+    {
+      "image_id": "line_0960",
+      "file_path": "line_crops/line_0960.png",
+      "ground_truth": "128.004"
+    },
+    {
+      "image_id": "line_0961",
+      "file_path": "line_crops/line_0961.png",
+      "ground_truth": "Оправка верхняя"
+    },
+    {
+      "image_id": "line_0962",
+      "file_path": "line_crops/line_0962.png",
+      "ground_truth": "Ф225,8"
+    },
+    {
+      "image_id": "line_0963",
+      "file_path": "line_crops/line_0963.png",
+      "ground_truth": "отв 190/150"
+    },
+    {
+      "image_id": "line_0964",
+      "file_path": "line_crops/line_0964.png",
+      "ground_truth": "Р13=0,33÷0,42"
+    },
+    {
+      "image_id": "line_0965",
+      "file_path": "line_crops/line_0965.png",
+      "ground_truth": "HRC 38 ÷ 41"
+    },
+    {
+      "image_id": "line_0966",
+      "file_path": "line_crops/line_0966.png",
+      "ground_truth": "Т3 ≈ 6,5 ÷ 7,5"
+    },
+    {
+      "image_id": "line_0967",
+      "file_path": "line_crops/line_0967.png",
+      "ground_truth": "маркировать"
+    },
+    {
+      "image_id": "line_0968",
+      "file_path": "line_crops/line_0968.png",
+      "ground_truth": "в чистовые размеры"
+    },
+    {
+      "image_id": "line_0969",
+      "file_path": "line_crops/line_0969.png",
+      "ground_truth": "РС6 ≈ 0,5 ÷ 0,6"
+    },
+    {
+      "image_id": "line_0970",
+      "file_path": "line_crops/line_0970.png",
+      "ground_truth": "497 821"
+    },
+    {
+      "image_id": "line_0971",
+      "file_path": "line_crops/line_0971.png",
+      "ground_truth": "Ф328"
+    },
+    {
+      "image_id": "line_0972",
+      "file_path": "line_crops/line_0972.png",
+      "ground_truth": "Т3 ≈ 1,5 + 1,75"
+    },
+    {
+      "image_id": "line_0973",
+      "file_path": "line_crops/line_0973.png",
+      "ground_truth": "ф 167,9"
+    },
+    {
+      "image_id": "line_0974",
+      "file_path": "line_crops/line_0974.png",
+      "ground_truth": "5ХНМ"
+    },
+    {
+      "image_id": "line_0975",
+      "file_path": "line_crops/line_0975.png",
+      "ground_truth": "вес = 135"
+    },
+    {
+      "image_id": "line_0976",
+      "file_path": "line_crops/line_0976.png",
+      "ground_truth": "Оправка нижняя"
+    },
+    {
+      "image_id": "line_0977",
+      "file_path": "line_crops/line_0977.png",
+      "ground_truth": "5227704"
+    },
+    {
+      "image_id": "line_0978",
+      "file_path": "line_crops/line_0978.png",
+      "ground_truth": "Т50 = 5,0 ÷ 5,5"
+    },
+    {
+      "image_id": "line_0979",
+      "file_path": "line_crops/line_0979.png",
+      "ground_truth": "Зачистить"
+    },
+    {
+      "image_id": "line_0980",
+      "file_path": "line_crops/line_0980.png",
+      "ground_truth": "Ст. 25Х1МФ"
+    },
+    {
+      "image_id": "line_0981",
+      "file_path": "line_crops/line_0981.png",
+      "ground_truth": "вес 135кг."
+    },
+    {
+      "image_id": "line_0982",
+      "file_path": "line_crops/line_0982.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_0983",
+      "file_path": "line_crops/line_0983.png",
+      "ground_truth": "Оправка нижняя"
+    },
+    {
+      "image_id": "line_0984",
+      "file_path": "line_crops/line_0984.png",
+      "ground_truth": "Р13 ≈ 0,5 ÷ 0,6"
+    },
+    {
+      "image_id": "line_0985",
+      "file_path": "line_crops/line_0985.png",
+      "ground_truth": "Т50=6,5÷7,0"
+    },
+    {
+      "image_id": "line_0986",
+      "file_path": "line_crops/line_0986.png",
+      "ground_truth": "РС5=0,45÷0,5"
+    },
+    {
+      "image_id": "line_0987",
+      "file_path": "line_crops/line_0987.png",
+      "ground_truth": "окончательно"
+    },
+    {
+      "image_id": "line_0988",
+      "file_path": "line_crops/line_0988.png",
+      "ground_truth": "Т5=5,0÷6,0"
+    },
+    {
+      "image_id": "line_0989",
+      "file_path": "line_crops/line_0989.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_0990",
+      "file_path": "line_crops/line_0990.png",
+      "ground_truth": "ф855Н7"
+    },
+    {
+      "image_id": "line_0991",
+      "file_path": "line_crops/line_0991.png",
+      "ground_truth": "489.965"
+    },
+    {
+      "image_id": "line_0992",
+      "file_path": "line_crops/line_0992.png",
+      "ground_truth": "126.1.019"
+    },
+    {
+      "image_id": "line_0993",
+      "file_path": "line_crops/line_0993.png",
+      "ground_truth": "РС5 - 10.0"
+    },
+    {
+      "image_id": "line_0994",
+      "file_path": "line_crops/line_0994.png",
+      "ground_truth": "КДS - 25,0"
+    },
+    {
+      "image_id": "line_0995",
+      "file_path": "line_crops/line_0995.png",
+      "ground_truth": "КДS - 80.0"
+    },
+    {
+      "image_id": "line_0996",
+      "file_path": "line_crops/line_0996.png",
+      "ground_truth": "К25 - 15,0"
+    },
+    {
+      "image_id": "line_0997",
+      "file_path": "line_crops/line_0997.png",
+      "ground_truth": "К25-35,0÷40,0"
+    },
+    {
+      "image_id": "line_0998",
+      "file_path": "line_crops/line_0998.png",
+      "ground_truth": "РС5 - 7,0"
+    },
+    {
+      "image_id": "line_0999",
+      "file_path": "line_crops/line_0999.png",
+      "ground_truth": "484559"
+    },
+    {
+      "image_id": "line_1000",
+      "file_path": "line_crops/line_1000.png",
+      "ground_truth": "Р16=0,58÷0,67"
+    },
+    {
+      "image_id": "line_1001",
+      "file_path": "line_crops/line_1001.png",
+      "ground_truth": "Сверлить"
+    },
+    {
+      "image_id": "line_1002",
+      "file_path": "line_crops/line_1002.png",
+      "ground_truth": "РС5=0,67÷0,75"
+    },
+    {
+      "image_id": "line_1003",
+      "file_path": "line_crops/line_1003.png",
+      "ground_truth": "497 599"
+    },
+    {
+      "image_id": "line_1004",
+      "file_path": "line_crops/line_1004.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_1005",
+      "file_path": "line_crops/line_1005.png",
+      "ground_truth": "Н=167,1/79"
+    },
+    {
+      "image_id": "line_1006",
+      "file_path": "line_crops/line_1006.png",
+      "ground_truth": "Ст5ХГНМ"
+    },
+    {
+      "image_id": "line_1007",
+      "file_path": "line_crops/line_1007.png",
+      "ground_truth": "498144"
+    },
+    {
+      "image_id": "line_1008",
+      "file_path": "line_crops/line_1008.png",
+      "ground_truth": "вес 67,5кг."
+    },
+    {
+      "image_id": "line_1009",
+      "file_path": "line_crops/line_1009.png",
+      "ground_truth": "4,0÷5,0"
+    },
+    {
+      "image_id": "line_1010",
+      "file_path": "line_crops/line_1010.png",
+      "ground_truth": "контроль"
+    },
+    {
+      "image_id": "line_1011",
+      "file_path": "line_crops/line_1011.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_1012",
+      "file_path": "line_crops/line_1012.png",
+      "ground_truth": "Т4=4,0÷4,5"
+    },
+    {
+      "image_id": "line_1013",
+      "file_path": "line_crops/line_1013.png",
+      "ground_truth": "Окончат"
+    },
+    {
+      "image_id": "line_1014",
+      "file_path": "line_crops/line_1014.png",
+      "ground_truth": "обр-тка"
+    },
+    {
+      "image_id": "line_1015",
+      "file_path": "line_crops/line_1015.png",
+      "ground_truth": "работы на удар"
+    },
+    {
+      "image_id": "line_1016",
+      "file_path": "line_crops/line_1016.png",
+      "ground_truth": "маркировать"
+    },
+    {
+      "image_id": "line_1017",
+      "file_path": "line_crops/line_1017.png",
+      "ground_truth": "498281"
+    },
+    {
+      "image_id": "line_1018",
+      "file_path": "line_crops/line_1018.png",
+      "ground_truth": "РС5=0,67÷0,75"
+    },
+    {
+      "image_id": "line_1019",
+      "file_path": "line_crops/line_1019.png",
+      "ground_truth": "Р16=0,58÷0,67"
+    },
+    {
+      "image_id": "line_1020",
+      "file_path": "line_crops/line_1020.png",
+      "ground_truth": "Т5=5,0÷5,5"
+    },
+    {
+      "image_id": "line_1021",
+      "file_path": "line_crops/line_1021.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_1022",
+      "file_path": "line_crops/line_1022.png",
+      "ground_truth": "Т5=4,5÷5,0"
+    },
+    {
+      "image_id": "line_1023",
+      "file_path": "line_crops/line_1023.png",
+      "ground_truth": "Т5=5,5÷6,0"
+    },
+    {
+      "image_id": "line_1024",
+      "file_path": "line_crops/line_1024.png",
+      "ground_truth": "Чистовая"
+    },
+    {
+      "image_id": "line_1025",
+      "file_path": "line_crops/line_1025.png",
+      "ground_truth": "обр.тка"
+    },
+    {
+      "image_id": "line_1026",
+      "file_path": "line_crops/line_1026.png",
+      "ground_truth": "527974"
+    },
+    {
+      "image_id": "line_1027",
+      "file_path": "line_crops/line_1027.png",
+      "ground_truth": "вес 66кг"
+    },
+    {
+      "image_id": "line_1028",
+      "file_path": "line_crops/line_1028.png",
+      "ground_truth": "Ст.5ХНМ"
+    },
+    {
+      "image_id": "line_1029",
+      "file_path": "line_crops/line_1029.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_1030",
+      "file_path": "line_crops/line_1030.png",
+      "ground_truth": "эскиз см в ч. 497.599"
+    },
+    {
+      "image_id": "line_1031",
+      "file_path": "line_crops/line_1031.png",
+      "ground_truth": "Т4=1,58÷1,75"
+    },
+    {
+      "image_id": "line_1032",
+      "file_path": "line_crops/line_1032.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_1033",
+      "file_path": "line_crops/line_1033.png",
+      "ground_truth": "528084"
+    },
+    {
+      "image_id": "line_1034",
+      "file_path": "line_crops/line_1034.png",
+      "ground_truth": "ф199,8/ф204,8"
+    },
+    {
+      "image_id": "line_1035",
+      "file_path": "line_crops/line_1035.png",
+      "ground_truth": "Р13=0,33÷0,42"
+    },
+    {
+      "image_id": "line_1036",
+      "file_path": "line_crops/line_1036.png",
+      "ground_truth": "Т3=7,0÷8,0"
+    },
+    {
+      "image_id": "line_1037",
+      "file_path": "line_crops/line_1037.png",
+      "ground_truth": "Точить"
+    },
+    {
+      "image_id": "line_1038",
+      "file_path": "line_crops/line_1038.png",
+      "ground_truth": "вес 116кг"
+    },
+    {
+      "image_id": "line_1039",
+      "file_path": "line_crops/line_1039.png",
+      "ground_truth": "Ст5ХНМ"
+    },
+    {
+      "image_id": "line_1040",
+      "file_path": "line_crops/line_1040.png",
+      "ground_truth": "168.017"
+    },
+    {
+      "image_id": "line_1041",
+      "file_path": "line_crops/line_1041.png",
+      "ground_truth": "Противень"
+    },
+    {
+      "image_id": "line_1042",
+      "file_path": "line_crops/line_1042.png",
+      "ground_truth": "128.013"
+    },
+    {
+      "image_id": "line_1043",
+      "file_path": "line_crops/line_1043.png",
+      "ground_truth": "контроль"
+    },
+    {
+      "image_id": "line_1044",
+      "file_path": "line_crops/line_1044.png",
+      "ground_truth": "РС6=0,5÷0,6"
+    },
+    {
+      "image_id": "line_1045",
+      "file_path": "line_crops/line_1045.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_1046",
+      "file_path": "line_crops/line_1046.png",
+      "ground_truth": "Т3=7,0÷7,5"
+    },
+    {
+      "image_id": "line_1047",
+      "file_path": "line_crops/line_1047.png",
+      "ground_truth": "чистовые размеры"
+    },
+    {
+      "image_id": "line_1048",
+      "file_path": "line_crops/line_1048.png",
+      "ground_truth": "сверлить"
+    },
+    {
+      "image_id": "line_1049",
+      "file_path": "line_crops/line_1049.png",
+      "ground_truth": "маркировать"
+    },
+    {
+      "image_id": "line_1050",
+      "file_path": "line_crops/line_1050.png",
+      "ground_truth": "Р13=0,3÷0,33"
+    },
+    {
+      "image_id": "line_1051",
+      "file_path": "line_crops/line_1051.png",
+      "ground_truth": "Т3=7,0÷7,5"
+    },
+    {
+      "image_id": "line_1052",
+      "file_path": "line_crops/line_1052.png",
+      "ground_truth": "124-1.018"
+    },
+    {
+      "image_id": "line_1053",
+      "file_path": "line_crops/line_1053.png",
+      "ground_truth": "Противень"
+    },
+    {
+      "image_id": "line_1054",
+      "file_path": "line_crops/line_1054.png",
+      "ground_truth": "Точить в"
+    },
+    {
+      "image_id": "line_1055",
+      "file_path": "line_crops/line_1055.png",
+      "ground_truth": "РС6=0,42÷0,5"
+    },
+    {
+      "image_id": "line_1056",
+      "file_path": "line_crops/line_1056.png",
+      "ground_truth": "2отв Ф22"
+    },
+    {
+      "image_id": "line_1057",
+      "file_path": "line_crops/line_1057.png",
+      "ground_truth": "точить с"
+    },
+    {
+      "image_id": "line_1058",
+      "file_path": "line_crops/line_1058.png",
+      "ground_truth": "вес=55"
+    },
+    {
+      "image_id": "line_1059",
+      "file_path": "line_crops/line_1059.png",
+      "ground_truth": "528.086"
+    },
+    {
+      "image_id": "line_1060",
+      "file_path": "line_crops/line_1060.png",
+      "ground_truth": "ст 5ХНМ"
+    },
+    {
+      "image_id": "line_1061",
+      "file_path": "line_crops/line_1061.png",
+      "ground_truth": "Противеньь"
+    },
+    {
+      "image_id": "line_1062",
+      "file_path": "line_crops/line_1062.png",
+      "ground_truth": "М72х4"
+    },
+    {
+      "image_id": "line_1063",
+      "file_path": "line_crops/line_1063.png",
+      "ground_truth": "370,9±0,1"
+    },
+    {
+      "image_id": "line_1064",
+      "file_path": "line_crops/line_1064.png",
+      "ground_truth": "Р16=0,3÷0,33"
+    },
+    {
+      "image_id": "line_1065",
+      "file_path": "line_crops/line_1065.png",
+      "ground_truth": "Т3=9,0÷10,0"
+    },
+    {
+      "image_id": "line_1066",
+      "file_path": "line_crops/line_1066.png",
+      "ground_truth": "Т3=4,0"
+    },
+    {
+      "image_id": "line_1067",
+      "file_path": "line_crops/line_1067.png",
+      "ground_truth": "Точить в"
+    },
+    {
+      "image_id": "line_1068",
+      "file_path": "line_crops/line_1068.png",
+      "ground_truth": "центровать с"
+    },
+    {
+      "image_id": "line_1069",
+      "file_path": "line_crops/line_1069.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_1070",
+      "file_path": "line_crops/line_1070.png",
+      "ground_truth": "Т3=6,0÷6,5"
+    },
+    {
+      "image_id": "line_1071",
+      "file_path": "line_crops/line_1071.png",
+      "ground_truth": "Р6=0,3÷0,33"
+    },
+    {
+      "image_id": "line_1072",
+      "file_path": "line_crops/line_1072.png",
+      "ground_truth": "Т3=9,0÷10,0"
+    },
+    {
+      "image_id": "line_1073",
+      "file_path": "line_crops/line_1073.png",
+      "ground_truth": "Точить предв."
+    },
+    {
+      "image_id": "line_1074",
+      "file_path": "line_crops/line_1074.png",
+      "ground_truth": "Центрировать"
+    },
+    {
+      "image_id": "line_1075",
+      "file_path": "line_crops/line_1075.png",
+      "ground_truth": "Ст. 5ХНМ"
+    },
+    {
+      "image_id": "line_1076",
+      "file_path": "line_crops/line_1076.png",
+      "ground_truth": "Полуоправка"
+    },
+    {
+      "image_id": "line_1077",
+      "file_path": "line_crops/line_1077.png",
+      "ground_truth": "верхняя"
+    },
+    {
+      "image_id": "line_1078",
+      "file_path": "line_crops/line_1078.png",
+      "ground_truth": "Ф167,9"
+    },
+    {
+      "image_id": "line_1079",
+      "file_path": "line_crops/line_1079.png",
+      "ground_truth": "Ф150.8"
+    },
+    {
+      "image_id": "line_1080",
+      "file_path": "line_crops/line_1080.png",
+      "ground_truth": "к=288,7"
+    },
+    {
+      "image_id": "line_1081",
+      "file_path": "line_crops/line_1081.png",
+      "ground_truth": "м 72х4"
+    },
+    {
+      "image_id": "line_1082",
+      "file_path": "line_crops/line_1082.png",
+      "ground_truth": "5ХНМ"
+    },
+    {
+      "image_id": "line_1083",
+      "file_path": "line_crops/line_1083.png",
+      "ground_truth": "вес=39"
+    },
+    {
+      "image_id": "line_1084",
+      "file_path": "line_crops/line_1084.png",
+      "ground_truth": "527726"
+    },
+    {
+      "image_id": "line_1085",
+      "file_path": "line_crops/line_1085.png",
+      "ground_truth": "528086"
+    },
+    {
+      "image_id": "line_1086",
+      "file_path": "line_crops/line_1086.png",
+      "ground_truth": "Противень"
+    },
+    {
+      "image_id": "line_1087",
+      "file_path": "line_crops/line_1087.png",
+      "ground_truth": "ф160"
+    },
+    {
+      "image_id": "line_1088",
+      "file_path": "line_crops/line_1088.png",
+      "ground_truth": "отв=190/150"
+    },
+    {
+      "image_id": "line_1089",
+      "file_path": "line_crops/line_1089.png",
+      "ground_truth": "поковка"
+    },
+    {
+      "image_id": "line_1090",
+      "file_path": "line_crops/line_1090.png",
+      "ground_truth": "вес 54,9кг"
+    },
+    {
+      "image_id": "line_1091",
+      "file_path": "line_crops/line_1091.png",
+      "ground_truth": "Сверлить 2"
+    },
+    {
+      "image_id": "line_1092",
+      "file_path": "line_crops/line_1092.png",
+      "ground_truth": "отв Ф22"
+    },
+    {
+      "image_id": "line_1093",
+      "file_path": "line_crops/line_1093.png",
+      "ground_truth": "срезать тех. припуск"
+    },
+    {
+      "image_id": "line_1094",
+      "file_path": "line_crops/line_1094.png",
+      "ground_truth": "Т3≈4,0"
+    },
+    {
+      "image_id": "line_1095",
+      "file_path": "line_crops/line_1095.png",
+      "ground_truth": "HRC 38÷41"
+    },
+    {
+      "image_id": "line_1096",
+      "file_path": "line_crops/line_1096.png",
+      "ground_truth": "маркировать"
+    },
+    {
+      "image_id": "line_1097",
+      "file_path": "line_crops/line_1097.png",
+      "ground_truth": "РС6=0,42÷0,5"
+    }
+  ]
+}

@@ -92,7 +92,7 @@
     ],
     "mac": {
       "target": [
-        "dmg"
+        "dir"
       ]
     },
     "win": {

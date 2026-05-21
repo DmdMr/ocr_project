@@ -33,7 +33,6 @@
 
 <section class="panel files-section">
   <div class="head">
-    <h3>Файлы</h3>
     {#if canEdit}
     <label class="upload-btn" class:disabled={uploading}>
       {uploading ? `Загрузка ${uploadProgress}%` : "Добавить файлы"}

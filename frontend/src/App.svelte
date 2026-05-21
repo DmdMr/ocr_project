@@ -5,7 +5,6 @@
 
   import HomePage from './HomePage.svelte'
   import AboutPage from './AboutPage.svelte'
-  import ChatbotPage from './ChatbotPage.svelte'
   import ArchivePage from './ArchivePage.svelte'
   import SettingsPage from './SettingsPage.svelte'
   import LoginPage from './LoginPage.svelte'
@@ -20,7 +19,6 @@
   const routes = {
     '/': HomePage,
     '/about': AboutPage,
-    '/assistant': ChatbotPage,
     '/archive': ArchivePage,
     '/settings': SettingsPage,
     '/admin/users': AdminUsersPage,

@@ -1830,6 +1830,7 @@ async def get_document(doc_id: str):
     return normalized
 
 
+"""
 @router.get("/search")
 async def search_documents(q: str):
     results = []
@@ -1846,6 +1847,64 @@ async def search_documents(q: str):
     ):
         results.append(normalize_document(doc))
     return results
+"""
+
+@router.get("/search")
+async def search_documents(q: str):
+    results = []
+    
+    # 1. Build an aggregation pipeline
+    pipeline = [
+        # Filter out archived documents first to optimize processing speed
+        {
+            "$match": {
+                "is_archived": {"$ne": True}
+            }
+        },
+        # Add a temporary helper field that converts the custom_fields object into a searchable array
+        {
+            "$addFields": {
+                "custom_fields_array": {
+                    "$objectToArray": {
+                        # Fallback to an empty object if custom_fields is missing or null
+                        "$ifNull": ["$custom_fields", {}]
+                    }
+                }
+            }
+        },
+        # 2. Match the query string against all target data properties
+        {
+            "$match": {
+                "$or": [
+                    # Base documents metadata fields
+                    {"recognized_text": {"$regex": q, "$options": "i"}},
+                    {"display_filename": {"$regex": q, "$options": "i"}},
+                    {"filename": {"$regex": q, "$options": "i"}},
+                    {"tags": {"$regex": q, "$options": "i"}},
+                    
+                    # Target the last person who updated or edited the asset record
+                    {"updated_by_username": {"$regex": q, "$options": "i"}},
+                    
+                    # Search inside ANY dynamic value stored in your custom fields object
+                    {"custom_fields_array.v": {"$regex": q, "$options": "i"}}
+                ]
+            }
+        },
+        # 3. Clean up and remove the temporary helper array field before normalization
+        {
+            "$project": {
+                "custom_fields_array": 0
+            }
+        }
+    ]
+    
+    # Execute the aggregation query pipeline matrix against your database collection
+    cursor = documents_collection.aggregate(pipeline)
+    async for doc in cursor:
+        results.append(normalize_document(doc))
+        
+    return results
+
 
 
 
