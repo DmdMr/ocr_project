@@ -570,3 +570,16 @@ export async function getActivityLogs(limit = 100): Promise<ActivityLogEntry[]> 
     const data = await parseJsonOrThrow(response)
     return data.logs ?? []
 }
+
+
+export async function visionOcr(file: File) {
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const res = await apiFetch(`${API_URL}/vision-ocr`, {
+        method: "POST",
+        body: formData
+    })
+
+    return await parseJsonOrThrow(res)
+}
