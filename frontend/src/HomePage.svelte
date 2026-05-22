@@ -154,6 +154,7 @@
           on:navigateSettings={() => push('/settings')}
           on:navigateAdminUsers={() => push('/admin/users')}
           on:navigateActivity={() => push('/admin/activity')}
+          on:navigateVisionOcr={() => push('/vision-ocr')}
         />
       </section>
 
