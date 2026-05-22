@@ -59,6 +59,7 @@
       </div>
     </section>
 
+
     {#if role === "admin"}
       <section class="sidebar-section">
         <div class="sidebar-title">{$t("sidebar.adminPanel")}</div>

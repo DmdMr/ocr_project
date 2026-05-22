@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte"
   import { push } from "svelte-spa-router"
-  import { getCardFields, getDocumentById, UPLOADS_URL } from "./lib/api"
+  import { getCardFields, getDocumentById, UPLOADS_URL, visionOcr } from "./lib/api"
   import WorkspaceSidebar from "./lib/components/WorkspaceSidebar.svelte"
   import type { Document, GalleryImage, AttachmentFile, CardCustomFieldSetting } from "./lib/types"
   import { documentRoute, documentSlug } from "./lib/documentRoutes"
@@ -77,6 +77,36 @@
   function openEditor() {
     if (!doc) return
     push(`/documents/${doc._id}/editor`)
+  }
+
+  let visionOcrLoading = false
+  let visionOcrError = ""
+  let visionOcrText = ""
+
+  async function runVisionOcrForImage(image: GalleryImage) {
+    visionOcrLoading = true
+    visionOcrError = ""
+    console.log("[VisionOCR] Starting OCR for image", image.filename)
+
+    try {
+      const response = await fetch(imageUrl(image))
+      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
+
+      const blob = await response.blob()
+      const file = new File([blob], image.filename, { type: blob.type || "image/png" })
+      const result = await visionOcr(file)
+
+      visionOcrText = String(result?.text ?? "")
+      if (doc) {
+        doc = { ...doc, recognized_text: visionOcrText }
+      }
+      console.log("[VisionOCR] OCR completed", { textLength: visionOcrText.length })
+    } catch (err) {
+      console.error("[VisionOCR] OCR failed", err)
+      visionOcrError = err instanceof Error ? err.message : "Vision OCR failed"
+    } finally {
+      visionOcrLoading = false
+    }
   }
 </script>
 
@@ -176,6 +206,7 @@
                   <article class="image-card">
                     <img src={imageUrl(image)} alt={image.filename} loading="lazy" />
                     <div class="image-actions">
+                      <button class="action-button" on:click={() => runVisionOcrForImage(image)} disabled={visionOcrLoading}>{visionOcrLoading ? "Running..." : "Run Vision OCR"}</button>
                       <button class="action-button" on:click={openEditor}>Edit</button>
                       <button class="action-button danger" on:click={openEditor}>Delete</button>
                     </div>
@@ -202,6 +233,12 @@
 
         <main class="main-right-panel card-like">
           <h2>Recognized text</h2>
+          {#if visionOcrError}
+            <p class="muted" style="color:#b42318;">{visionOcrError}</p>
+          {/if}
+          {#if visionOcrLoading}
+            <p class="muted">Vision OCR is running...</p>
+          {/if}
           {#if doc.recognized_text?.trim()}
             <pre>{doc.recognized_text}</pre>
           {:else}
