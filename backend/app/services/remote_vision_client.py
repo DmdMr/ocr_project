@@ -41,3 +41,11 @@ def generate_ocr(file_bytes: bytes, filename: str = "image.png", content_type: s
         return {"success": False, "text": "", "error": "REMOTE_OCR_FAILED"}
 
     return {"success": True, "text": text}
+
+
+def check_health(timeout: int = 5) -> Dict[str, Any]:
+    try:
+        response = requests.get(REMOTE_VISION_OCR_URL, timeout=timeout)
+        return {"success": response.ok, "url": REMOTE_VISION_OCR_URL}
+    except requests.RequestException:
+        return {"success": False, "url": REMOTE_VISION_OCR_URL}

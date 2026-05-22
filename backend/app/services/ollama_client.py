@@ -2,17 +2,20 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+import os
+
 import requests
 
-OLLAMA_GENERATE_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen_ocr"
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_GENERATE_URL = f"{OLLAMA_URL}/api/generate"
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen_ocr")
 OLLAMA_PROMPT = "Read all handwritten engineering text from this image. Return only clean OCR text."
 DEFAULT_TIMEOUT_SECONDS = 60
 
 
 def check_health(timeout: int = 3) -> Dict[str, Any]:
     try:
-        response = requests.get("http://localhost:11434", timeout=timeout)
+        response = requests.get(OLLAMA_URL, timeout=timeout)
         return {"success": response.ok}
     except requests.RequestException:
         return {"success": False}
