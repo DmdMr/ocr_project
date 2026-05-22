@@ -5,7 +5,7 @@ from typing import Any, Dict
 import requests
 
 OLLAMA_GENERATE_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen_ocr"
+OLLAMA_MODEL = "qwen_ocr:latest"
 OLLAMA_PROMPT = "Read all handwritten engineering text from this image. Return only clean OCR text."
 DEFAULT_TIMEOUT_SECONDS = 60
 

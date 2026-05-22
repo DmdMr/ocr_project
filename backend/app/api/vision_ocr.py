@@ -6,7 +6,6 @@ from backend.app.services.ollama_client import generate_ocr
 
 router = APIRouter(prefix="/api", tags=["vision-ocr"])
 
-
 @router.post("/vision-ocr")
 async def vision_ocr(file: UploadFile = File(...)):
     if not file.content_type or not file.content_type.startswith("image/"):
