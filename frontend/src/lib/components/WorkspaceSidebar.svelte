@@ -13,6 +13,7 @@
         navigateSettings: void
         navigateAdminUsers: void
         navigateActivity: void
+        navigateVisionOcr: void
         navigateLogin: void
         logout: void
     }>()
