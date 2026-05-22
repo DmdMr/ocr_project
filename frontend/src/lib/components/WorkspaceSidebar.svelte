@@ -60,12 +60,6 @@
       </div>
     </section>
 
-    <section class="sidebar-section">
-      <div class="sidebar-title">Vision</div>
-      <div class="sidebar-actions">
-        <button on:click={() => dispatch("navigateVisionOcr")}>Vision OCR</button>
-      </div>
-    </section>
 
     {#if role === "admin"}
       <section class="sidebar-section">
