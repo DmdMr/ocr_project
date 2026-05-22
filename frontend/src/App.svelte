@@ -12,6 +12,7 @@
   import AdminUsersPage from './AdminUsersPage.svelte'
   import ActivityLogsPage from './ActivityLogsPage.svelte'
   import VisionOCRTest from './VisionOCRTest.svelte'
+import AiOcrPage from './AiOcrPage.svelte'
   import { authReady, currentUser, initAuth } from './lib/auth'
 
   const authRoutes = new Set(['/login', '/register'])
@@ -25,6 +26,7 @@
     '/admin/users': AdminUsersPage,
     '/admin/activity': ActivityLogsPage,
     '/vision-ocr': VisionOCRTest,
+    '/ai-ocr': AiOcrPage,
     '/login': LoginPage,
     '/documents/:id': DocumentEditorPage,
     '/documents/:id/editor': DocumentEditorPage

@@ -583,3 +583,31 @@ export async function visionOcr(file: File) {
 
     return await parseJsonOrThrow(res)
 }
+
+export async function getAiOcrStatus() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/status`)
+  return await parseJsonOrThrow(res)
+}
+
+export async function setAiOcrProvider(provider: "remote" | "ollama") {
+  const res = await apiFetch(`${API_URL}/ai-ocr/provider`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider })
+  })
+  return await parseJsonOrThrow(res)
+}
+
+export async function getAiOcrHistory() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/history`)
+  return await parseJsonOrThrow(res)
+}
+
+export async function saveAiOcrCorrection(payload: { image_path: string; ocr_text: string; corrected_text: string }) {
+  const res = await apiFetch(`${API_URL}/ai-ocr/corrections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  return await parseJsonOrThrow(res)
+}

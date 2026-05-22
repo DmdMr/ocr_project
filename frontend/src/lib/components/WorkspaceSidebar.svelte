@@ -54,6 +54,7 @@
       <div class="sidebar-title">{$t("sidebar.documents")}</div>
       <div class="sidebar-actions">
         <button on:click={() => dispatch("navigateArchive")}>{$t("sidebar.archive")}</button>
+        <button on:click={() => dispatch("navigateVisionOcr")}>AI OCR</button>
         {#if role === "admin"}
           <button on:click={() => dispatch("navigateSettings")}>{$t("sidebar.fieldsSettings")}</button>
         {/if}
