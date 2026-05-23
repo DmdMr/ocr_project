@@ -41,6 +41,8 @@ from backend.app.db.database import (
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_unsorted_folder
 from backend.app.services.ocr_service import recognize_text
+from backend.app.services.provider_manager import provider_manager
+from backend.app.services.ocr.providers import ocr_provider_manager
 from backend.app.utils.image_preprocessing import autocrop_whitespace
 
 app = FastAPI()
@@ -2143,6 +2145,14 @@ def validate_tag_name(tag: str):
 class TagRequest(BaseModel):
     tag: str
 
+
+class AIOCRConfigPayload(BaseModel):
+    provider: str
+    remote_url: str
+    ollama_model: str
+    timeout: int = Field(default=60, ge=1, le=300)
+
+
 @router.post("/tags")
 async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_editor_user)):
     # Tag modifications are document-editing actions: admins and editors may
@@ -2209,3 +2219,36 @@ async def get_system_network():
     port = int(os.getenv("PORT", "8000"))
     local_ip = detect_local_ipv4()
     return {"local_ip": local_ip, "port": port, "url": f"http://{local_ip}:{port}", "status": "online"}
+
+
+
+
+@router.get("/ai-ocr/config")
+async def ai_ocr_get_config(current_user=Depends(require_editor_user)):
+    config = provider_manager.load_config()
+    ollama = provider_manager.ollama_status()
+    remote = provider_manager.remote_status()
+    return {"success": True, "config": config, "ollama": ollama, "remote": remote}
+
+
+@router.post("/ai-ocr/config")
+async def ai_ocr_save_config(payload: AIOCRConfigPayload, current_user=Depends(require_editor_user)):
+    config = provider_manager.save_config(payload.model_dump())
+    return {"success": True, "config": config}
+
+
+@router.get("/ai-ocr/ollama/status")
+async def ai_ocr_ollama_status(current_user=Depends(require_editor_user)):
+    return {"success": True, "ollama": provider_manager.ollama_status()}
+
+
+@router.post("/ai-ocr/ollama/pull")
+async def ai_ocr_ollama_pull(current_user=Depends(require_editor_user)):
+    result = provider_manager.pull_ollama_model()
+    return {"success": bool(result.get("success")), "result": result}
+
+
+@router.post("/ai-ocr/remote/test")
+async def ai_ocr_remote_test(current_user=Depends(require_editor_user)):
+    remote = provider_manager.remote_status()
+    return {"success": bool(remote.get("success")), "remote": remote}
