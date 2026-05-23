@@ -1,0 +1,6 @@
+{
+  "provider": "ollama",
+  "remote_url": "http://123:42:74:156/ocr",
+  "ollama_model": "qwen_ocr:latest",
+  "timeout": 120
+}
