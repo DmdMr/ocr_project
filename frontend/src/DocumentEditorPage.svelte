@@ -23,7 +23,6 @@
   import CardTagPicker from "./lib/components/CardTagPicker.svelte"
   import DocumentHeader from "./lib/components/document-editor/DocumentHeader.svelte"
   import DocumentMetadataSection from "./lib/components/document-editor/DocumentMetadataSection.svelte"
-  import DocumentContentEditor from "./lib/components/document-editor/DocumentContentEditor.svelte"
   import DocumentImageBlock from "./lib/components/document-editor/DocumentImageBlock.svelte"
   import DocumentFilesSection from "./lib/components/document-editor/DocumentFilesSection.svelte"
   import DocumentImageEditorModal from "./lib/components/document-editor/DocumentImageEditorModal.svelte"
@@ -75,6 +74,34 @@
   $: galleryImages = (doc?.gallery_images ?? []) as GalleryImage[]
   $: selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0]
   $: selectedImageSrc = selectedImage ? `${UPLOADS_URL}/${selectedImage.filename}?v=${encodeURIComponent(selectedImage.image_version ?? "")}` : ""
+
+  type ImageOcrCardState = {
+    id: string
+    imageUrl: string
+    recognizedText: string
+    correctedText: string
+    addedToTraining: boolean
+    isEditing: boolean
+  }
+
+  let imageOcrCards: ImageOcrCardState[] = []
+
+  $: if (galleryImages) {
+    imageOcrCards = galleryImages.map((image) => {
+      const id = image.file_hash || image.filename
+      const existing = imageOcrCards.find((item) => item.id === id)
+      const recognized = (image.recognized_text ?? "").trim()
+      const imageUrl = `${UPLOADS_URL}/${image.filename}?v=${encodeURIComponent(image.image_version ?? "")}`
+      return {
+        id,
+        imageUrl,
+        recognizedText: recognized,
+        correctedText: existing?.correctedText ?? recognized,
+        addedToTraining: existing?.addedToTraining ?? false,
+        isEditing: existing?.isEditing ?? false
+      }
+    })
+  }
 
   const editorLabels = {
     en: {
@@ -157,6 +184,27 @@
     const normalizedBase = (extension && extension.toLowerCase() === originalExtension.toLowerCase() ? base : trimmed).trim()
     if (!normalizedBase) return { error: $t("document.filenameRequired"), value: "" }
     return { error: "", value: `${normalizedBase}${originalExtension}` }
+  }
+
+  function setImageCorrection(id: string, value: string) {
+    imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, correctedText: value } : item)
+  }
+
+  function toggleImageEdit(id: string) {
+    imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, isEditing: !item.isEditing } : item)
+  }
+
+  function saveImageCorrection(id: string) {
+    const card = imageOcrCards.find((item) => item.id === id)
+    if (!card) return
+    imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, isEditing: false } : item)
+    console.log("OCR correction saved locally", { id: card.id, correctedText: card.correctedText })
+  }
+
+  function addImageToTraining(id: string) {
+    imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, addedToTraining: true } : item)
+    const card = imageOcrCards.find((item) => item.id === id)
+    console.log("Added OCR correction to local training queue", card)
   }
 
   async function saveText() {
@@ -572,26 +620,35 @@
             <!-- Document editor reading order: metadata fields stay in the sidebar,
               then OCR text is shown before gallery images so users can read notes
               without scrolling past large uploads first. -->
-            <section class="ocr-card">
-              <DocumentContentEditor
-                bind:value={editedText}
-                canEdit={$canEditDocuments}
-                {editing}
-                onToggleEdit={() => editing = !editing}
-                onSave={saveText}
-              />
-            </section>
-
             <section class="gallery-section" aria-label={$t("metadata.images")}>
               {#each galleryImages as image}
-                <DocumentImageBlock
-                  {image}
-                  canEdit={$canEditDocuments}
-                  canDelete={galleryImages.length > 1}
-                  on:open={(event) => openImage(event.detail.filename)}
-                  on:delete={(event) => removeImage(event.detail.filename)}
-                  on:edit={(event) => openImageEditor(event.detail.filename)}
-                />
+                {@const cardId = image.file_hash || image.filename}
+                {@const imageCard = imageOcrCards.find((item) => item.id === cardId)}
+                <article class="panel image-ocr-card">
+                  <DocumentImageBlock
+                    {image}
+                    canEdit={$canEditDocuments}
+                    canDelete={galleryImages.length > 1}
+                    on:open={(event) => openImage(event.detail.filename)}
+                    on:delete={(event) => removeImage(event.detail.filename)}
+                    on:edit={(event) => openImageEditor(event.detail.filename)}
+                  />
+
+                  <div class="image-ocr-content">
+                    <h4>Recognized Text</h4>
+                    <textarea
+                      rows="6"
+                      value={imageCard?.correctedText ?? image.recognized_text ?? ""}
+                      on:input={(event) => setImageCorrection(cardId, (event.currentTarget as HTMLTextAreaElement).value)}
+                      disabled={!imageCard?.isEditing}
+                    ></textarea>
+                    <div class="image-ocr-actions">
+                      <button type="button" on:click={() => toggleImageEdit(cardId)}>{imageCard?.isEditing ? "Stop Editing" : "Edit"}</button>
+                      <button type="button" on:click={() => saveImageCorrection(cardId)}>Save Correction</button>
+                      <button type="button" on:click={() => addImageToTraining(cardId)}>{imageCard?.addedToTraining ? "Added to Training" : "Add To Training"}</button>
+                    </div>
+                  </div>
+                </article>
               {/each}
             </section>
           </div>
@@ -695,6 +752,12 @@
   .progress { height: 100%; background: #3b82f6; transition: width .2s ease; }
   .success-inline { color: #16a34a; margin: 0; font-size: 0.85rem; }
   .error-inline { color: #ef4444; margin: 0; font-size: 0.85rem; }
+
+  .image-ocr-card { padding: var(--editor-panel-padding); display: grid; gap: var(--editor-gap-sm); }
+  .image-ocr-content { display: grid; gap: 8px; }
+  .image-ocr-content h4 { margin: 0; font-size: 0.95rem; }
+  .image-ocr-content textarea { width: 100%; min-height: 120px; }
+  .image-ocr-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .lightbox {
     position: fixed;
