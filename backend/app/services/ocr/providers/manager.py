@@ -35,7 +35,17 @@ class OCRProviderManager:
         return self.providers[self.get_selected_provider_name()]
 
     def run_ocr(self, file_bytes: bytes, filename: str, content_type: str) -> OCRProviderResult:
-        return self.get_provider().recognize(file_bytes=file_bytes, filename=filename, content_type=content_type)
+        selected = self.get_selected_provider_name()
+        ordered = [selected] + (["ollama"] if selected == "remote" else [])
+        last_result: OCRProviderResult | None = None
+        for name in ordered:
+            result = self.providers[name].recognize(file_bytes=file_bytes, filename=filename, content_type=content_type)
+            if result.success:
+                return result
+            last_result = result
+        if last_result is None:
+            raise RuntimeError("No OCR providers available")
+        return last_result
 
     def list_providers(self) -> list[dict[str, Any]]:
         selected = self.get_selected_provider_name()
