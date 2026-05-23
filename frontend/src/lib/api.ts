@@ -628,12 +628,31 @@ export async function getOllamaStatus() {
   return await parseJsonOrThrow(res)
 }
 
-export async function pullOllamaModel() {
-  const res = await apiFetch(`${API_URL}/ai-ocr/ollama/pull`, { method: "POST" })
+export async function pullOllamaModel(model: string = "qwen3-vl:2b") {
+  const res = await apiFetch(`${API_URL}/ai-ocr/ollama/pull`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model }) })
   return await parseJsonOrThrow(res)
 }
 
 export async function testRemoteConnection() {
   const res = await apiFetch(`${API_URL}/ai-ocr/remote/test`, { method: "POST" })
+  return await parseJsonOrThrow(res)
+}
+
+export async function getOllamaModels() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/ollama/models`)
+  return await parseJsonOrThrow(res)
+}
+
+export async function setActiveOllamaModel(model: string) {
+  const res = await apiFetch(`${API_URL}/ai-ocr/ollama/set-active`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model })
+  })
+  return await parseJsonOrThrow(res)
+}
+
+export async function testOllama() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/ollama/test`, { method: "POST" })
   return await parseJsonOrThrow(res)
 }

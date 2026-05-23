@@ -2153,6 +2153,10 @@ class AIOCRConfigPayload(BaseModel):
     timeout: int = Field(default=60, ge=1, le=300)
 
 
+class OllamaModelPayload(BaseModel):
+    model: str = "qwen3-vl:2b"
+
+
 @router.post("/tags")
 async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_editor_user)):
     # Tag modifications are document-editing actions: admins and editors may
@@ -2242,10 +2246,26 @@ async def ai_ocr_ollama_status(current_user=Depends(require_editor_user)):
     return {"success": True, "ollama": provider_manager.ollama_status()}
 
 
+@router.get("/ai-ocr/ollama/models")
+async def ai_ocr_ollama_models(current_user=Depends(require_editor_user)):
+    return {"success": True, "ollama": provider_manager.list_ollama_models()}
+
+
 @router.post("/ai-ocr/ollama/pull")
-async def ai_ocr_ollama_pull(current_user=Depends(require_editor_user)):
-    result = provider_manager.pull_ollama_model()
+async def ai_ocr_ollama_pull(payload: OllamaModelPayload, current_user=Depends(require_editor_user)):
+    result = provider_manager.pull_ollama_model(payload.model)
     return {"success": bool(result.get("success")), "result": result}
+
+
+@router.post("/ai-ocr/ollama/set-active")
+async def ai_ocr_ollama_set_active(payload: OllamaModelPayload, current_user=Depends(require_editor_user)):
+    config = provider_manager.set_active_ollama_model(payload.model)
+    return {"success": True, "config": config}
+
+
+@router.post("/ai-ocr/ollama/test")
+async def ai_ocr_ollama_test(current_user=Depends(require_editor_user)):
+    return {"success": True, "ollama": provider_manager.test_ollama()}
 
 
 @router.post("/ai-ocr/remote/test")

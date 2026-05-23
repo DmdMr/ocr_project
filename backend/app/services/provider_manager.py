@@ -91,9 +91,27 @@ class ProviderManager:
             "health": health,
         }
 
-    def pull_ollama_model(self) -> dict[str, Any]:
-        model_name = self.load_config()["ollama_model"]
-        return ollama_pull_model(model_name)
+    def list_ollama_models(self) -> dict[str, Any]:
+        status = self.ollama_status()
+        return {
+            "installed": status.get("installed", False),
+            "running": status.get("running", False),
+            "models": status.get("installed_models", []),
+            "active_model": self.load_config().get("ollama_model", "qwen3-vl:2b"),
+        }
+
+    def pull_ollama_model(self, model_name: str | None = None) -> dict[str, Any]:
+        chosen = model_name or self.load_config()["ollama_model"]
+        return ollama_pull_model(chosen)
+
+    def set_active_ollama_model(self, model_name: str) -> dict[str, Any]:
+        config = self.load_config()
+        config["provider"] = "ollama"
+        config["ollama_model"] = (model_name or "").strip() or config.get("ollama_model", "qwen3-vl:2b")
+        return self.save_config(config)
+
+    def test_ollama(self) -> dict[str, Any]:
+        return self.ollama_status()
 
     def remote_status(self) -> dict[str, Any]:
         config = self.load_config()
