@@ -41,6 +41,7 @@ from backend.app.db.database import (
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_unsorted_folder
 from backend.app.services.ocr_service import recognize_text
+from backend.app.services.provider_manager import provider_manager
 from backend.app.services.ocr.providers import ocr_provider_manager
 from backend.app.utils.image_preprocessing import autocrop_whitespace
 
@@ -2144,6 +2145,14 @@ def validate_tag_name(tag: str):
 class TagRequest(BaseModel):
     tag: str
 
+
+class AIOCRConfigPayload(BaseModel):
+    provider: str
+    remote_url: str
+    ollama_model: str
+    timeout: int = Field(default=60, ge=1, le=300)
+
+
 @router.post("/tags")
 async def create_tag(http_request: Request, request: TagRequest, current_user=Depends(require_editor_user)):
     # Tag modifications are document-editing actions: admins and editors may
@@ -2212,40 +2221,34 @@ async def get_system_network():
     return {"local_ip": local_ip, "port": port, "url": f"http://{local_ip}:{port}", "status": "online"}
 
 
-@router.get("/ai-ocr/status")
-async def ai_ocr_status(current_user=Depends(require_editor_user)):
-    selected = ocr_provider_manager.get_selected_provider_name()
-    providers = ocr_provider_manager.health_status().get("providers", {})
-    return {
-        "success": True,
-        "provider": selected,
-        "providers": providers,
-        "env": {
-            "VISION_OCR_PROVIDER": os.getenv("VISION_OCR_PROVIDER", "remote"),
-            "REMOTE_VISION_OCR_URL": os.getenv("REMOTE_VISION_OCR_URL", "http://111.88.113.136:8000/ocr"),
-            "REMOTE_VISION_OCR_TIMEOUT_SECONDS": os.getenv("REMOTE_VISION_OCR_TIMEOUT_SECONDS", "120"),
-            "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", "qwen_ocr"),
-            "OLLAMA_URL": os.getenv("OLLAMA_URL", "http://localhost:11434"),
-        }
-    }
 
 
-@router.post("/ai-ocr/provider")
-async def ai_ocr_set_provider(payload: OCRProviderSwitchPayload, current_user=Depends(require_editor_user)):
-    selected = ocr_provider_manager.select_provider(payload.provider)
-    return {"success": True, "provider": selected}
+@router.get("/ai-ocr/config")
+async def ai_ocr_get_config(current_user=Depends(require_editor_user)):
+    config = provider_manager.load_config()
+    ollama = provider_manager.ollama_status()
+    remote = provider_manager.remote_status()
+    return {"success": True, "config": config, "ollama": ollama, "remote": remote}
 
 
-@router.get("/ai-ocr/history")
-async def ai_ocr_history(current_user=Depends(require_editor_user)):
-    history_path = os.getenv("OCR_HISTORY_PATH", "backend/data/ocr_history.jsonl")
-    items = _read_jsonl(history_path)
-    return {"success": True, "items": list(reversed(items[-200:]))}
+@router.post("/ai-ocr/config")
+async def ai_ocr_save_config(payload: AIOCRConfigPayload, current_user=Depends(require_editor_user)):
+    config = provider_manager.save_config(payload.model_dump())
+    return {"success": True, "config": config}
 
 
-@router.post("/ai-ocr/corrections")
-async def ai_ocr_save_correction(payload: OCRCorrectionPayload, current_user=Depends(require_editor_user)):
-    path = os.getenv("OCR_CORRECTIONS_PATH", "backend/data/ocr_corrections.jsonl")
-    _append_jsonl(path, {**payload.model_dump(), "timestamp": now_yekaterinburg().isoformat()})
-    return {"success": True}
+@router.get("/ai-ocr/ollama/status")
+async def ai_ocr_ollama_status(current_user=Depends(require_editor_user)):
+    return {"success": True, "ollama": provider_manager.ollama_status()}
 
+
+@router.post("/ai-ocr/ollama/pull")
+async def ai_ocr_ollama_pull(current_user=Depends(require_editor_user)):
+    result = provider_manager.pull_ollama_model()
+    return {"success": bool(result.get("success")), "result": result}
+
+
+@router.post("/ai-ocr/remote/test")
+async def ai_ocr_remote_test(current_user=Depends(require_editor_user)):
+    remote = provider_manager.remote_status()
+    return {"success": bool(remote.get("success")), "remote": remote}

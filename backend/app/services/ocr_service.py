@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from backend.app.services.ocr.providers import ocr_provider_manager
+from backend.app.services.provider_manager import provider_manager
 from backend.app.services.paddle_ocr_service import validate_image_file
 
 HISTORY_PATH = Path(os.getenv("OCR_HISTORY_PATH", "backend/data/ocr_history.jsonl"))
@@ -24,20 +25,18 @@ def recognize_text(image_path: str) -> Dict[str, Any]:
     file_bytes = file_path.read_bytes()
     content_type = "image/png" if file_path.suffix.lower() == ".png" else "image/jpeg"
 
-    provider_name = ocr_provider_manager.get_selected_provider_name()
-    providers_to_try = [provider_name]
-    if provider_name == "remote":
-        providers_to_try.append("ollama")
+    config = provider_manager.load_config()
+    provider_name = config.get("provider", ocr_provider_manager.get_selected_provider_name())
+    os.environ["VISION_OCR_PROVIDER"] = provider_name
+    os.environ["REMOTE_VISION_OCR_URL"] = str(config.get("remote_url", os.getenv("REMOTE_VISION_OCR_URL", "http://111.88.113.136:8000/ocr")))
+    os.environ["REMOTE_VISION_OCR_TIMEOUT_SECONDS"] = str(config.get("timeout", os.getenv("REMOTE_VISION_OCR_TIMEOUT_SECONDS", "60")))
+    os.environ["OLLAMA_MODEL"] = str(config.get("ollama_model", os.getenv("OLLAMA_MODEL", "qwen3-vl:2b")))
 
-    result = None
-    last_error = None
-    for name in providers_to_try:
-        provider = ocr_provider_manager.providers[name]
-        response = provider.recognize(file_bytes=file_bytes, filename=file_path.name, content_type=content_type)
-        if response.success:
-            result = response
-            break
-        last_error = response.error or f"{name} OCR failed"
+    last_error: str | None = None
+    result = ocr_provider_manager.run_ocr(file_bytes=file_bytes, filename=file_path.name, content_type=content_type)
+    if not result.success:
+        last_error = result.error or "provider OCR failed"
+        result = None
 
     if result is None:
         raise RuntimeError(f"OCR Pipeline failed: {last_error or 'unknown error'}")

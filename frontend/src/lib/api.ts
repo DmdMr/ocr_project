@@ -611,3 +611,29 @@ export async function saveAiOcrCorrection(payload: { image_path: string; ocr_tex
   })
   return await parseJsonOrThrow(res)
 }
+
+
+export async function getAIOcrConfig() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/config`)
+  return await parseJsonOrThrow(res)
+}
+
+export async function saveAIOcrConfig(payload: { provider: "remote"|"ollama"; remote_url: string; ollama_model: string; timeout: number }) {
+  const res = await apiFetch(`${API_URL}/ai-ocr/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+  return await parseJsonOrThrow(res)
+}
+
+export async function getOllamaStatus() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/ollama/status`)
+  return await parseJsonOrThrow(res)
+}
+
+export async function pullOllamaModel() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/ollama/pull`, { method: "POST" })
+  return await parseJsonOrThrow(res)
+}
+
+export async function testRemoteConnection() {
+  const res = await apiFetch(`${API_URL}/ai-ocr/remote/test`, { method: "POST" })
+  return await parseJsonOrThrow(res)
+}
