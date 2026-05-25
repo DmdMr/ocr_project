@@ -656,3 +656,33 @@ export async function testOllama() {
   const res = await apiFetch(`${API_URL}/ai-ocr/ollama/test`, { method: "POST" })
   return await parseJsonOrThrow(res)
 }
+
+
+export interface OcrDatasetRecord {
+  id: string
+  image_path: string
+  ocr_text: string
+  corrected_text: string
+  provider: "ollama" | "vps" | "qwen3-vl"
+  timestamp: string
+  filename: string
+}
+
+export async function saveOcrCorrection(payload: { image_path: string; ocr_text: string; corrected_text: string; provider: "ollama"|"vps"|"qwen3-vl" }) {
+  const res = await apiFetch(`${API_URL}/ocr/correct`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  return await parseJsonOrThrow(res)
+}
+
+export async function getOcrDataset(): Promise<OcrDatasetRecord[]> {
+  const res = await apiFetch(`${API_URL}/ocr/dataset`)
+  return await parseJsonOrThrow(res)
+}
+
+export async function exportOcrDataset(): Promise<{ records: OcrDatasetRecord[] }> {
+  const res = await apiFetch(`${API_URL}/ocr/export`)
+  return await parseJsonOrThrow(res)
+}
