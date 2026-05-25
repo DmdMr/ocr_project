@@ -1,4 +1,9 @@
+import json
 import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from threading import Lock
+from uuid import uuid4
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -9,10 +14,50 @@ router = APIRouter(prefix="/api", tags=["vision-ocr"])
 logger = logging.getLogger("backend.api.vision_ocr")
 
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/bmp", "image/tiff"}
+ALLOWED_PROVIDERS = {"ollama", "vps", "qwen3-vl"}
+DATASET_DIR = Path("dataset")
+DATASET_RECORDS_FILE = DATASET_DIR / "records.jsonl"
+DATASET_WRITE_LOCK = Lock()
 
 
 class ProviderSelectRequest(BaseModel):
     provider: str
+
+
+class OCRCorrectionRequest(BaseModel):
+    image_path: str
+    ocr_text: str
+    corrected_text: str
+    provider: str
+
+
+def _ensure_dataset_file() -> None:
+    DATASET_DIR.mkdir(parents=True, exist_ok=True)
+    DATASET_RECORDS_FILE.touch(exist_ok=True)
+
+
+def _read_all_records() -> list[dict]:
+    _ensure_dataset_file()
+    records: list[dict] = []
+    with DATASET_RECORDS_FILE.open("r", encoding="utf-8") as f:
+        for line in f:
+            row = line.strip()
+            if not row:
+                continue
+            try:
+                records.append(json.loads(row))
+            except json.JSONDecodeError:
+                logger.warning("Skipping invalid JSONL row in %s", DATASET_RECORDS_FILE)
+    return records
+
+
+def _append_record(record: dict) -> None:
+    _ensure_dataset_file()
+    serialized = json.dumps(record, ensure_ascii=False)
+    with DATASET_WRITE_LOCK:
+        with DATASET_RECORDS_FILE.open("a", encoding="utf-8") as f:
+            f.write(serialized + "\n")
+            f.flush()
 
 
 @router.get("/ocr/providers")
@@ -59,8 +104,33 @@ async def vision_ocr(file: UploadFile = File(...)):
         "text": result.text,
         "regions": result.regions,
         "processing_time_ms": result.processing_time_ms,
-        # TODO: persist user corrections for HITL feedback loop.
-        # TODO: attach region overlay coordinates once detector pipeline is unified.
-        # TODO: add confidence scoring from provider/model outputs.
-        # TODO: export accepted corrections for retraining dataset generation.
     }
+
+
+@router.post("/ocr/correct")
+async def save_ocr_correction(payload: OCRCorrectionRequest):
+    if payload.provider not in ALLOWED_PROVIDERS:
+        raise HTTPException(status_code=400, detail="Unsupported provider")
+
+    filename = Path(payload.image_path).name or "unknown"
+    record = {
+        "id": str(uuid4()),
+        "image_path": payload.image_path,
+        "ocr_text": payload.ocr_text,
+        "corrected_text": payload.corrected_text,
+        "provider": payload.provider,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "filename": filename,
+    }
+    _append_record(record)
+    return record
+
+
+@router.get("/ocr/dataset")
+async def get_ocr_dataset():
+    return _read_all_records()
+
+
+@router.get("/ocr/export")
+async def export_ocr_dataset():
+    return {"records": _read_all_records()}
