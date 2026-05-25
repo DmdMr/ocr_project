@@ -41,9 +41,8 @@ from backend.app.db.database import (
 from backend.app.services.archive_service import cleanup_expired_archived_documents, permanently_delete_document
 from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_unsorted_folder
 from backend.app.services.ocr_service import recognize_text
-from backend.app.services.provider_manager import provider_manager
-from backend.app.services.ocr.providers import ocr_provider_manager
 from backend.app.utils.image_preprocessing import autocrop_whitespace
+from backend.app.services.provider_manager import provider_manager
 
 app = FastAPI()
 
@@ -553,6 +552,25 @@ def serialize_activity_log(log: dict):
         "actor": log.get("actor", {}),
         "payload": log.get("payload", {}),
     }
+
+@router.post("/ocr/training")
+def add_training_sample(payload: dict):
+    image_path = payload.get("image_path")
+    corrected_text = payload.get("text")
+
+    if not image_path or not corrected_text:
+        return {"success": False, "error": "missing data"}
+
+    entry = {
+        "image_path": image_path,
+        "text": corrected_text
+    }
+
+    with open("backend/data/training.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    return {"success": True}
+
 
 
 @router.post("/auth/register")

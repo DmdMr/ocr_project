@@ -13,6 +13,9 @@ from backend.app.services.ollama_client import check_health as ollama_check_heal
 from backend.app.services.ollama_client import pull_model as ollama_pull_model
 from backend.app.services.remote_vision_client import test_connection as remote_test_connection
 
+from backend.app.services.ocr.providers.remote_provider import RemoteOCRProvider
+from backend.app.services.ocr.providers.ollama_provider import OllamaOCRProvider
+
 
 @dataclass
 class OCRConfig:
@@ -25,6 +28,10 @@ class OCRConfig:
 class ProviderManager:
     def __init__(self) -> None:
         self.config_path = Path(os.getenv("AI_OCR_CONFIG_PATH", "backend/data/ai_ocr_config.json"))
+        self.providers = {
+            "remote": RemoteOCRProvider(),
+#            "ollama": OllamaOCRProvider(),
+        }
 
     def load_config(self) -> dict[str, Any]:
         config = OCRConfig(
@@ -47,7 +54,7 @@ class ProviderManager:
     def save_config(self, payload: dict[str, Any]) -> dict[str, Any]:
         current = self.load_config()
         next_config = {
-            "provider": (payload.get("provider") or current["provider"]).strip().lower(),
+            "provider": (payload.get("provider") or current["remote"]).strip().lower(),
             "remote_url": (payload.get("remote_url") or current["remote_url"]).strip(),
             "ollama_model": (payload.get("ollama_model") or current["ollama_model"]).strip(),
             "timeout": int(payload.get("timeout", current["timeout"])),
@@ -120,6 +127,21 @@ class ProviderManager:
         latency_ms = int((time.perf_counter() - started) * 1000)
         result["latency_ms"] = result.get("latency_ms") or latency_ms
         return result
+    
+    def get_provider(self, name: str):
+        return self.providers[name]
+    
+    def run_ocr(self, file_bytes: bytes, filename: str, content_type: str):
+        config = self.load_config()
+        provider_name = config.get("provider", "remote")
+
+        provider = self.get_provider(provider_name)
+
+        return provider.recognize(
+            file_bytes=file_bytes,
+            filename=filename,
+            content_type=content_type
+        )
 
 
 provider_manager = ProviderManager()

@@ -14,7 +14,7 @@ class OCRProviderManager:
     def __init__(self):
         self.providers = {
             "remote": RemoteOCRProvider(),
-            "ollama": OllamaOCRProvider(),
+#            "ollama": OllamaOCRProvider(),
         }
 
     def get_selected_provider_name(self) -> str:

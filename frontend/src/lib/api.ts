@@ -663,12 +663,12 @@ export interface OcrDatasetRecord {
   image_path: string
   ocr_text: string
   corrected_text: string
-  provider: "ollama" | "vps" | "qwen3-vl"
+  provider: "ollama" | "remote" | "qwen3-vl"
   timestamp: string
   filename: string
 }
 
-export async function saveOcrCorrection(payload: { image_path: string; ocr_text: string; corrected_text: string; provider: "ollama"|"vps"|"qwen3-vl" }) {
+export async function saveOcrCorrection(payload: { image_path: string; ocr_text: string; corrected_text: string; provider: "ollama"|"remote"|"qwen3-vl" }) {
   const res = await apiFetch(`${API_URL}/ocr/correct`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

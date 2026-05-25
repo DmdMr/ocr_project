@@ -8,7 +8,7 @@ import { getAIOcrConfig, saveAIOcrConfig, getOllamaStatus, getOllamaModels, pull
 type Tab = 'config'|'models'|'history'|'training'|'diagnostics'|'logs'
 const recommendedModel = 'qwen3-vl:2b'
 let activeTab: Tab = 'config'
-let config:any={provider:'remote', remote_url:'http://111.88.113.136:8000/ocr', ollama_model:recommendedModel, timeout:60}
+let config:any={provider:'remote', remote_url:'http://90.156.157.68:8000/ocr', ollama_model:recommendedModel, timeout:60}
 let ollama:any={installed:false,running:false,installed_models:[]}
 let models:string[]=[]
 let remote:any={}

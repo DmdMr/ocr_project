@@ -6,9 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
-from backend.app.services.ocr.providers import ocr_provider_manager
 from backend.app.services.provider_manager import provider_manager
 from backend.app.services.paddle_ocr_service import validate_image_file
+
+print("[DEBUG] provider_manager type:", type(provider_manager))
+print("[DEBUG] provider_manager dir:", dir(provider_manager))
 
 HISTORY_PATH = Path(os.getenv("OCR_HISTORY_PATH", "backend/data/ocr_history.jsonl"))
 
@@ -20,26 +22,41 @@ def _append_history(entry: dict[str, Any]) -> None:
 
 
 def recognize_text(image_path: str) -> Dict[str, Any]:
+    print("[DEBUG] ACTIVE PROVIDER MANAGER:", provider_manager)
+    print("[DEBUG] TYPE:", type(provider_manager))
+
     validate_image_file(image_path)
+
     file_path = Path(image_path)
     file_bytes = file_path.read_bytes()
     content_type = "image/png" if file_path.suffix.lower() == ".png" else "image/jpeg"
 
     config = provider_manager.load_config()
-    provider_name = config.get("provider", ocr_provider_manager.get_selected_provider_name())
+    provider_name = config.get("provider", "remote")
+
     os.environ["VISION_OCR_PROVIDER"] = provider_name
-    os.environ["REMOTE_VISION_OCR_URL"] = str(config.get("remote_url", os.getenv("REMOTE_VISION_OCR_URL", "http://111.88.113.136:8000/ocr")))
-    os.environ["REMOTE_VISION_OCR_TIMEOUT_SECONDS"] = str(config.get("timeout", os.getenv("REMOTE_VISION_OCR_TIMEOUT_SECONDS", "60")))
-    os.environ["OLLAMA_MODEL"] = str(config.get("ollama_model", os.getenv("OLLAMA_MODEL", "qwen3-vl:2b")))
+    os.environ["REMOTE_VISION_OCR_URL"] = str(
+        config.get(
+            "remote_url",
+            os.getenv("REMOTE_VISION_OCR_URL", "http://90.156.157.68:8000/ocr")
+        )
+    )
+    os.environ["REMOTE_VISION_OCR_TIMEOUT_SECONDS"] = str(
+        config.get("timeout", os.getenv("REMOTE_VISION_OCR_TIMEOUT_SECONDS", "60"))
+    )
+    os.environ["OLLAMA_MODEL"] = str(
+        config.get("ollama_model", os.getenv("OLLAMA_MODEL", "qwen3-vl:2b"))
+    )
 
-    last_error: str | None = None
-    result = ocr_provider_manager.run_ocr(file_bytes=file_bytes, filename=file_path.name, content_type=content_type)
+    # ✅ THIS IS WHAT YOU WERE MISSING
+    result = provider_manager.run_ocr(
+        file_bytes=file_bytes,
+        filename=file_path.name,
+        content_type=content_type
+    )
+
     if not result.success:
-        last_error = result.error or "provider OCR failed"
-        result = None
-
-    if result is None:
-        raise RuntimeError(f"OCR Pipeline failed: {last_error or 'unknown error'}")
+        raise RuntimeError(result.error or "provider OCR failed")
 
     history_entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -47,8 +64,9 @@ def recognize_text(image_path: str) -> Dict[str, Any]:
         "provider": result.provider,
         "text": result.text,
         "processing_time_ms": result.processing_time_ms,
-        "model": os.getenv("OLLAMA_MODEL", "Qwen3-VL") if result.provider == "ollama" else "Qwen3-VL",
+        "model": os.getenv("OLLAMA_MODEL", "Qwen3-VL"),
     }
+
     _append_history(history_entry)
 
     return {
@@ -64,7 +82,6 @@ def recognize_text(image_path: str) -> Dict[str, Any]:
         "processing_time_ms": result.processing_time_ms,
         "model": history_entry["model"],
     }
-
 
 def recognize_top_code(image_path: str) -> Dict[str, Any]:
     result = recognize_text(image_path)

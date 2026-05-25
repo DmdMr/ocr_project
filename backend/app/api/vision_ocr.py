@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from backend.app.services.ocr.providers import ocr_provider_manager
+from backend.app.services.provider_manager import provider_manager
 
 router = APIRouter(prefix="/api", tags=["vision-ocr"])
 logger = logging.getLogger("backend.api.vision_ocr")
@@ -62,18 +62,18 @@ def _append_record(record: dict) -> None:
 
 @router.get("/ocr/providers")
 async def list_ocr_providers():
-    return {"success": True, "providers": ocr_provider_manager.list_providers()}
+    return {"success": True, "providers": provider_manager.list_providers()}
 
 
 @router.get("/ocr/health")
 async def ocr_health():
-    return ocr_provider_manager.health_status()
+    return provider_manager.health_status()
 
 
 @router.post("/ocr/provider/select")
 async def select_ocr_provider(payload: ProviderSelectRequest):
     try:
-        selected = ocr_provider_manager.select_provider(payload.provider)
+        selected = provider_manager.select_provider(payload.provider)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"success": True, "provider": selected}
@@ -88,8 +88,8 @@ async def vision_ocr(file: UploadFile = File(...)):
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
-    logger.info("vision-ocr request file=%s provider=%s", file.filename, ocr_provider_manager.get_selected_provider_name())
-    result = ocr_provider_manager.run_ocr(
+    logger.info("vision-ocr request file=%s provider=%s", file.filename, provider_manager.get_selected_provider_name())
+    result = provider_manager.run_ocr(
         file_bytes=file_bytes,
         filename=file.filename or "image.png",
         content_type=file.content_type,
