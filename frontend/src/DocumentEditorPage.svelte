@@ -18,7 +18,8 @@
     updateDocumentCustomFields,
     uploadDocumentAttachments,
     uploadImagesToDocument,
-    UPLOADS_URL
+    UPLOADS_URL,
+    saveOcrCorrection
   } from "./lib/api"
   import CardTagPicker from "./lib/components/CardTagPicker.svelte"
   import DocumentHeader from "./lib/components/document-editor/DocumentHeader.svelte"
@@ -202,9 +203,19 @@
   }
 
   function addImageToTraining(id: string) {
-    imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, addedToTraining: true } : item)
     const card = imageOcrCards.find((item) => item.id === id)
-    console.log("Added OCR correction to local training queue", card)
+    const image = galleryImages.find((item) => (item.file_hash || item.filename) === id)
+    if (!card || !image) return
+    void saveOcrCorrection({
+      image_path: image.filename,
+      ocr_text: card.recognizedText,
+      corrected_text: card.correctedText,
+      provider: "qwen3-vl"
+    }).then(() => {
+      imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, addedToTraining: true } : item)
+    }).catch((err) => {
+      galleryUploadError = err instanceof Error ? err.message : "Failed to add training sample"
+    })
   }
 
   async function saveText() {
