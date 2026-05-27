@@ -21,6 +21,8 @@ ALLOWED_PROVIDERS = {"ollama", "vps", "qwen3-vl"}
 DATASET_DIR = Path("dataset")
 DATASET_RECORDS_FILE = DATASET_DIR / "records.jsonl"
 DATASET_WRITE_LOCK = Lock()
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+UPLOADS_DIR = PROJECT_ROOT / "backend" / "uploads"
 
 
 class ProviderSelectRequest(BaseModel):
@@ -115,10 +117,16 @@ async def save_ocr_correction(payload: OCRCorrectionRequest):
     if payload.provider not in ALLOWED_PROVIDERS:
         raise HTTPException(status_code=400, detail="Unsupported provider")
 
-    filename = Path(payload.image_path).name or "unknown"
+    normalized_path = str(payload.image_path or "").strip()
+    filename = Path(normalized_path).name or "unknown"
+    if "?" in filename:
+        filename = filename.split("?", 1)[0]
+    if "#" in filename:
+        filename = filename.split("#", 1)[0]
+    stored_image_path = filename
     record = {
         "id": str(uuid4()),
-        "image_path": payload.image_path,
+        "image_path": stored_image_path,
         "ocr_text": payload.ocr_text,
         "corrected_text": payload.corrected_text,
         "provider": payload.provider,
@@ -137,7 +145,9 @@ async def get_ocr_dataset():
 @router.get("/ocr/export")
 async def export_ocr_dataset():
     records = _read_all_records()
-    uploads_dir = Path("backend/uploads")
+    uploads_dir = UPLOADS_DIR
+    print(f"[OCR EXPORT] total records: {len(records)}")
+    print(f"[OCR EXPORT] uploads_dir: {uploads_dir}")
 
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -146,14 +156,21 @@ async def export_ocr_dataset():
 
         for record in records:
             image_path_value = str(record.get("image_path") or "").strip()
+            print(f"[OCR EXPORT] image_path={image_path_value!r}")
             if not image_path_value:
                 continue
             image_filename = Path(image_path_value).name
+            if "?" in image_filename:
+                image_filename = image_filename.split("?", 1)[0]
+            if "#" in image_filename:
+                image_filename = image_filename.split("#", 1)[0]
             if not image_filename:
                 continue
             source_path = uploads_dir / image_filename
+            print(f"[OCR EXPORT] source_path={source_path} exists={source_path.exists() and source_path.is_file()}")
             if source_path.exists() and source_path.is_file():
                 zf.write(source_path, arcname=f"dataset/images/{image_filename}")
+        print(f"[OCR EXPORT] zip contents: {zf.namelist()}")
 
     zip_buffer.seek(0)
     return StreamingResponse(
