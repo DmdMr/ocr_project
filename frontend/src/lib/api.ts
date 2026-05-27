@@ -682,7 +682,11 @@ export async function getOcrDataset(): Promise<OcrDatasetRecord[]> {
   return await parseJsonOrThrow(res)
 }
 
-export async function exportOcrDataset(): Promise<{ records: OcrDatasetRecord[] }> {
+export async function exportOcrDataset(): Promise<Blob> {
   const res = await apiFetch(`${API_URL}/ocr/export`)
-  return await parseJsonOrThrow(res)
+  if (!res.ok) {
+    const data = await parseJson(res)
+    throw new ApiError(parseApiErrorCode(data, res.status), res.status)
+  }
+  return await res.blob()
 }

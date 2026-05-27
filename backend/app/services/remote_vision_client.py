@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from io import BytesIO
 from typing import Any, Dict
+import re
 
 import os
 import requests
@@ -37,24 +38,11 @@ def generate_ocr(file_bytes: bytes, filename: str = "image.png", content_type: s
     url = _remote_url()
     timeout = _timeout()
 
-    print("[REMOTE OCR] URL:", url)
-    print("[REMOTE OCR] TIMEOUT:", timeout)
-    print("[REMOTE OCR] FILE:", filename)
-    print("[REMOTE OCR] CONTENT-TYPE:", content_type)
-
     try:
         response = requests.post(url, files=files, timeout=timeout)
-
-        print("[REMOTE OCR] STATUS CODE:", response.status_code)
-        print("[REMOTE OCR] RESPONSE TEXT:", response.text)
-
         response.raise_for_status()
-
         payload = response.json()
-
-        print("[REMOTE OCR] JSON PAYLOAD:", payload)
-
-        text = str(payload.get("text") or "").strip()
+        text = clean_ocr_text(str(payload.get("text") or "").strip())
 
         return {
             "success": True,
@@ -63,17 +51,33 @@ def generate_ocr(file_bytes: bytes, filename: str = "image.png", content_type: s
         }
 
     except requests.Timeout:
-        print("[REMOTE OCR] ERROR: TIMEOUT")
         return {"success": False, "text": "", "error": "REMOTE_OCR_TIMEOUT"}
 
-    except requests.ConnectionError as e:
-        print("[REMOTE OCR] ERROR: CONNECTION", str(e))
+    except requests.ConnectionError:
         return {"success": False, "text": "", "error": "REMOTE_OCR_UNAVAILABLE"}
 
-    except requests.RequestException as e:
-        print("[REMOTE OCR] ERROR: REQUEST EXCEPTION", str(e))
+    except requests.RequestException:
         return {"success": False, "text": "", "error": "REMOTE_OCR_REQUEST_FAILED"}
 
-    except ValueError as e:
-        print("[REMOTE OCR] ERROR: JSON PARSE FAILED", str(e))
+    except ValueError:
         return {"success": False, "text": "", "error": "REMOTE_OCR_BAD_JSON"}
+
+
+def clean_ocr_text(text: str) -> str:
+    if not text:
+        return ""
+
+    cleaned = text
+    patterns = [
+        r"(?im)^\s*system\s*:?\s*$",
+        r"(?im)^\s*assistant\s*:?\s*$",
+        r"(?im)^\s*user\s*:?\s*$",
+        r"(?im)^\s*you are a strict ocr engine\.?\s*$",
+        r"(?im)^\s*extract all text from this image\.?\s*$",
+        r"(?im)^\s*(system|assistant|user)\s*:\s*",
+    ]
+    for pattern in patterns:
+        cleaned = re.sub(pattern, "", cleaned)
+
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
