@@ -63,22 +63,35 @@ def generate_ocr(file_bytes: bytes, filename: str = "image.png", content_type: s
         return {"success": False, "text": "", "error": "REMOTE_OCR_BAD_JSON"}
 
 
+import re
+
 def clean_ocr_text(text: str) -> str:
     if not text:
         return ""
 
     cleaned = text
+
     patterns = [
-        r"(?im)^\s*system\s*:?\s*$",
-        r"(?im)^\s*assistant\s*:?\s*$",
-        r"(?im)^\s*user\s*:?\s*$",
-        r"(?im)^\s*you are a strict ocr engine\.?\s*$",
-        r"(?im)^\s*extract all text from this image\.?\s*$",
-        r"(?im)^\s*(system|assistant|user)\s*:\s*",
-        r"(?im)\b(you are a strict ocr engine|extract all text from this image)\b",
+        r"(?im)^system\s*:?\s*$",
+        r"(?im)^assistant\s*:?\s*$",
+        r"(?im)^user\s*:?\s*$",
+
+        r"(?im)^.*return only raw extracted text.*$",
+        r"(?im)^.*no explanations.*$",
+        r"(?im)^.*no formatting.*$",
+        r"(?im)^.*repetition of instructions.*$",
+
+        r"(?im)^.*extract all text from this image.*$",
+        r"(?im)^.*output only text.*$",
+
+        r"(?im)^\s*\.\s*return only raw extracted text.*$",
+        r"(?im)^\s*\.\s*output only text.*$",
     ]
+
     for pattern in patterns:
         cleaned = re.sub(pattern, "", cleaned)
 
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    return cleaned.strip()
+    cleaned = re.sub(r"\n{2,}", "\n\n", cleaned)
+    cleaned = cleaned.strip(" \n\r\t.")
+
+    return cleaned

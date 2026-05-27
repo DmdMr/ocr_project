@@ -151,8 +151,24 @@ async def export_ocr_dataset():
 
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        dataset_lines = [json.dumps(record, ensure_ascii=False) for record in records]
-        zf.writestr("dataset/records.jsonl", "\n".join(dataset_lines) + ("\n" if dataset_lines else ""))
+        # JSONL export (ML-friendly)
+        dataset_lines = [
+            json.dumps(record, ensure_ascii=False)
+            for record in records
+        ]
+
+        zf.writestr(
+            "dataset/records.jsonl",
+            "\n".join(dataset_lines) + ("\n" if dataset_lines else "")
+        )
+
+        # JSON export (human-friendly)
+        zf.writestr(
+            "dataset/records.json",
+            json.dumps(records, ensure_ascii=False, indent=2)
+        )
+
+
 
         for record in records:
             image_path_value = str(record.get("image_path") or "").strip()
