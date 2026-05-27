@@ -219,20 +219,6 @@
     })
   }
 
-  async function downloadTrainingDataset() {
-    try {
-      const blob = await exportOcrDataset()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "ocr_training_dataset.zip"
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      galleryUploadError = err instanceof Error ? err.message : "Failed to export dataset"
-    }
-  }
-
   async function saveText() {
     if (!$canEditDocuments) return
     if (!doc) return
@@ -604,7 +590,6 @@
         <div class="gallery-upload-actions">
             <button class="back-btn" on:click={() => document.getElementById('gallery-upload-with-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withRecognition")}</button>
             <button class="back-btn" on:click={() => document.getElementById('gallery-upload-without-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withoutRecognition")}</button>
-            <button class="back-btn" on:click={downloadTrainingDataset}>Export Training Dataset</button>
           </div>
 
         <section class="panel files-panel">

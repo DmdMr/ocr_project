@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { getAiOcrStatus, setAiOcrProvider, getAiOcrHistory, saveAiOcrCorrection } from './lib/api'
+  import { exportOcrDataset } from './lib/api'
   let tab: 'config'|'history'|'fine' = 'config'
   let status: any = null
   let history: any[] = []
@@ -9,6 +10,25 @@
   async function switchProvider(p:"remote"|"ollama"){ await setAiOcrProvider(p); await load() }
   async function saveCorrection(){ await saveAiOcrCorrection(correction); correction.corrected_text='' }
   onMount(load)
+
+  async function downloadTrainingDataset() {
+    try {
+      const blob = await exportOcrDataset()
+
+      const url = URL.createObjectURL(blob)
+
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "ocr_training_dataset.zip"
+      a.click()
+
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to export dataset", err)
+    }
+  }
+
+
 </script>
 
 <h2>AI OCR</h2>
@@ -20,14 +40,22 @@
   <pre>{JSON.stringify(status, null, 2)}</pre>
 {/if}
 {#if tab==='history'}
-  {#each history as item}
-    <div class="card">
-      <div>{item.image_path}</div><div>{item.provider} · {item.timestamp} · {item.processing_time_ms}ms</div>
-      <textarea rows="4" bind:value={item.text}></textarea>
-      <div>OCR regions / bounding boxes / confidence overlays (placeholder)</div>
-    </div>
-  {/each}
+<section class='panel section'>
+  <h3>Training Data</h3>
+
+  <button on:click={downloadTrainingDataset}>
+    Export Training ZIP
+  </button>
+
+</section>
 {/if}
+
+
+
+
+
+
+
 {#if tab==='fine'}
   <div>image crop preview (placeholder)</div>
   <input placeholder="image path" bind:value={correction.image_path}>

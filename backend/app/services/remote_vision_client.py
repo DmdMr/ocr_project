@@ -63,21 +63,27 @@ def generate_ocr(file_bytes: bytes, filename: str = "image.png", content_type: s
         return {"success": False, "text": "", "error": "REMOTE_OCR_BAD_JSON"}
 
 
+import re
+
 def clean_ocr_text(text: str) -> str:
     if not text:
         return ""
 
     cleaned = text
-    patterns = [
-        r"(?im)^\s*system\s*:?\s*$",
-        r"(?im)^\s*assistant\s*:?\s*$",
-        r"(?im)^\s*user\s*:?\s*$",
-        r"(?im)^\s*you are a strict ocr engine\.?\s*$",
-        r"(?im)^\s*extract all text from this image\.?\s*$",
-        r"(?im)^\s*(system|assistant|user)\s*:\s*",
-    ]
-    for pattern in patterns:
-        cleaned = re.sub(pattern, "", cleaned)
+
+    cleaned = re.sub(
+        r"system\s+You are a strict OCR engine.*?Output ONLY text\.\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    cleaned = re.sub(
+        r"^(system|assistant|user)\s*$",
+        "",
+        cleaned,
+        flags=re.MULTILINE | re.IGNORECASE,
+    )
 
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     return cleaned.strip()
