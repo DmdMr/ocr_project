@@ -7,6 +7,7 @@
     deleteDocumentAttachment,
     deleteDocumentImage,
     editDocumentImage,
+    exportOcrDataset,
     createCardField,
     formatSkippedFileError,
     getCardFields,
