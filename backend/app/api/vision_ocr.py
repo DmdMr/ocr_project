@@ -1,11 +1,14 @@
 import json
 import logging
+import zipfile
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.app.services.provider_manager import provider_manager
@@ -133,4 +136,28 @@ async def get_ocr_dataset():
 
 @router.get("/ocr/export")
 async def export_ocr_dataset():
-    return {"records": _read_all_records()}
+    records = _read_all_records()
+    uploads_dir = Path("backend/uploads")
+
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        dataset_lines = [json.dumps(record, ensure_ascii=False) for record in records]
+        zf.writestr("dataset/records.jsonl", "\n".join(dataset_lines) + ("\n" if dataset_lines else ""))
+
+        for record in records:
+            image_path_value = str(record.get("image_path") or "").strip()
+            if not image_path_value:
+                continue
+            image_filename = Path(image_path_value).name
+            if not image_filename:
+                continue
+            source_path = uploads_dir / image_filename
+            if source_path.exists() and source_path.is_file():
+                zf.write(source_path, arcname=f"dataset/images/{image_filename}")
+
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=ocr_training_dataset.zip"},
+    )

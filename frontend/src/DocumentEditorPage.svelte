@@ -7,6 +7,7 @@
     deleteDocumentAttachment,
     deleteDocumentImage,
     editDocumentImage,
+    exportOcrDataset,
     createCardField,
     formatSkippedFileError,
     getCardFields,
@@ -18,7 +19,8 @@
     updateDocumentCustomFields,
     uploadDocumentAttachments,
     uploadImagesToDocument,
-    UPLOADS_URL
+    UPLOADS_URL,
+    saveOcrCorrection
   } from "./lib/api"
   import CardTagPicker from "./lib/components/CardTagPicker.svelte"
   import DocumentHeader from "./lib/components/document-editor/DocumentHeader.svelte"
@@ -202,9 +204,33 @@
   }
 
   function addImageToTraining(id: string) {
-    imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, addedToTraining: true } : item)
     const card = imageOcrCards.find((item) => item.id === id)
-    console.log("Added OCR correction to local training queue", card)
+    const image = galleryImages.find((item) => (item.file_hash || item.filename) === id)
+    if (!card || !image) return
+    void saveOcrCorrection({
+      image_path: image.filename,
+      ocr_text: card.recognizedText,
+      corrected_text: card.correctedText,
+      provider: "qwen3-vl"
+    }).then(() => {
+      imageOcrCards = imageOcrCards.map((item) => item.id === id ? { ...item, addedToTraining: true } : item)
+    }).catch((err) => {
+      galleryUploadError = err instanceof Error ? err.message : "Failed to add training sample"
+    })
+  }
+
+  async function downloadTrainingDataset() {
+    try {
+      const blob = await exportOcrDataset()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "ocr_training_dataset.zip"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      galleryUploadError = err instanceof Error ? err.message : "Failed to export dataset"
+    }
   }
 
   async function saveText() {
@@ -578,6 +604,7 @@
         <div class="gallery-upload-actions">
             <button class="back-btn" on:click={() => document.getElementById('gallery-upload-with-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withRecognition")}</button>
             <button class="back-btn" on:click={() => document.getElementById('gallery-upload-without-ocr')?.click()} disabled={!$canEditDocuments || galleryUploading}>{$t("upload.withoutRecognition")}</button>
+            <button class="back-btn" on:click={downloadTrainingDataset}>Export Training Dataset</button>
           </div>
 
         <section class="panel files-panel">
