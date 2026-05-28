@@ -1003,6 +1003,7 @@ async def move_document_to_folder(
     )
     return normalize_document(updated_doc)
 
+import time
 
 @router.post("/upload")
 async def upload_image(
@@ -1031,6 +1032,10 @@ async def upload_image(
     if perform_ocr:
         try:
             print("\n===== OCR START =====")
+            print(time.time())
+
+            start_time = time.time()
+
             print("FILE PATH:", file_path)
 
             ocr_result = recognize_text(file_path)
@@ -1039,6 +1044,11 @@ async def upload_image(
             print("TEXT:", ocr_result.get("text"))
             print("LINES:", ocr_result.get("ocr_lines"))
             print("===== OCR END =====\n")
+
+            end_time = time.time()
+
+            duration = end_time - start_time
+            print("OCR DURATOIN (seconds):", duration)
 
         except ValueError as exc:
             logger.exception("OCR rejected invalid image during upload: %s", safe_filename(file))

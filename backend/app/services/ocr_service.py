@@ -22,8 +22,8 @@ def _append_history(entry: dict[str, Any]) -> None:
 
 
 def recognize_text(image_path: str) -> Dict[str, Any]:
-    print("[DEBUG] ACTIVE PROVIDER MANAGER:", provider_manager)
-    print("[DEBUG] TYPE:", type(provider_manager))
+    #print("[DEBUG] ACTIVE PROVIDER MANAGER:", provider_manager)
+    #print("[DEBUG] TYPE:", type(provider_manager))
 
     validate_image_file(image_path)
 
