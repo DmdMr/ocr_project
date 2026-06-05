@@ -43,11 +43,19 @@
     "dev:win": "concurrently -n FRONTEND,BACKEND -c blue,green \"npm run frontend\" \"npm run backend:win\"",
     "frontend:build": "cd frontend && npm run build",
     "electron": "cross-env ELECTRON_START_BACKEND=true electron .",
-    "electron:build": "npm run frontend:build && electron-builder",
-    "electron:build:mac": "npm run frontend:build && electron-builder --mac dmg",
-    "electron:build:win": "npm run frontend:build && electron-builder --win nsis",
+    "electron:build": "npm run frontend:build && npm run backend:build && electron-builder",
+    "electron:build:mac": "npm run frontend:build && npm run backend:build && electron-builder --mac dmg zip",
+    "electron:build:win": "npm run frontend:build && npm run backend:build && electron-builder --win nsis --x64",
     "electron:build:linux": "npm run frontend:build && electron-builder --linux deb AppImage",
-    "electron:dev": "npm run frontend:build && cross-env ELECTRON_START_BACKEND=true electron ."
+    "electron:dev": "npm run frontend:build && cross-env ELECTRON_START_BACKEND=true electron .",
+    "backend:dev": "python3 -m backend.desktop_server",
+    "backend:build": "pyinstaller --clean --noconfirm backend/ocr_backend.spec",
+    "dist:mac": "npm run electron:build:mac",
+    "dist:win": "npm run electron:build:win",
+    "electron:build:mac:x64": "npm run frontend:build && npm run backend:build && electron-builder --mac dmg zip --x64",
+    "electron:build:mac:arm64": "npm run frontend:build && npm run backend:build && electron-builder --mac dmg zip --arm64",
+    "dist:mac:x64": "npm run electron:build:mac:x64",
+    "dist:mac:arm64": "npm run electron:build:mac:arm64"
   },
   "repository": {
     "type": "git",
@@ -64,6 +72,10 @@
   "build": {
     "appId": "com.ocrproject.desktop",
     "productName": "OCR Project",
+    "asar": true,
+    "asarUnpack": [
+      "electron/**/*"
+    ],
     "directories": {
       "output": "release"
     },
@@ -74,12 +86,11 @@
     ],
     "extraResources": [
       {
-        "from": "backend",
-        "to": "backend",
+        "from": "dist",
+        "to": "backend-dist",
         "filter": [
-          "**/*",
-          "!**/__pycache__/**",
-          "!**/*.pyc"
+          "ocr-backend",
+          "ocr-backend.exe"
         ]
       },
       {
@@ -92,19 +103,52 @@
     ],
     "mac": {
       "target": [
-        "dir"
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "sign": false,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "win": {
       "target": [
-        "nsis"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     },
-    "linux": {
-      "target": [
-        "deb",
-        "AppImage"
-      ]
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "extraMetadata": {
+      "main": "electron/main.js"
     }
   }
 }

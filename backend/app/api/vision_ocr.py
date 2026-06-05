@@ -12,17 +12,16 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.app.services.provider_manager import provider_manager
+from backend.app.paths import DATASET_DIR, UPLOAD_DIR
 
 router = APIRouter(prefix="/api", tags=["vision-ocr"])
 logger = logging.getLogger("backend.api.vision_ocr")
 
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/bmp", "image/tiff"}
 ALLOWED_PROVIDERS = {"ollama", "vps", "qwen3-vl"}
-DATASET_DIR = Path("dataset")
 DATASET_RECORDS_FILE = DATASET_DIR / "records.jsonl"
 DATASET_WRITE_LOCK = Lock()
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-UPLOADS_DIR = PROJECT_ROOT / "backend" / "uploads"
+UPLOADS_DIR = UPLOAD_DIR
 
 
 class ProviderSelectRequest(BaseModel):

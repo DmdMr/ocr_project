@@ -12,8 +12,9 @@ from backend.app.api.vision_ocr import router as vision_ocr_router
 from backend.app.auth import bootstrap_first_admin
 from backend.app.db.database import activity_logs_collection, documents_collection, folders_collection, sessions_collection, users_collection, init_db
 from backend.app.services.folder_service import ensure_unsorted_folder, ensure_unsorted_indexes
+from backend.app.paths import FRONTEND_DIST_DIR, UPLOAD_DIR, USER_DATA_DIR, RESOURCE_DIR
 
-app = FastAPI()
+app = FastAPI(title="OCR Project Backend")
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
@@ -53,7 +54,14 @@ async def setup_indexes():
 
 app.include_router(router)
 app.include_router(vision_ocr_router)
-app.mount("/uploads", StaticFiles(directory="backend/uploads"), name="uploads")
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "ocr-project-backend"}
+
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 def resolve_frontend_dist_dir():
@@ -71,6 +79,8 @@ def resolve_frontend_dist_dir():
 
     project_root = Path(__file__).resolve().parents[2]
     candidates.extend([
+        FRONTEND_DIST_DIR,
+        RESOURCE_DIR / "frontend" / "dist",
         project_root / "frontend" / "dist",
         Path.cwd() / "frontend" / "dist",
     ])

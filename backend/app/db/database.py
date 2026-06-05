@@ -15,12 +15,11 @@ def json_default(obj):
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 from sqlalchemy import JSON, Boolean, DateTime, String, Text, create_engine, select
+
+from backend.app.paths import DB_PATH
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-DB_PATH = os.getenv("SQLITE_DB_PATH", "backend/app/data/ocr_app.db")
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-
-DATABASE_URL = "sqlite:///./ocr.db"
+DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
 
 engine = create_engine(
     DATABASE_URL,

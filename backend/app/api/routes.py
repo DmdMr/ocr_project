@@ -43,23 +43,24 @@ from backend.app.services.folder_service import UNSORTED_FOLDER_NAME, ensure_uns
 from backend.app.services.ocr_service import recognize_text
 from backend.app.utils.image_preprocessing import autocrop_whitespace
 from backend.app.services.provider_manager import provider_manager
+from backend.app.paths import LOG_DIR, TRAINING_DATA_PATH, UPLOAD_DIR as UPLOAD_PATH
 
 app = FastAPI()
 
 router = APIRouter(prefix="/api")
 
-UPLOAD_DIR = "backend/uploads"
+UPLOAD_DIR = str(UPLOAD_PATH)
 
 app.mount(
     "/uploads", 
-    StaticFiles(directory="backend/uploads"), 
+    StaticFiles(directory=str(UPLOAD_PATH)), 
     name="uploads"
 )
 
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-AUDIT_LOG_DIR = "backend/logs"
-AUDIT_LOG_FILE = os.path.join(AUDIT_LOG_DIR, "audit.log")
+AUDIT_LOG_DIR = str(LOG_DIR)
+AUDIT_LOG_FILE = str(LOG_DIR / "audit.log")
 os.makedirs(AUDIT_LOG_DIR, exist_ok=True)
 UNSORTED_SYSTEM_KEY="unsorted"
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
@@ -566,7 +567,7 @@ def add_training_sample(payload: dict):
         "text": corrected_text
     }
 
-    with open("backend/data/training.jsonl", "a", encoding="utf-8") as f:
+    with TRAINING_DATA_PATH.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     return {"success": True}

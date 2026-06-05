@@ -15,6 +15,7 @@ from backend.app.services.remote_vision_client import test_connection as remote_
 
 from backend.app.services.ocr.providers.remote_provider import RemoteOCRProvider
 from backend.app.services.ocr.providers.ollama_provider import OllamaOCRProvider
+from backend.app.paths import AI_OCR_CONFIG_PATH
 
 
 @dataclass
@@ -27,10 +28,10 @@ class OCRConfig:
 
 class ProviderManager:
     def __init__(self) -> None:
-        self.config_path = Path(os.getenv("AI_OCR_CONFIG_PATH", "backend/data/ai_ocr_config.json"))
+        self.config_path = AI_OCR_CONFIG_PATH
         self.providers = {
             "remote": RemoteOCRProvider(),
-#            "ollama": OllamaOCRProvider(),
+            "ollama": OllamaOCRProvider(),
         }
 
     def load_config(self) -> dict[str, Any]:
@@ -54,7 +55,7 @@ class ProviderManager:
     def save_config(self, payload: dict[str, Any]) -> dict[str, Any]:
         current = self.load_config()
         next_config = {
-            "provider": (payload.get("provider") or current["remote"]).strip().lower(),
+            "provider": (payload.get("provider") or current["provider"]).strip().lower(),
             "remote_url": (payload.get("remote_url") or current["remote_url"]).strip(),
             "ollama_model": (payload.get("ollama_model") or current["ollama_model"]).strip(),
             "timeout": int(payload.get("timeout", current["timeout"])),
@@ -64,6 +65,36 @@ class ProviderManager:
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config_path.write_text(json.dumps(next_config, ensure_ascii=False, indent=2), encoding="utf-8")
         return next_config
+
+
+    def list_providers(self) -> list[dict[str, Any]]:
+        selected = self.load_config().get("provider", "remote")
+        return [
+            {"name": name, "selected": name == selected}
+            for name in sorted(self.providers.keys())
+        ]
+
+    def get_selected_provider_name(self) -> str:
+        return self.load_config().get("provider", "remote")
+
+    def select_provider(self, name: str) -> str:
+        provider_name = (name or "").strip().lower()
+        if provider_name not in self.providers:
+            raise ValueError("Unsupported provider")
+        config = self.load_config()
+        config["provider"] = provider_name
+        self.save_config(config)
+        return provider_name
+
+    def health_status(self) -> dict[str, Any]:
+        config = self.load_config()
+        statuses: dict[str, Any] = {}
+        for name, provider in self.providers.items():
+            try:
+                statuses[name] = provider.health_check()
+            except Exception as exc:
+                statuses[name] = {"success": False, "error": str(exc)}
+        return {"success": True, "selected_provider": config.get("provider", "remote"), "providers": statuses}
 
     def ollama_status(self) -> dict[str, Any]:
         config = self.load_config()

@@ -5,58 +5,48 @@ const http = require("http")
 const os = require("os")
 const path = require("path")
 
-const BACKEND_BIND_HOST = "0.0.0.0"
+const APP_NAME = "OCR Project"
+const BACKEND_BIND_HOST = process.env.OCR_BACKEND_BIND_HOST || "127.0.0.1"
 const BACKEND_WINDOW_HOST = "127.0.0.1"
-const BACKEND_PORT = "8000"
+const BACKEND_PORT = process.env.OCR_BACKEND_PORT || "8000"
 const BACKEND_URL = `http://${BACKEND_WINDOW_HOST}:${BACKEND_PORT}`
+const BACKEND_HEALTH_URL = `${BACKEND_URL}/health`
+const BACKEND_START_TIMEOUT_MS = Number(process.env.OCR_BACKEND_START_TIMEOUT_MS || 120000)
 
 let backendProcess = null
 let backendOwnedByElectron = false
+let mainWindow = null
 
-function resolveProjectRoot() {
-  // In development Electron runs from the repository root.
-  // In packaged builds electron-builder exposes copied backend/frontend files under process.resourcesPath.
+function resolveResourceRoot() {
   return app.isPackaged ? process.resourcesPath : path.resolve(__dirname, "..")
 }
 
-function detectLocalIPv4() {
-  const interfaces = os.networkInterfaces()
+function resolveFrontendDistDir(resourceRoot) {
+  return path.join(resourceRoot, "frontend", "dist")
+}
 
-  for (const entries of Object.values(interfaces)) {
-    for (const entry of entries || []) {
-      if (entry.family === "IPv4" && !entry.internal) {
-        return entry.address
-      }
-    }
+function resolveBackendExecutable(resourceRoot) {
+  if (process.env.BACKEND_EXECUTABLE_PATH) {
+    return process.env.BACKEND_EXECUTABLE_PATH
   }
 
-  return BACKEND_WINDOW_HOST
+  const executableName = process.platform === "win32" ? "ocr-backend.exe" : "ocr-backend"
+  const candidates = [
+    path.join(resourceRoot, "backend-dist", executableName),
+    path.join(resourceRoot, "backend", "dist", executableName),
+  ]
+
+  return candidates.find((candidate) => fs.existsSync(candidate))
 }
 
-function isBackendOnline() {
-  return new Promise((resolve) => {
-    const request = http.get(BACKEND_URL, (response) => {
-      response.resume()
-      resolve(true)
-    })
-
-    request.on("error", () => resolve(false))
-    request.setTimeout(1000, () => {
-      request.destroy()
-      resolve(false)
-    })
-  })
-}
-
-function resolvePythonExecutable(projectRoot) {
-  const configuredPython = process.env.PYTHON_EXECUTABLE
-  if (configuredPython) {
-    return configuredPython
+function resolvePythonExecutable(resourceRoot) {
+  if (process.env.PYTHON_EXECUTABLE) {
+    return process.env.PYTHON_EXECUTABLE
   }
 
   const venvPython = process.platform === "win32"
-    ? path.join(projectRoot, "venv", "Scripts", "python.exe")
-    : path.join(projectRoot, "venv", "bin", "python")
+    ? path.join(resourceRoot, "venv", "Scripts", "python.exe")
+    : path.join(resourceRoot, "venv", "bin", "python")
 
   if (fs.existsSync(venvPython)) {
     return venvPython
@@ -65,78 +55,124 @@ function resolvePythonExecutable(projectRoot) {
   return process.platform === "win32" ? "python" : "python3"
 }
 
-function resolvePackagedBackendExecutable(projectRoot) {
-  // Future production path: place a PyInstaller executable in release resources and set
-  // BACKEND_EXECUTABLE_PATH, or use one of these default locations per platform.
-  if (process.env.BACKEND_EXECUTABLE_PATH) {
-    return process.env.BACKEND_EXECUTABLE_PATH
+function detectLocalIPv4() {
+  for (const entries of Object.values(os.networkInterfaces())) {
+    for (const entry of entries || []) {
+      if (entry.family === "IPv4" && !entry.internal) {
+        return entry.address
+      }
+    }
   }
-
-  const executableName = process.platform === "win32" ? "ocr-backend.exe" : "ocr-backend"
-  const candidates = [
-    path.join(projectRoot, "backend-dist", executableName),
-    path.join(projectRoot, "backend", "dist", executableName),
-  ]
-
-  return candidates.find((candidate) => fs.existsSync(candidate))
+  return BACKEND_WINDOW_HOST
 }
 
-async function startBackend() {
-  if (backendProcess) {
+function buildBackendEnvironment(resourceRoot) {
+  const userDataDir = app.getPath("userData")
+  const uploadDir = path.join(userDataDir, "uploads")
+  const dataDir = path.join(userDataDir, "data")
+  const logsDir = path.join(userDataDir, "logs")
+  const datasetDir = path.join(userDataDir, "dataset")
+  const modelDir = path.join(resourceRoot, "backend", "models")
+
+  for (const dir of [uploadDir, dataDir, logsDir, datasetDir]) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+
+  return {
+    ...process.env,
+    ELECTRON_RUN_AS_DESKTOP: "true",
+    HOST: BACKEND_BIND_HOST,
+    PORT: BACKEND_PORT,
+    LOCAL_NETWORK_URL: `http://${detectLocalIPv4()}:${BACKEND_PORT}`,
+    OCR_APP_RESOURCES_DIR: resourceRoot,
+    OCR_APP_DATA_DIR: userDataDir,
+    FRONTEND_DIST_DIR: resolveFrontendDistDir(resourceRoot),
+    UPLOAD_DIR: uploadDir,
+    OCR_DATA_DIR: dataDir,
+    AUDIT_LOG_DIR: logsDir,
+    OCR_DATASET_DIR: datasetDir,
+    OCR_MODEL_DIR: modelDir,
+    SQLITE_DB_PATH: path.join(dataDir, "ocr_app.db"),
+    AI_OCR_CONFIG_PATH: path.join(dataDir, "ai_ocr_config.json"),
+    OCR_HISTORY_PATH: path.join(dataDir, "ocr_history.jsonl"),
+    OCR_TRAINING_DATA_PATH: path.join(dataDir, "training.jsonl"),
+    TRANSFORMERS_CACHE: path.join(userDataDir, "model-cache", "transformers"),
+    HF_HOME: path.join(userDataDir, "model-cache", "huggingface"),
+    PADDLE_HOME: path.join(userDataDir, "model-cache", "paddle"),
+    PYTHONUNBUFFERED: "1",
+  }
+}
+
+function requestUrl(url, timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    const request = http.get(url, (response) => {
+      response.resume()
+      resolve({ ok: response.statusCode >= 200 && response.statusCode < 300, statusCode: response.statusCode })
+    })
+
+    request.on("error", (error) => resolve({ ok: false, error }))
+    request.setTimeout(timeoutMs, () => {
+      request.destroy()
+      resolve({ ok: false, error: new Error(`Timed out while requesting ${url}`) })
+    })
+  })
+}
+
+async function isBackendHealthy() {
+  const result = await requestUrl(BACKEND_HEALTH_URL, 1500)
+  return result.ok
+}
+
+function attachBackendLogging(child) {
+  if (!app.isPackaged) {
     return
   }
 
-  // Avoid duplicate backend instances: if port 8000 is already serving the app,
-  // Electron reuses it for the desktop window and will not kill it on exit.
-  if (await isBackendOnline()) {
+  const logFile = path.join(app.getPath("userData"), "backend-process.log")
+  const appendLog = (prefix, chunk) => {
+    fs.appendFile(logFile, `[${new Date().toISOString()}] ${prefix}: ${chunk}`, () => {})
+  }
+
+  child.stdout?.on("data", (chunk) => appendLog("stdout", chunk))
+  child.stderr?.on("data", (chunk) => appendLog("stderr", chunk))
+}
+
+async function startBackend() {
+  if (backendProcess || await isBackendHealthy()) {
     backendOwnedByElectron = false
     return
   }
 
-  const projectRoot = resolveProjectRoot()
-  const packagedBackendExecutable = resolvePackagedBackendExecutable(projectRoot)
+  const resourceRoot = resolveResourceRoot()
+  const env = buildBackendEnvironment(resourceRoot)
+  const packagedBackendExecutable = resolveBackendExecutable(resourceRoot)
 
   if (packagedBackendExecutable) {
-    // Packaged/offline preparation: when a PyInstaller backend executable exists,
-    // Electron can run it directly instead of requiring Python on the user's machine.
     backendProcess = spawn(packagedBackendExecutable, [], {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        HOST: BACKEND_BIND_HOST,
-        PORT: BACKEND_PORT,
-        LOCAL_NETWORK_URL: `http://${detectLocalIPv4()}:${BACKEND_PORT}`,
-      },
-      stdio: app.isPackaged ? "ignore" : "inherit",
+      cwd: resourceRoot,
+      env,
+      stdio: app.isPackaged ? ["ignore", "pipe", "pipe"] : "inherit",
       windowsHide: true,
     })
   } else {
-    const pythonExecutable = resolvePythonExecutable(projectRoot)
+    if (app.isPackaged) {
+      throw new Error(
+        `Packaged backend executable was not found. Expected ocr-backend in ${path.join(resourceRoot, "backend-dist")}. ` +
+        "Build it with PyInstaller before running electron-builder."
+      )
+    }
 
-    // Development/default backend start: this launches FastAPI exactly as the web app does,
-    // binding uvicorn to 0.0.0.0:8000 so other LAN devices can connect.
-    backendProcess = spawn(pythonExecutable, [
-      "-m",
-      "uvicorn",
-      "backend.app.main:app",
-      "--host",
-      BACKEND_BIND_HOST,
-      "--port",
-      BACKEND_PORT,
-    ], {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_DESKTOP: "true",
-        FRONTEND_DIST_DIR: path.join(projectRoot, "frontend", "dist"),
-        LOCAL_NETWORK_URL: `http://${detectLocalIPv4()}:${BACKEND_PORT}`,
-      },
-      stdio: app.isPackaged ? "ignore" : "inherit",
+    const pythonExecutable = resolvePythonExecutable(resourceRoot)
+    backendProcess = spawn(pythonExecutable, ["-m", "backend.desktop_server"], {
+      cwd: resourceRoot,
+      env,
+      stdio: "inherit",
       windowsHide: true,
     })
   }
 
   backendOwnedByElectron = true
+  attachBackendLogging(backendProcess)
 
   backendProcess.on("exit", (code, signal) => {
     backendProcess = null
@@ -146,48 +182,43 @@ async function startBackend() {
   })
 }
 
-function waitForBackend(timeoutMs = 60000) {
+async function waitForBackend(timeoutMs = BACKEND_START_TIMEOUT_MS) {
   const startedAt = Date.now()
+  let lastError = null
 
-  return new Promise((resolve, reject) => {
-    const attempt = () => {
-      const request = http.get(BACKEND_URL, (response) => {
-        response.resume()
-        resolve()
-      })
-
-      request.on("error", () => {
-        if (Date.now() - startedAt > timeoutMs) {
-          reject(new Error(`FastAPI backend did not become ready at ${BACKEND_URL}`))
-          return
-        }
-
-        setTimeout(attempt, 500)
-      })
-
-      request.setTimeout(2000, () => {
-        request.destroy()
-      })
+  while (Date.now() - startedAt < timeoutMs) {
+    const result = await requestUrl(BACKEND_HEALTH_URL, 2000)
+    if (result.ok) {
+      return
     }
+    lastError = result.error || new Error(`HTTP ${result.statusCode}`)
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
 
-    attempt()
-  })
+  throw new Error(
+    `Backend not ready after ${Math.round(timeoutMs / 1000)} seconds at ${BACKEND_HEALTH_URL}. ` +
+    `Last error: ${lastError?.message || "unknown"}. ` +
+    `Backend logs: ${path.join(app.getPath("userData"), "backend-process.log")}`
+  )
 }
 
 function createWindow() {
-  // Electron owns the desktop shell: it creates the application window and points it
-  // at the FastAPI server, which serves API routes, uploads, the built Svelte UI,
-  // and the LAN-shareable browser URL shown in the sidebar.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    minWidth: 1100,
+    minHeight: 700,
     autoHideMenuBar: app.isPackaged,
+    show: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   })
 
+  mainWindow.once("ready-to-show", () => mainWindow.show())
+  mainWindow.on("closed", () => { mainWindow = null })
   mainWindow.loadURL(BACKEND_URL)
 }
 
@@ -197,7 +228,7 @@ function stopBackend() {
   }
 
   if (process.platform === "win32") {
-    spawn("taskkill", ["/pid", backendProcess.pid, "/f", "/t"])
+    spawn("taskkill", ["/pid", String(backendProcess.pid), "/f", "/t"], { windowsHide: true })
   } else {
     backendProcess.kill("SIGTERM")
   }
@@ -205,10 +236,11 @@ function stopBackend() {
   backendProcess = null
 }
 
-app.whenReady().then(async () => {
-  await startBackend()
+app.setName(APP_NAME)
 
+app.whenReady().then(async () => {
   try {
+    await startBackend()
     await waitForBackend()
     createWindow()
   } catch (error) {

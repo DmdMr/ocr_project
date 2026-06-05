@@ -3,7 +3,9 @@ from PIL import Image
 import torch
 import os
 
-MODEL_PATH = "backend/models/trocr"
+from backend.app.paths import MODEL_DIR
+
+MODEL_PATH = str(MODEL_DIR / "trocr")
 
 processor = TrOCRProcessor.from_pretrained(MODEL_PATH)
 model = VisionEncoderDecoderModel.from_pretrained(MODEL_PATH)

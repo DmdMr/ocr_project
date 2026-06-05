@@ -13,3 +13,5 @@ paddleocr
 passlib
 sqlalchemy
 requests
+
+pyinstaller

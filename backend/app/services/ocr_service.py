@@ -8,11 +8,12 @@ from typing import Any, Dict
 
 from backend.app.services.provider_manager import provider_manager
 from backend.app.services.paddle_ocr_service import validate_image_file
+from backend.app.paths import OCR_HISTORY_PATH
 
 print("[DEBUG] provider_manager type:", type(provider_manager))
 print("[DEBUG] provider_manager dir:", dir(provider_manager))
 
-HISTORY_PATH = Path(os.getenv("OCR_HISTORY_PATH", "backend/data/ocr_history.jsonl"))
+HISTORY_PATH = OCR_HISTORY_PATH
 
 
 def _append_history(entry: dict[str, Any]) -> None:
