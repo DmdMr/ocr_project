@@ -43,7 +43,7 @@
         fileInput?.click()
     }
 
-
+    /*
     async function handleUpload(files: FileList | null, mode: UploadMode) {
         setFiles(files)
         if (!items.length) return
@@ -63,9 +63,6 @@
                 item.progress = 70
                 items = [...items]
 
-                // Simulate small processing delay
-                await new Promise(r => setTimeout(r, 500))
-
                 item.status = "done"
                 item.progress = 100
                 items = [...items]
@@ -79,6 +76,53 @@
         uploading = false
         message = mode === "with_ocr" ? $t("upload.doneWithRecognition") : $t("upload.doneWithoutRecognition")
         dispatch("uploaded")
+    }
+        */
+
+    async function handleUpload(files: FileList | null, mode: UploadMode) {
+        // 1. Ensure we actually have files to upload
+        if (!files || files.length === 0) return;
+        
+        // Assuming setFiles updates 'items' behind the scenes. 
+        // If 'items' is derived from 'files', make sure it's ready.
+        setFiles(files); 
+        if (!items.length) return;
+
+        // 2. Use reactive assignments (ensure these are let variables in your script tag)
+        uploading = true;
+        message = "";
+
+        // 3. Process each item
+        for (let i = 0; i < items.length; i++) {
+            try {
+                // Update to: Uploading
+                updateItemStatus(i, { status: "uploading", progress: 30 });
+
+                // Trigger the actual API call
+                await uploadImage(items[i].file, mode === "with_ocr");
+
+                // Update to: Processing
+                updateItemStatus(i, { status: "processing", progress: 70 });
+
+                // Update to: Done
+                updateItemStatus(i, { status: "done", progress: 100 });
+
+            } catch (e) {
+                console.error("Upload failed for item", i, e);
+                updateItemStatus(i, { status: "error", progress: 0 });
+            }
+        }
+
+        // 4. Wrap up state
+        uploading = false;
+        message = mode === "with_ocr" ? $t("upload.doneWithRecognition") : $t("upload.doneWithoutRecognition");
+        dispatch("uploaded");
+    }
+
+    // Helper function to safely update array state and trigger reactivity
+    function updateItemStatus(index: number, updates: Partial<typeof items[0]>) {
+        items[index] = { ...items[index], ...updates };
+        items = [...items]; // Forces UI re-render
     }
 
     async function handleFileSelection(event: Event) {
@@ -129,13 +173,12 @@
     </div>
 </div>
 
-<!-- File List -->
 {#if items.length > 0}
 <ul class="file-list">
     {#each items as item}
         <li class="file-item">
             <div class="file-header">
-                <span>{item.name}</span>
+                <span class="file-name" title={item.name}>{item.name}</span>
                 <span class="status {item.status}">
                     {$t(`upload.status.${item.status}`)}
                 </span>
@@ -248,6 +291,24 @@
     gap: 10px;
     margin-bottom: 8px;
     text-align: left;
+    min-width: 0; 
+}
+
+.file-name {
+    /* Takes up all available space pushing the status badge to the right */
+    flex: 1; 
+    /* Allows the text element itself to shrink smaller than the text length */
+    min-width: 0; 
+    
+    /* The magic trio for smooth ellipsis truncation */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status {
+    /* Keeps your status badge crisp and prevents it from squishing when the filename is huge */
+    flex-shrink: 0; 
 }
 
 .status {

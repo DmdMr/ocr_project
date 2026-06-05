@@ -17,11 +17,6 @@
 
     const dispatch = createEventDispatcher()
 
-
-    //const dispatch = createEventDispatcher<DocumentCardEvents & {
-    //    toggleSelect: undefined
-    //}>()
-
     let editedText = doc.recognized_text
 
     

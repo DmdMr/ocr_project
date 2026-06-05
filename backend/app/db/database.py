@@ -3,10 +3,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
-
-
-
-from datetime import datetime, date, timezone
+from datetime import datetime, date
 import json
 
 def json_default(obj):
